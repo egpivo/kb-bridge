@@ -740,9 +740,7 @@ class TestAssistantServiceResults:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.services.assistant_service.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -1083,9 +1081,7 @@ class TestAssistantServiceCustomInstructions:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.services.assistant_service.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"

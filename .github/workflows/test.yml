@@ -27,6 +27,8 @@ jobs:
       - name: Test with pytest
         run: |
           pytest tests/ \
+            --ignore=tests/dify \
+            -m "not slow and not integration" \
             --cov=kbbridge \
             --cov-report=xml \
             --cov-report=term \

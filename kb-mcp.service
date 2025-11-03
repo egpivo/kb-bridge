@@ -1,0 +1,21 @@
+[Unit]
+Description=Knowledge Base MCP Server
+After=network.target
+
+[Service]
+Type=simple
+User=your-username
+WorkingDirectory=/path/to/your/project
+Environment=RETRIEVAL_ENDPOINT=https://your-retrieval-backend.com
+Environment=RETRIEVAL_API_KEY=your-retrieval-api-key
+Environment=LLM_API_URL=https://your-llm-api.com
+Environment=LLM_MODEL=your-model-name
+Environment=LLM_API_TOKEN=your-llm-api-token
+Environment=RERANK_URL=https://your-rerank-api.com
+Environment=RERANK_MODEL=your-rerank-model
+ExecStart=/usr/local/bin/kb-mcp-combined
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -4,15 +4,11 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional
 
-from kbbridge.core.orchestration import (
-    ParameterValidator,
-    profile_stage,
-)
-import kbbridge.core.orchestration as _orch
-from kbbridge.core.utils.json_utils import parse_dataset_info
-
 from fastmcp import Context
-from kbbridge.integrations import RetrievalCredentials
+
+import kbbridge.core.orchestration as _orch
+from kbbridge.core.orchestration import ParameterValidator, profile_stage
+from kbbridge.core.utils.json_utils import parse_dataset_info
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +80,12 @@ async def assistant_service(
 
     try:
         # Parse dataset info FIRST so tests get dataset errors before credential validation
-        verbose_env = os.getenv("VERBOSE", "").strip().lower() in {"1", "true", "yes", "on"}
+        verbose_env = os.getenv("VERBOSE", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
         tool_parameters = {
             "dataset_info": dataset_info,
             "query": query,
@@ -212,9 +213,7 @@ async def assistant_service(
 
         # Parse credentials (tests may patch this symbol at this module path)
         CredentialParser = getattr(_orch, "CredentialParser")
-        credentials, error = CredentialParser.parse_credentials(
-            credentials_dict
-        )
+        credentials, error = CredentialParser.parse_credentials(credentials_dict)
         if error:
             return {
                 "error": error,
@@ -315,14 +314,18 @@ async def assistant_service(
         await ctx.info(f"Processing {len(dataset_pairs)} dataset pairs...")
 
         # Log custom instructions
-        logger.info(f"Custom instructions: {custom_instructions if custom_instructions else 'None'}")
+        logger.info(
+            f"Custom instructions: {custom_instructions if custom_instructions else 'None'}"
+        )
         if custom_instructions:
             await ctx.info(f"Using custom instructions: {custom_instructions}")
         else:
             await ctx.info("No custom instructions provided")
 
         # Log content booster configuration
-        logger.info(f"Content Booster: enabled={config.use_content_booster}, max_boost_keywords={config.max_boost_keywords}, max_workers={config.max_workers}")
+        logger.info(
+            f"Content Booster: enabled={config.use_content_booster}, max_boost_keywords={config.max_boost_keywords}, max_workers={config.max_workers}"
+        )
         await ctx.info(
             f"Content Booster: {'ENABLED' if config.use_content_booster else 'DISABLED'} (max_boost_keywords={config.max_boost_keywords})"
         )
@@ -438,7 +441,9 @@ async def assistant_service(
         logger.info("=" * 80)
         logger.info("PIPELINE SUMMARY")
         logger.info("=" * 80)
-        query_preview = config.query[:100] + "..." if len(config.query) > 100 else config.query
+        query_preview = (
+            config.query[:100] + "..." if len(config.query) > 100 else config.query
+        )
         logger.info(f"Query: '{query_preview}'")
         logger.info(f"Datasets processed: {len(dataset_results)}")
         logger.info(f"Total candidates: {len(candidates)}")
@@ -470,6 +475,7 @@ async def assistant_service(
 
             # Resolve formatter dynamically via orchestration.utils for patching
             from kbbridge.core.orchestration import utils as _or_utils
+
             _Formatter = getattr(_or_utils, "ResultFormatter")
             structured_result = _Formatter.format_structured_answer(
                 candidates, config.query, credentials
@@ -499,8 +505,12 @@ async def assistant_service(
                     )
                 )
                 logger.info(f"Estimated items: ~{numbered_items}")
-                logger.info(f"Confidence: {structured_result.get('confidence', 'medium')}")
-                logger.info(f"Total sources: {structured_result.get('total_sources', 0)}")
+                logger.info(
+                    f"Confidence: {structured_result.get('confidence', 'medium')}"
+                )
+                logger.info(
+                    f"Total sources: {structured_result.get('total_sources', 0)}"
+                )
 
                 # Calculate reduction
                 if candidates:
@@ -621,6 +631,7 @@ async def assistant_service(
         await ctx.error(f"KB Assistant failed with exception: {str(e)}")
         try:
             import traceback as _tb
+
             tb_info = _tb.format_exc()
         except Exception:
             tb_info = ""
@@ -668,6 +679,7 @@ async def _rewrite_query(
     """
     # Import via shim to avoid importing DSPy at collection time
     from kbbridge.core.query import rewriter as _rew
+
     LLMQueryRewriter = getattr(_rew, "LLMQueryRewriter")
     from kbbridge.core.utils.profiling_utils import profile_stage
 
@@ -789,7 +801,9 @@ async def _extract_intention(
                         await ctx.warning(f"Query modified by intention extractor:")
                         await ctx.warning(f"   Original: '{query}'")
                         await ctx.warning(f"   Modified: '{refined_query}'")
-                        logger.warning(f"Query modified: '{query}' -> '{refined_query}'")
+                        logger.warning(
+                            f"Query modified: '{query}' -> '{refined_query}'"
+                        )
                     else:
                         await ctx.info(f"Query unchanged: '{query}'")
                         logger.info(f"Query unchanged: '{query}'")
@@ -857,6 +871,7 @@ def _return_verbose_results(
     """Return verbose results with debugging information"""
     # Format best answer
     from kbbridge.core.orchestration import utils as _or_utils
+
     _Formatter = getattr(_or_utils, "ResultFormatter")
     text_summary = _Formatter.format_final_answer(candidates, config.query, credentials)
 

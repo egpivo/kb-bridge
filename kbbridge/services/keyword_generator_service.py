@@ -1,4 +1,3 @@
-
 """
 Keyword Generator Service
 

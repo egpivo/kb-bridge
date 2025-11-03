@@ -71,7 +71,12 @@ class MCPConfigHelper:
     def validate_credentials(self) -> Dict[str, Any]:
         """Validate that required credentials are present"""
         credentials = self.get_credentials()
-        required = ["RETRIEVAL_ENDPOINT", "RETRIEVAL_API_KEY", "LLM_API_URL", "LLM_MODEL"]
+        required = [
+            "RETRIEVAL_ENDPOINT",
+            "RETRIEVAL_API_KEY",
+            "LLM_API_URL",
+            "LLM_MODEL",
+        ]
 
         missing = [cred for cred in required if not credentials.get(cred)]
         optional = [cred for cred in credentials.keys() if cred not in required]

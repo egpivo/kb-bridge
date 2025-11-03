@@ -93,10 +93,8 @@ class ComponentFactory:
             )
 
         # Local imports inside return to avoid import-time heavy deps (e.g., dspy)
-        from kbbridge.core.synthesis.answer_extractor import (
-            OrganizationAnswerExtractor,
-        )
         from kbbridge.core.query.intention_extractor import UserIntentionExtractor
+        from kbbridge.core.synthesis.answer_extractor import OrganizationAnswerExtractor
 
         return {
             "retriever_factory": retriever_factory,
@@ -190,7 +188,9 @@ class ParameterValidator:
 
         # Debug logging
         if verbose:
-            logger.debug(f"use_content_booster: {use_content_booster}, max_boost_keywords: {max_boost_keywords}")
+            logger.debug(
+                f"use_content_booster: {use_content_booster}, max_boost_keywords: {max_boost_keywords}"
+            )
 
         return ProcessingConfig(
             dataset_info=dataset_info_raw,

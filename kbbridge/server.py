@@ -467,12 +467,18 @@ async def main():
     # Configure uvicorn with extended timeouts for long-running requests
     request_timeout = AssistantDefaults.OVERALL_REQUEST_TIMEOUT.value
     uvicorn_config = {
-        "timeout_keep_alive": get_env_int("UVICORN_TIMEOUT_KEEP_ALIVE", int(request_timeout * 2.1)),
-        "timeout_graceful_shutdown": get_env_int("UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN", 30),
+        "timeout_keep_alive": get_env_int(
+            "UVICORN_TIMEOUT_KEEP_ALIVE", int(request_timeout * 2.1)
+        ),
+        "timeout_graceful_shutdown": get_env_int(
+            "UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN", 30
+        ),
         "limit_concurrency": get_env_int("UVICORN_LIMIT_CONCURRENCY", 100),
         "limit_max_requests": get_env_int("UVICORN_LIMIT_MAX_REQUESTS", 0) or None,
         "timeout_notify": get_env_int("UVICORN_TIMEOUT_NOTIFY", 60),
-        "h11_max_incomplete_event_size": get_env_int("UVICORN_H11_MAX_INCOMPLETE_EVENT_SIZE", 32768),
+        "h11_max_incomplete_event_size": get_env_int(
+            "UVICORN_H11_MAX_INCOMPLETE_EVENT_SIZE", 32768
+        ),
     }
 
     logger.info("Uvicorn Configuration:")

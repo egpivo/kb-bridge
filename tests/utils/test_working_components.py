@@ -1,4 +1,3 @@
-
 """
 Test working_components module functionality
 """

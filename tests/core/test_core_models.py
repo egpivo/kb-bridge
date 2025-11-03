@@ -1,4 +1,3 @@
-
 """
 Test Suite for Core Models
 Tests model classes and data structures

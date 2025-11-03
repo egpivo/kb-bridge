@@ -1,4 +1,3 @@
-
 """
 Test Configuration and Fixtures
 Provides common test fixtures and configuration for all test modules

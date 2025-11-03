@@ -26,9 +26,7 @@ class TestKBAssistantService:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.core.orchestration.ComponentFactory"
-        ) as mock_factory:
+        with patch("kbbridge.core.orchestration.ComponentFactory") as mock_factory:
             # Mock the component factory and its methods
             mock_processor = Mock()
             mock_processor.process.return_value = {
@@ -230,9 +228,7 @@ class TestRetrieverService:
     def test_retriever_service_error(self, mock_credentials):
         """Test retriever with error"""
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             with patch(
                 "kbbridge.utils.working_components.KnowledgeBaseRetriever"
             ) as mock_retriever:
@@ -242,10 +238,12 @@ class TestRetrieverService:
                 mock_creds.endpoint = "https://dify.ai"
                 mock_creds.api_key = "test-api-key"
                 mock_creds_class.return_value = mock_creds
-                
+
                 # Mock the instance creation to raise an exception
                 mock_retriever_instance = Mock()
-                mock_retriever_instance.retrieve.side_effect = Exception("Retriever error")
+                mock_retriever_instance.retrieve.side_effect = Exception(
+                    "Retriever error"
+                )
                 mock_retriever.return_value = mock_retriever_instance
 
                 result = retriever_service(

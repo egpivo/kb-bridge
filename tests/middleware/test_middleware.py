@@ -67,7 +67,9 @@ class TestAuthMiddleware:
         assert validation["errors"] == []
 
         # Test invalid credentials
-        invalid_credentials = Credentials(retrieval_endpoint="", retrieval_api_key="test-key")
+        invalid_credentials = Credentials(
+            retrieval_endpoint="", retrieval_api_key="test-key"
+        )
         validation = middleware.validate_credentials(invalid_credentials)
         assert validation["valid"] is False
         assert "Missing required retrieval backend credentials" in validation["errors"]
@@ -154,7 +156,9 @@ class TestToolDecorators:
         def test_tool(query: str):
             return f"Processed: {query}"
 
-        invalid_credentials = Credentials(retrieval_endpoint="", retrieval_api_key="test-key")
+        invalid_credentials = Credentials(
+            retrieval_endpoint="", retrieval_api_key="test-key"
+        )
 
         with patch(
             "kbbridge.middleware._auth_core.auth_middleware.get_available_credentials",

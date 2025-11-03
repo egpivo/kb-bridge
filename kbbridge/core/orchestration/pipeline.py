@@ -11,6 +11,7 @@ from kbbridge.config.constants import (
     RetrieverSearchMethod,
 )
 from kbbridge.core.query.constants import KeywordGeneratorDefaults
+from kbbridge.core.synthesis.answer_extractor import OrganizationAnswerExtractor
 from kbbridge.core.utils.profiling_utils import profile_stage
 from kbbridge.integrations import Retriever
 from kbbridge.utils.formatting import format_search_results
@@ -18,7 +19,6 @@ from kbbridge.utils.kb_utils import build_context_from_segments, format_debug_de
 
 from .models import Credentials, DatasetResult, ProcessingConfig
 from .services import WorkerDistributor
-from kbbridge.core.synthesis.answer_extractor import OrganizationAnswerExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -691,6 +691,7 @@ class AdvancedApproachProcessor:
                         from kbbridge.core.query.keyword_generator import (
                             ContentBoostKeywordGenerator,
                         )
+
                         keyword_generator = ContentBoostKeywordGenerator(
                             llm_api_url,
                             llm_model,
@@ -1180,7 +1181,9 @@ class DatasetProcessor:
                         has_files = len(files) > 0
             except Exception as e:
                 # NEW BEHAVIOR: If file lister fails, proceed assuming dataset may have files
-                logger.warning(f"File lister check failed for dataset {dataset_id}: {e}. Proceeding with processing.")
+                logger.warning(
+                    f"File lister check failed for dataset {dataset_id}: {e}. Proceeding with processing."
+                )
                 has_files = True
 
             datasets_with_files.append(

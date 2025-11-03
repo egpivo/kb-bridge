@@ -8,18 +8,18 @@ Supports multiple backends via routing system.
 import os
 from typing import Any, Dict, Optional
 
+import kbbridge.integrations as integrations
+import kbbridge.utils.working_components as working_components
 from kbbridge.config.constants import (  # noqa: F401
     RetrieverDefaults,
     RetrieverSearchMethod,
 )
-import kbbridge.integrations as integrations
 
 # Re-exports for backward-compatible tests
 from kbbridge.utils.formatting import format_search_results  # noqa: F401
 from kbbridge.utils.working_components import (
     KnowledgeBaseRetriever as KnowledgeBaseRetriever,  # re-export for tests
 )
-import kbbridge.utils.working_components as working_components
 
 # Backward-compatible default config expected by tests
 DEFAULT_CONFIG: Dict[str, Any] = {

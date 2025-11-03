@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 try:
     import dspy  # type: ignore
 except Exception:  # pragma: no cover - lightweight shim for tests
+
     class _DummyDSPY:  # minimal interface to satisfy imports without DSPy
         class Signature:
             pass

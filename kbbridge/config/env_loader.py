@@ -56,7 +56,7 @@ def validate_env_config() -> dict:
     """Validate that all required environment variables are set"""
     retrieval_endpoint = os.getenv("RETRIEVAL_ENDPOINT") or os.getenv("DIFY_ENDPOINT")
     retrieval_api_key = os.getenv("RETRIEVAL_API_KEY") or os.getenv("DIFY_API_KEY")
-    
+
     required_checks = [
         ("RETRIEVAL_ENDPOINT or DIFY_ENDPOINT", retrieval_endpoint),
         ("RETRIEVAL_API_KEY or DIFY_API_KEY", retrieval_api_key),
@@ -76,9 +76,16 @@ def print_env_status():
     if validation["valid"]:
         logger.info("All required environment variables are set")
     else:
-        logger.warning(f"Missing required variables: {', '.join(validation['missing'])}")
+        logger.warning(
+            f"Missing required variables: {', '.join(validation['missing'])}"
+        )
 
-    timeout_vars = ["OVERALL_REQUEST_TIMEOUT", "MCP_CLIENT_TIMEOUT", "DIFY_API_TIMEOUT", "LLM_TIMEOUT_SECONDS"]
+    timeout_vars = [
+        "OVERALL_REQUEST_TIMEOUT",
+        "MCP_CLIENT_TIMEOUT",
+        "DIFY_API_TIMEOUT",
+        "LLM_TIMEOUT_SECONDS",
+    ]
     for var in timeout_vars:
         value = os.getenv(var, "not set")
         logger.debug(f"{var}: {value}")

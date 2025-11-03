@@ -24,8 +24,12 @@ class DifyCredentials:
             api_key: Dify API key (defaults to RETRIEVAL_API_KEY or DIFY_API_KEY env var)
         """
         # Use generic RETRIEVAL_* variables first (preferred), fallback to DIFY_* for backward compatibility
-        self.endpoint = endpoint or os.getenv("RETRIEVAL_ENDPOINT") or os.getenv("DIFY_ENDPOINT")
-        self.api_key = api_key or os.getenv("RETRIEVAL_API_KEY") or os.getenv("DIFY_API_KEY")
+        self.endpoint = (
+            endpoint or os.getenv("RETRIEVAL_ENDPOINT") or os.getenv("DIFY_ENDPOINT")
+        )
+        self.api_key = (
+            api_key or os.getenv("RETRIEVAL_API_KEY") or os.getenv("DIFY_API_KEY")
+        )
 
     @classmethod
     def from_env(cls) -> "DifyCredentials":

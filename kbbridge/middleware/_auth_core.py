@@ -2,9 +2,9 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
-from kbbridge.config.config import Config, Credentials
 from fastmcp.server.dependencies import get_http_headers
-from kbbridge.config.config import Config
+
+from kbbridge.config.config import Config, Credentials
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class AuthMiddleware:
         if session_creds:
             return session_creds
 
-        try:       
+        try:
             env_creds = Config.get_default_credentials()
             if env_creds:
                 return env_creds
@@ -67,7 +67,10 @@ class AuthMiddleware:
         try:
             # Basic validation
             if not credentials.retrieval_endpoint or not credentials.retrieval_api_key:
-                return {"valid": False, "errors": ["Missing required retrieval backend credentials"]}
+                return {
+                    "valid": False,
+                    "errors": ["Missing required retrieval backend credentials"],
+                }
 
             # TODO: Add actual credential validation (ping endpoints, etc.)
             return {"valid": True, "errors": []}

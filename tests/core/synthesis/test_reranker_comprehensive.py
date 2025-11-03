@@ -1,4 +1,3 @@
-
 """
 Comprehensive tests for reranker module
 """

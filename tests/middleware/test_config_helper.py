@@ -1,4 +1,3 @@
-
 """
 Test config_helper module functionality
 """

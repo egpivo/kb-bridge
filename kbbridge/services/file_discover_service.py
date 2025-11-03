@@ -1,4 +1,3 @@
-
 """
 File Discover Service
 
@@ -38,7 +37,7 @@ def file_discover_service(
             )
         else:
             credentials = RetrievalCredentials.from_env(backend_type=backend_type)
-        
+
         valid, error = credentials.validate()
         if not valid:
             return {"error": error}
@@ -75,6 +74,7 @@ def file_discover_service(
         # Access via package attribute so tests can patch
         # kbbridge.core.discovery.file_discover.FileDiscover without importing DSPy
         import kbbridge.core.discovery as discovery_pkg
+
         FileDiscover = getattr(discovery_pkg, "file_discover").FileDiscover
 
         discover = FileDiscover(retriever=retriever, file_rerank_fn=frf)

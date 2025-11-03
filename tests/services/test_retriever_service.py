@@ -345,9 +345,7 @@ class TestRetrieverServiceFunction:
     def test_retriever_service_with_document_name_filter(self):
         """Test retriever_service with document_name filter"""
         # Patch where it's imported in the function
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             with patch(
                 "kbbridge.utils.working_components.KnowledgeBaseRetriever"
             ) as mock_retriever_class:
@@ -372,11 +370,18 @@ class TestRetrieverServiceFunction:
                 )
 
                 # Verify retrieve was called with metadata_filter containing document_name
-                assert mock_retriever.retrieve.called, "retrieve should have been called"
+                assert (
+                    mock_retriever.retrieve.called
+                ), "retrieve should have been called"
                 call_args = mock_retriever.retrieve.call_args
-                assert call_args is not None, "retrieve should have been called with arguments"
+                assert (
+                    call_args is not None
+                ), "retrieve should have been called with arguments"
                 call_kwargs = call_args.kwargs if call_args.kwargs else {}
-                assert "metadata_filter" in call_kwargs and call_kwargs["metadata_filter"] is not None
+                assert (
+                    "metadata_filter" in call_kwargs
+                    and call_kwargs["metadata_filter"] is not None
+                )
                 assert any(
                     cond["name"] == "document_name"
                     for cond in call_kwargs["metadata_filter"]["conditions"]
@@ -384,9 +389,7 @@ class TestRetrieverServiceFunction:
 
     def test_retriever_service_with_source_path_and_document_name(self):
         """Test retriever_service with both source_path and document_name"""
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             with patch(
                 "kbbridge.utils.working_components.KnowledgeBaseRetriever"
             ) as mock_retriever_class:
@@ -412,11 +415,18 @@ class TestRetrieverServiceFunction:
                 )
 
                 # Verify both conditions are in metadata_filter
-                assert mock_retriever.retrieve.called, "retrieve should have been called"
+                assert (
+                    mock_retriever.retrieve.called
+                ), "retrieve should have been called"
                 call_args = mock_retriever.retrieve.call_args
-                assert call_args is not None, "retrieve should have been called with arguments"
+                assert (
+                    call_args is not None
+                ), "retrieve should have been called with arguments"
                 call_kwargs = call_args.kwargs if call_args.kwargs else {}
-                assert "metadata_filter" in call_kwargs and call_kwargs["metadata_filter"] is not None
+                assert (
+                    "metadata_filter" in call_kwargs
+                    and call_kwargs["metadata_filter"] is not None
+                )
                 conditions = call_kwargs["metadata_filter"]["conditions"]
                 assert len(conditions) == 2
                 assert any(cond["name"] == "source_path" for cond in conditions)

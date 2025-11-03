@@ -1,7 +1,7 @@
 import os
 
 import requests
-    
+
 
 def test_mcp_server():
     """Test MCP server connection"""
@@ -200,7 +200,9 @@ def main():
     print(f"\nOverall: {passed}/{len(tests)} tests passed")
 
     if passed == len(tests):
-        print("\n[SUCCESS] All tests passed! Your MCP Knowledge Base Assistant is working!")
+        print(
+            "\n[SUCCESS] All tests passed! Your MCP Knowledge Base Assistant is working!"
+        )
     elif passed >= len(tests) * 0.8:
         print("\n[PASS] Most tests passed! The system is mostly functional.")
     else:

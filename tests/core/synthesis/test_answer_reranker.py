@@ -1,4 +1,3 @@
-
 """
 Test answer_reranker module functionality
 """

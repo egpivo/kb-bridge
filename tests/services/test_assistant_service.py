@@ -1,4 +1,3 @@
-
 """
 Comprehensive tests for assistant_service
 
@@ -8,7 +7,7 @@ Tests all code paths in assistant_service.py to improve coverage.
 import json
 import os
 import sys
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -27,9 +26,7 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (False, "Invalid credentials")
             mock_creds.backend_type = "dify"
@@ -58,9 +55,7 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -75,7 +70,9 @@ class TestAssistantServiceCredentials:
 
             with patch.dict(os.environ, {"LLM_MODEL": "gpt-4"}, clear=True):
                 result = await assistant_service(
-                    dataset_info=json.dumps([{"id": "test-dataset", "source_path": ""}]),
+                    dataset_info=json.dumps(
+                        [{"id": "test-dataset", "source_path": ""}]
+                    ),
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -105,9 +102,13 @@ class TestAssistantServiceCredentials:
             }
             mock_creds_class.from_env.return_value = mock_creds
 
-            with patch.dict(os.environ, {"LLM_API_URL": "https://api.openai.com/v1"}, clear=True):
+            with patch.dict(
+                os.environ, {"LLM_API_URL": "https://api.openai.com/v1"}, clear=True
+            ):
                 result = await assistant_service(
-                    dataset_info=json.dumps([{"id": "test-dataset", "source_path": ""}]),
+                    dataset_info=json.dumps(
+                        [{"id": "test-dataset", "source_path": ""}]
+                    ),
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -124,9 +125,7 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -148,7 +147,9 @@ class TestAssistantServiceCredentials:
                 clear=True,
             ):
                 result = await assistant_service(
-                    dataset_info=json.dumps([{"id": "test-dataset", "source_path": ""}]),
+                    dataset_info=json.dumps(
+                        [{"id": "test-dataset", "source_path": ""}]
+                    ),
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -166,9 +167,7 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -190,7 +189,9 @@ class TestAssistantServiceCredentials:
                 clear=True,
             ):
                 result = await assistant_service(
-                    dataset_info=json.dumps([{"id": "test-dataset", "source_path": ""}]),
+                    dataset_info=json.dumps(
+                        [{"id": "test-dataset", "source_path": ""}]
+                    ),
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -208,9 +209,7 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -237,13 +236,18 @@ class TestAssistantServiceCredentials:
                     mock_parser.parse_credentials.return_value = (Mock(), None)
 
                     result = await assistant_service(
-                        dataset_info=json.dumps([{"id": "env.DATASET_ID", "source_path": ""}]),
+                        dataset_info=json.dumps(
+                            [{"id": "env.DATASET_ID", "source_path": ""}]
+                        ),
                         query="test query",
                         ctx=mock_ctx,
                     )
 
             assert "error" in result
-            assert "Invalid dataset_info" in result["error"] or "placeholder" in result["error"].lower()
+            assert (
+                "Invalid dataset_info" in result["error"]
+                or "placeholder" in result["error"].lower()
+            )
 
     @pytest.mark.asyncio
     async def test_short_dataset_id_warning(self):
@@ -254,9 +258,7 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -308,9 +310,7 @@ class TestAssistantServiceQueryProcessing:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -378,9 +378,7 @@ class TestAssistantServiceQueryProcessing:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -443,9 +441,7 @@ class TestAssistantServiceQueryProcessing:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -515,9 +511,7 @@ class TestAssistantServiceQueryProcessing:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -555,7 +549,10 @@ class TestAssistantServiceQueryProcessing:
                             # First call returns no candidates, second call (fallback) returns candidates
                             mock_processor.process_datasets.side_effect = [
                                 ([], []),  # Initial query - no results
-                                ([Mock()], [{"answer": "test", "score": 0.9}]),  # Fallback - has results
+                                (
+                                    [Mock()],
+                                    [{"answer": "test", "score": 0.9}],
+                                ),  # Fallback - has results
                             ]
                             mock_processor_class.return_value = mock_processor
 
@@ -593,9 +590,7 @@ class TestAssistantServiceQueryProcessing:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -664,9 +659,7 @@ class TestAssistantServiceResults:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -1039,9 +1032,7 @@ class TestAssistantServiceProgressReporting:
         mock_ctx.error = AsyncMock()
         # Don't add progress attribute - should handle AttributeError gracefully
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -1069,7 +1060,9 @@ class TestAssistantServiceProgressReporting:
 
                     # Should not raise AttributeError
                     result = await assistant_service(
-                        dataset_info=json.dumps([{"id": "test-dataset", "source_path": ""}]),
+                        dataset_info=json.dumps(
+                            [{"id": "test-dataset", "source_path": ""}]
+                        ),
                         query="test query",
                         ctx=mock_ctx,
                     )
@@ -1165,11 +1158,23 @@ class TestAssistantServiceCustomInstructions:
                                     call_args = mock_processor_class.call_args
                                     if call_args:
                                         # If using keyword arguments
-                                        if call_args.kwargs and "custom_instructions" in call_args.kwargs:
-                                            assert call_args.kwargs["custom_instructions"] == "Focus on HR compliance"
+                                        if (
+                                            call_args.kwargs
+                                            and "custom_instructions"
+                                            in call_args.kwargs
+                                        ):
+                                            assert (
+                                                call_args.kwargs["custom_instructions"]
+                                                == "Focus on HR compliance"
+                                            )
                                         # If using positional arguments, check the 5th positional arg (index 4)
-                                        elif call_args.args and len(call_args.args) >= 5:
-                                            assert call_args.args[4] == "Focus on HR compliance"
+                                        elif (
+                                            call_args.args and len(call_args.args) >= 5
+                                        ):
+                                            assert (
+                                                call_args.args[4]
+                                                == "Focus on HR compliance"
+                                            )
 
     @pytest.mark.asyncio
     async def test_with_document_name(self):
@@ -1180,9 +1185,7 @@ class TestAssistantServiceCustomInstructions:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -1236,7 +1239,9 @@ class TestAssistantServiceCustomInstructions:
 
                             # Check that document_name was passed to DatasetProcessor
                             call_kwargs = mock_processor_class.call_args[1]
-                            assert call_kwargs["focus_document_name"] == "specific_doc.pdf"
+                            assert (
+                                call_kwargs["focus_document_name"] == "specific_doc.pdf"
+                            )
 
 
 class TestAssistantServiceReflection:
@@ -1251,9 +1256,7 @@ class TestAssistantServiceReflection:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -1291,7 +1294,14 @@ class TestAssistantServiceReflection:
                             mock_processor = Mock()
                             mock_processor.process_datasets.return_value = (
                                 [],
-                                [{"answer": "test", "score": 0.9, "title": "doc", "content": "content"}],
+                                [
+                                    {
+                                        "answer": "test",
+                                        "score": 0.9,
+                                        "title": "doc",
+                                        "content": "content",
+                                    }
+                                ],
                             )
                             mock_processor_class.return_value = mock_processor
 
@@ -1314,9 +1324,14 @@ class TestAssistantServiceReflection:
                                     ) as mock_reflection_class:
                                         mock_reflection = Mock()
                                         mock_reflection.reflect_on_answer = AsyncMock(
-                                            return_value=("reflected answer", {"score": 0.9})
+                                            return_value=(
+                                                "reflected answer",
+                                                {"score": 0.9},
+                                            )
                                         )
-                                        mock_reflection_class.return_value = mock_reflection
+                                        mock_reflection_class.return_value = (
+                                            mock_reflection
+                                        )
 
                                         with patch(
                                             "kbbridge.config.constants.ReflectorDefaults",
@@ -1327,7 +1342,12 @@ class TestAssistantServiceReflection:
 
                                             result = await assistant_service(
                                                 dataset_info=json.dumps(
-                                                    [{"id": "test-dataset", "source_path": ""}]
+                                                    [
+                                                        {
+                                                            "id": "test-dataset",
+                                                            "source_path": "",
+                                                        }
+                                                    ]
                                                 ),
                                                 query="test query",
                                                 ctx=mock_ctx,
@@ -1345,9 +1365,7 @@ class TestAssistantServiceReflection:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -1381,7 +1399,9 @@ class TestAssistantServiceReflection:
                         mock_ref_defaults.ENABLED.value = True
 
                         result = await assistant_service(
-                            dataset_info=json.dumps([{"id": "test-dataset", "source_path": ""}]),
+                            dataset_info=json.dumps(
+                                [{"id": "test-dataset", "source_path": ""}]
+                            ),
                             query="test query",
                             ctx=mock_ctx,
                         )
@@ -1402,9 +1422,7 @@ class TestAssistantServiceCredentialParser:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch(
-            "kbbridge.integrations.RetrievalCredentials"
-        ) as mock_creds_class:
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -1434,7 +1452,9 @@ class TestAssistantServiceCredentialParser:
                     )
 
                     result = await assistant_service(
-                        dataset_info=json.dumps([{"id": "test-dataset", "source_path": ""}]),
+                        dataset_info=json.dumps(
+                            [{"id": "test-dataset", "source_path": ""}]
+                        ),
                         query="test query",
                         ctx=mock_ctx,
                     )
@@ -1511,4 +1531,3 @@ if __name__ == "__main__":
     # Allow running tests directly with: python test_assistant_service.py
     exit_code = pytest.main([__file__, "-v"])
     sys.exit(exit_code)
-

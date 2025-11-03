@@ -1,6 +1,10 @@
-# KBBridge
+# KB-Bridge
 
-A Model Context Protocol (MCP) server for intelligent knowledge base search and retrieval with Dify integration.
+[![Tests](https://github.com/egpivo/kb-bridge/workflows/Test/badge.svg)](https://github.com/egpivo/kb-bridge/actions)
+[![Code Coverage](https://img.shields.io/codecov/c/github/egpivo/kb-bridge/main.svg)](https://app.codecov.io/github/egpivo/kb-bridge?branch=main)
+
+
+A Model Context Protocol (MCP) server for intelligent knowledge base search and retrieval with support for multiple backend providers.
 
 ## Installation
 
@@ -12,12 +16,12 @@ pip install kbbridge
 
 ### Configuration
 
-Create a `.env` file with your Dify credentials:
+Create a `.env` file with your retrieval backend credentials:
 
 ```bash
-# Required - Dify Configuration
-RETRIEVAL_ENDPOINT=https://api.dify.ai/v1
-RETRIEVAL_API_KEY=your-dify-api-key
+# Required - Retrieval Backend Configuration
+RETRIEVAL_ENDPOINT=https://api.dify.ai/v1  # Example: Dify endpoint
+RETRIEVAL_API_KEY=your-retrieval-api-key
 LLM_API_URL=https://your-llm-service.com/v1
 LLM_MODEL=gpt-4o
 LLM_API_TOKEN=your-token-here
@@ -27,7 +31,12 @@ RERANK_URL=https://your-rerank-api.com
 RERANK_MODEL=your-rerank-model
 ```
 
-**Note:** Currently supports Dify as the retrieval backend.
+**Supported Backends:**
+
+| Backend | Status | Notes |
+|---------|--------|-------|
+| Dify | Supported | Currently available |
+| Others | Planned | Additional backends coming soon |
 
 See `env.example` for all available configuration options.
 
@@ -45,8 +54,8 @@ Server runs on `http://0.0.0.0:5210` with MCP endpoint at `http://0.0.0.0:5210/m
 
 ## Features
 
-- **Dify Integration**: Native support for Dify knowledge base retrieval
-- **Multiple Search Methods**: Hybrid, semantic, keyword, and full-text search via Dify
+- **Backend Integration**: Extensible architecture supporting multiple retrieval backends
+- **Multiple Search Methods**: Hybrid, semantic, keyword, and full-text search
 - **Quality Reflection**: Automatic answer quality evaluation and refinement
 - **Custom Instructions**: Domain-specific query guidance
 

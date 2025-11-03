@@ -1,4 +1,3 @@
-
 """
 Tests for FileDiscover (DSPy-based file discovery)
 """

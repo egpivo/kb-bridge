@@ -99,7 +99,7 @@ class RetrieverRouter:
                 or os.getenv("RETRIEVAL_API_KEY")
                 or os.getenv("DIFY_API_KEY")
             )
-            
+
             config.update(
                 {
                     "endpoint": endpoint,

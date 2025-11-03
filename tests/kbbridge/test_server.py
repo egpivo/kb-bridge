@@ -1,4 +1,3 @@
-
 """
 Test server module functionality - simplified version
 """

@@ -5,8 +5,7 @@ Comprehensive test coverage for retriever routing functionality.
 """
 
 import os
-from unittest.mock import Mock, patch
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -135,9 +134,7 @@ class TestRetrieverRouterBuildConfig:
             },
             clear=True,
         ):
-            config = RetrieverRouter._build_config(
-                "dify", "test-dataset", timeout=60
-            )
+            config = RetrieverRouter._build_config("dify", "test-dataset", timeout=60)
 
         assert config["dataset_id"] == "test-dataset"
         assert config["endpoint"] == "https://retrieval.com"
@@ -459,4 +456,3 @@ class TestIntegrationScenarios:
 
         assert result1 == mock_instance
         assert result2 == mock_instance
-

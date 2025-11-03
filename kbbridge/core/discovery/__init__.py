@@ -17,6 +17,7 @@ __all__ = [
 # the heavy DSPy-dependent module at import time.
 try:  # pragma: no cover - for test-time patching
     import types as _types
+
     file_discover = _types.SimpleNamespace(FileDiscover=object)
 except Exception:
     pass

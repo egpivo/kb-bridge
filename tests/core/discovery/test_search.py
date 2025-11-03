@@ -1,4 +1,3 @@
-
 """
 Test Suite for Search Modules
 Tests all search modules with comprehensive coverage

@@ -6,14 +6,15 @@ implementations) at import time so tests can patch symbols like
 dependencies.
 """
 
+from kbbridge.core.utils.profiling_utils import profile_stage  # noqa: F401
+
 from .models import *  # noqa: F401,F403
-from .services import (
+from .services import (  # noqa: F401
     ComponentFactory,
+    CredentialParser,
     ParameterValidator,
     WorkerDistributor,
-    CredentialParser,
-)  # noqa: F401
-from kbbridge.core.utils.profiling_utils import profile_stage  # noqa: F401
+)
 
 __all__ = [
     # Models (wildcard via models.__all__ if present)

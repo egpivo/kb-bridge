@@ -13,7 +13,11 @@ try:  # pragma: no cover - lightweight shim only used for patching
             return "", {}
 
     def _parse_reflection_params_stub(*args, **kwargs):
-        return {"enable_reflection": False, "quality_threshold": 0.0, "max_iterations": 0}
+        return {
+            "enable_reflection": False,
+            "quality_threshold": 0.0,
+            "max_iterations": 0,
+        }
 
     reflection = _types.SimpleNamespace(
         integration=_types.SimpleNamespace(
@@ -25,4 +29,3 @@ except Exception:
     pass
 
 __all__ = ["reflection"]
-

@@ -1,4 +1,3 @@
-
 """
 Test Suite for Constants Module
 Tests all constant values and enums

@@ -1,4 +1,3 @@
-
 """
 File Lister Service
 
@@ -7,7 +6,7 @@ This service provides file listing functionality for knowledge bases.
 
 from typing import Any, Dict, Optional
 
-from kbbridge.integrations import RetrievalCredentials, RetrieverRouter
+from kbbridge.integrations import RetrievalCredentials
 
 
 def file_lister_service(
@@ -49,7 +48,7 @@ def file_lister_service(
             )
         else:
             credentials = RetrievalCredentials.from_env(backend_type=backend_type)
-        
+
         valid, error = credentials.validate()
         if not valid:
             return {"error": error}
@@ -57,15 +56,19 @@ def file_lister_service(
         # For Dify backend, use DifyAdapter for file listing
         if credentials.backend_type == "dify":
             from kbbridge.integrations import DifyAdapter, DifyCredentials
-            
-            dify_creds = DifyCredentials(endpoint=credentials.endpoint, api_key=credentials.api_key)
+
+            dify_creds = DifyCredentials(
+                endpoint=credentials.endpoint, api_key=credentials.api_key
+            )
             adapter = DifyAdapter(credentials=dify_creds)
             files = adapter.list_files(
                 dataset_id=dataset_id, folder=folder_name or "", timeout=timeout
             )
             return {"files": files}
         else:
-            return {"error": f"File listing not supported for backend: {credentials.backend_type}"}
+            return {
+                "error": f"File listing not supported for backend: {credentials.backend_type}"
+            }
 
     except ValueError as e:
         # Credential validation errors

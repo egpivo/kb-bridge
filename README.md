@@ -2,6 +2,7 @@
 
 [![Tests](https://github.com/egpivo/kb-bridge/workflows/Test/badge.svg)](https://github.com/egpivo/kb-bridge/actions)
 [![Code Coverage](https://img.shields.io/codecov/c/github/egpivo/kb-bridge/main.svg)](https://app.codecov.io/github/egpivo/kb-bridge?branch=main)
+<a href="https://pypi.org/project/kbbridge/"><img src="https://img.shields.io/pypi/v/kbbridge.svg?logo=pypi&label=PyPI&logoColor=silver"/></a>
 
 
 A Model Context Protocol (MCP) server for intelligent knowledge base search and retrieval with support for multiple backend providers.

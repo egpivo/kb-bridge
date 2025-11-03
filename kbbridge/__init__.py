@@ -7,8 +7,8 @@ file searching, content boosting, and answer extraction.
 """
 
 # Version information
-__version__ = "1.0.2"
-__version_info__ = (1, 0, 1)
+__version__ = "0.1.0"
+__version_info__ = (0, 1, 0)
 __author__ = "Wen-Ting Wang"
 __email__ = "egpivo@gmail.com"
 __description__ = "Knowledge Base Bridge MCP Server with FastMCP Services"

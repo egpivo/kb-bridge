@@ -399,6 +399,176 @@ class TestReflector:
 
             assert result is None  # Should return None when evaluator not initialized
 
+    def test_reflector_initialization_success(self):
+        """Test reflector initialization with successful DSPy setup (lines 36-38)"""
+        with patch("kbbridge.core.reflection.reflector.setup") as mock_setup:
+            with patch(
+                "kbbridge.core.reflection.reflector.get_default_examples",
+                return_value=[],
+            ):
+                reflector = Reflector(
+                    llm_model="gpt-4",
+                    llm_api_url="https://test.com",
+                    api_key="test-key",
+                )
+                assert reflector.use_dspy is True
+                assert reflector.evaluator is not None
+                mock_setup.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_reflect_with_evaluator_success(self):
+        """Test reflect when evaluator is successfully initialized (lines 52-65)"""
+        from unittest.mock import AsyncMock
+
+        with patch("kbbridge.core.reflection.reflector.setup"):
+            with patch(
+                "kbbridge.core.reflection.reflector.get_default_examples",
+                return_value=[],
+            ):
+                reflector = Reflector(
+                    llm_model="gpt-4",
+                    llm_api_url="https://test.com",
+                    api_key="test-key",
+                )
+
+                mock_result = ReflectionResult(
+                    scores=QualityScores(0.8, 0.8, 0.8, 0.8, 0.8),
+                    overall_score=0.8,
+                    passed=True,
+                    feedback="good",
+                    attempt=1,
+                    threshold=0.75,
+                )
+
+                reflector.evaluator.evaluate = AsyncMock(return_value=mock_result)
+
+                result = await reflector.reflect(
+                    query="test query",
+                    answer="test answer",
+                    sources=[{"title": "doc1", "content": "content"}],
+                    attempt=1,
+                )
+
+                assert result is not None
+                assert result.overall_score == 0.8
+                assert result.passed is True
+
+    def test_should_refine_when_passed(self):
+        """Test should_refine returns False when reflection passed (line 69)"""
+        reflector = Reflector(
+            llm_model="gpt-4",
+            llm_api_url="https://test.com",
+            api_key="test-key",
+        )
+
+        passed = ReflectionResult(
+            scores=QualityScores(0.9, 0.9, 0.9, 0.9, 0.9),
+            overall_score=0.9,
+            passed=True,
+            feedback="excellent",
+            attempt=1,
+            threshold=0.7,
+        )
+
+        assert reflector.should_refine(passed, 1) is False
+
+    def test_should_refine_max_iterations_check(self):
+        """Test should_refine checks max iterations (line 71-72)"""
+        reflector = Reflector(
+            llm_model="gpt-4",
+            llm_api_url="https://test.com",
+            api_key="test-key",
+            max_iterations=2,
+        )
+
+        failed = ReflectionResult(
+            scores=QualityScores(0.6, 0.6, 0.6, 0.6, 0.6),
+            overall_score=0.6,
+            passed=False,
+            feedback="needs work",
+            attempt=2,
+            threshold=0.7,
+        )
+
+        assert reflector.should_refine(failed, 2) is False
+
+    def test_should_refine_score_too_low_gap(self):
+        """Test should_refine returns False when score too low (lines 73-76)"""
+        reflector = Reflector(
+            llm_model="gpt-4",
+            llm_api_url="https://test.com",
+            api_key="test-key",
+            threshold=0.7,
+        )
+
+        # Score 0.2, threshold 0.7, gap is 0.5 > threshold_gap, so should return False
+        very_low = ReflectionResult(
+            scores=QualityScores(0.2, 0.2, 0.2, 0.2, 0.2),
+            overall_score=0.2,
+            passed=False,
+            feedback="very poor",
+            attempt=1,
+            threshold=0.7,
+        )
+
+        assert reflector.should_refine(very_low, 1) is False
+
+    def test_create_report_with_improvement(self):
+        """Test create_report includes improvement when multiple reflections (lines 94-95)"""
+        reflector = Reflector(
+            llm_model="gpt-4",
+            llm_api_url="https://test.com",
+            api_key="test-key",
+        )
+
+        reflections = [
+            ReflectionResult(
+                scores=QualityScores(0.5, 0.5, 0.5, 0.5, 0.5),
+                overall_score=0.5,
+                passed=False,
+                feedback="initial",
+                attempt=1,
+                threshold=0.7,
+            ),
+            ReflectionResult(
+                scores=QualityScores(0.8, 0.8, 0.8, 0.8, 0.8),
+                overall_score=0.8,
+                passed=True,
+                feedback="improved",
+                attempt=2,
+                threshold=0.7,
+            ),
+        ]
+
+        report = reflector.create_report(reflections)
+        assert "improvement" in report
+        assert report["improvement"] == 0.3
+
+    def test_create_report_history_format(self):
+        """Test create_report history format (lines 97-105)"""
+        reflector = Reflector(
+            llm_model="gpt-4",
+            llm_api_url="https://test.com",
+            api_key="test-key",
+        )
+
+        long_feedback = "x" * 300  # Longer than 200 chars
+
+        reflections = [
+            ReflectionResult(
+                scores=QualityScores(0.8, 0.8, 0.8, 0.8, 0.8),
+                overall_score=0.8,
+                passed=True,
+                feedback=long_feedback,
+                attempt=1,
+                threshold=0.7,
+            ),
+        ]
+
+        report = reflector.create_report(reflections)
+        assert len(report["history"]) == 1
+        assert len(report["history"][0]["feedback"]) == 200  # Truncated to 200
+
 
 class TestReflectionIntegration:
     """Test reflection integration layer"""
@@ -478,3 +648,276 @@ class TestParseReflectionParams:
         """Test parsing with reflection explicitly disabled"""
         params = parse_reflection_params(enable_reflection=False)
         assert params["enable_reflection"] is False
+
+    def test_integration_initialization_with_exception(self):
+        """Test integration initialization when Reflector fails (lines 56-58)"""
+        with patch(
+            "kbbridge.core.reflection.integration.Reflector",
+            side_effect=Exception("Setup failed"),
+        ):
+            integration = ReflectionIntegration(
+                llm_api_url="https://test.com",
+                llm_model="gpt-4",
+                llm_api_token="test-key",
+                enable_reflection=True,
+            )
+            assert integration.enable_reflection is False
+            assert integration.reflector is None
+
+    @pytest.mark.asyncio
+    async def test_reflect_on_answer_with_refinement_loop(self):
+        """Test reflect_on_answer with refinement loop (lines 103-174)"""
+        from unittest.mock import AsyncMock
+
+        integration = ReflectionIntegration(
+            llm_api_url="https://test.com",
+            llm_model="gpt-4",
+            llm_api_token="test-key",
+            enable_reflection=True,
+            max_iterations=3,
+        )
+
+        if not integration.reflector:
+            pytest.skip("Reflector not initialized (DSPy setup failed)")
+
+        # Mock the reflector methods
+        mock_ctx = AsyncMock()
+        mock_ctx.info = AsyncMock()
+        mock_ctx.warning = AsyncMock()
+
+        # First reflection fails, second passes
+        first_reflection = ReflectionResult(
+            scores=QualityScores(0.6, 0.6, 0.6, 0.6, 0.6),
+            overall_score=0.6,
+            passed=False,
+            feedback="needs work",
+            attempt=1,
+            threshold=0.7,
+        )
+
+        second_reflection = ReflectionResult(
+            scores=QualityScores(0.8, 0.8, 0.8, 0.8, 0.8),
+            overall_score=0.8,
+            passed=True,
+            feedback="good",
+            attempt=2,
+            threshold=0.7,
+        )
+
+        integration.reflector.reflect = AsyncMock(
+            side_effect=[first_reflection, second_reflection]
+        )
+        integration.reflector.max_iterations = 3
+        integration.reflector.should_refine = lambda r, a: not r.passed and a < 3
+
+        answer, metadata = await integration.reflect_on_answer(
+            query="test query",
+            answer="test answer",
+            sources=[{"title": "doc1", "content": "content"}],
+            ctx=mock_ctx,
+        )
+
+        assert answer == "test answer"
+        assert metadata is not None
+        assert metadata["total_attempts"] == 2
+        assert metadata["passed"] is True
+        assert "improvement" in metadata
+
+    @pytest.mark.asyncio
+    async def test_reflect_on_answer_refinement_not_viable(self):
+        """Test reflect_on_answer when refinement is not viable"""
+        from unittest.mock import AsyncMock
+
+        integration = ReflectionIntegration(
+            llm_api_url="https://test.com",
+            llm_model="gpt-4",
+            llm_api_token="test-key",
+            enable_reflection=True,
+        )
+
+        if not integration.reflector:
+            pytest.skip("Reflector not initialized")
+
+        mock_ctx = AsyncMock()
+        mock_ctx.info = AsyncMock()
+        mock_ctx.warning = AsyncMock()
+
+        failed_reflection = ReflectionResult(
+            scores=QualityScores(0.3, 0.3, 0.3, 0.3, 0.3),
+            overall_score=0.3,
+            passed=False,
+            feedback="too low",
+            attempt=1,
+            threshold=0.7,
+        )
+
+        integration.reflector.reflect = AsyncMock(return_value=failed_reflection)
+        integration.reflector.should_refine = lambda r, a: False  # Not viable
+
+        answer, metadata = await integration.reflect_on_answer(
+            query="test",
+            answer="answer",
+            sources=[],
+            ctx=mock_ctx,
+        )
+
+        assert answer == "answer"
+        mock_ctx.warning.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_reflect_on_answer_refinement_exception(self):
+        """Test reflect_on_answer when refinement raises exception"""
+        from unittest.mock import AsyncMock
+
+        integration = ReflectionIntegration(
+            llm_api_url="https://test.com",
+            llm_model="gpt-4",
+            llm_api_token="test-key",
+            enable_reflection=True,
+        )
+
+        if not integration.reflector:
+            pytest.skip("Reflector not initialized")
+
+        mock_ctx = AsyncMock()
+        mock_ctx.info = AsyncMock()
+        mock_ctx.error = AsyncMock()
+
+        first_reflection = ReflectionResult(
+            scores=QualityScores(0.6, 0.6, 0.6, 0.6, 0.6),
+            overall_score=0.6,
+            passed=False,
+            feedback="needs work",
+            attempt=1,
+            threshold=0.7,
+        )
+
+        integration.reflector.reflect = AsyncMock(
+            side_effect=[first_reflection, Exception("Refinement failed")]
+        )
+        integration.reflector.should_refine = lambda r, a: True
+
+        answer, metadata = await integration.reflect_on_answer(
+            query="test",
+            answer="answer",
+            sources=[],
+            ctx=mock_ctx,
+        )
+
+        assert answer == "answer"
+        mock_ctx.error.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_reflect_on_answer_final_not_passed_with_warning(self):
+        """Test reflect_on_answer when final reflection not passed (lines 164-168)"""
+        from unittest.mock import AsyncMock
+
+        integration = ReflectionIntegration(
+            llm_api_url="https://test.com",
+            llm_model="gpt-4",
+            llm_api_token="test-key",
+            enable_reflection=True,
+        )
+
+        if not integration.reflector:
+            pytest.skip("Reflector not initialized")
+
+        mock_ctx = AsyncMock()
+        mock_ctx.info = AsyncMock()
+        mock_ctx.warning = AsyncMock()
+
+        failed_reflection = ReflectionResult(
+            scores=QualityScores(0.6, 0.6, 0.6, 0.6, 0.6),
+            overall_score=0.6,
+            passed=False,
+            feedback="below threshold",
+            attempt=1,
+            threshold=0.7,
+        )
+
+        integration.reflector.reflect = AsyncMock(return_value=failed_reflection)
+        integration.reflector.should_refine = lambda r, a: False
+
+        answer, metadata = await integration.reflect_on_answer(
+            query="test",
+            answer="answer",
+            sources=[],
+            ctx=mock_ctx,
+        )
+
+        assert not metadata["passed"]
+        mock_ctx.warning.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_reflect_on_answer_passed_with_info(self):
+        """Test reflect_on_answer when passed shows info (lines 169-172)"""
+        from unittest.mock import AsyncMock
+
+        integration = ReflectionIntegration(
+            llm_api_url="https://test.com",
+            llm_model="gpt-4",
+            llm_api_token="test-key",
+            enable_reflection=True,
+        )
+
+        if not integration.reflector:
+            pytest.skip("Reflector not initialized")
+
+        mock_ctx = AsyncMock()
+        mock_ctx.info = AsyncMock()
+
+        passed_reflection = ReflectionResult(
+            scores=QualityScores(0.8, 0.8, 0.8, 0.8, 0.8),
+            overall_score=0.8,
+            passed=True,
+            feedback="good",
+            attempt=1,
+            threshold=0.7,
+        )
+
+        integration.reflector.reflect = AsyncMock(return_value=passed_reflection)
+
+        answer, metadata = await integration.reflect_on_answer(
+            query="test",
+            answer="answer",
+            sources=[],
+            ctx=mock_ctx,
+        )
+
+        assert metadata["passed"] is True
+        # Check that info was called with success message
+        assert mock_ctx.info.call_count >= 2
+
+    @pytest.mark.asyncio
+    async def test_reflect_on_answer_top_level_exception(self):
+        """Test reflect_on_answer when top-level exception occurs (lines 176-186)"""
+        from unittest.mock import AsyncMock
+
+        integration = ReflectionIntegration(
+            llm_api_url="https://test.com",
+            llm_model="gpt-4",
+            llm_api_token="test-key",
+            enable_reflection=True,
+        )
+
+        if not integration.reflector:
+            pytest.skip("Reflector not initialized")
+
+        mock_ctx = AsyncMock()
+        mock_ctx.info = AsyncMock()
+        mock_ctx.error = AsyncMock()
+
+        integration.reflector.reflect = AsyncMock(side_effect=Exception("Fatal error"))
+
+        answer, metadata = await integration.reflect_on_answer(
+            query="test",
+            answer="original answer",
+            sources=[],
+            ctx=mock_ctx,
+        )
+
+        assert answer == "original answer"
+        assert metadata["enabled"] is True
+        assert metadata["passed"] is False
+        assert "error" in metadata
+        mock_ctx.error.assert_called()

@@ -1,0 +1,25 @@
+runtime: "python"
+
+# Smithery deployment configuration for KB-Bridge MCP Server
+# See: https://smithery.ai/docs
+
+# Server configuration
+server:
+  port: 5210
+  host: 0.0.0.0
+  transport: "streamable-http"
+
+# Environment variables (set these in Smithery dashboard)
+# Required:
+#   - RETRIEVAL_ENDPOINT: Your retrieval backend endpoint (e.g., https://api.dify.ai/v1)
+#   - RETRIEVAL_API_KEY: Your retrieval API key
+#   - LLM_API_URL: Your LLM service endpoint
+#   - LLM_MODEL: LLM model name (e.g., gpt-4o)
+#   - LLM_API_TOKEN: Your LLM API token
+# Optional:
+#   - RERANK_URL: Reranking service URL
+#   - RERANK_MODEL: Reranking model name
+#   - LOG_LEVEL: Logging level (default: INFO)
+
+# Health check endpoint
+health_check: "/mcp"

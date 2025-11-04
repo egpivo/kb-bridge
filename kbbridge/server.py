@@ -6,6 +6,8 @@ import os
 from typing import Optional
 
 from fastmcp import Context, FastMCP
+from pydantic import BaseModel, Field
+from smithery.decorators import smithery
 
 from kbbridge.config.config import Config, Credentials
 from kbbridge.config.constants import AssistantDefaults, RetrieverDefaults
@@ -80,6 +82,32 @@ if "MAX_WORKERS" not in os.environ:
     os.environ["MAX_WORKERS"] = "1"
 if "USE_CONTENT_BOOSTER" not in os.environ:
     os.environ["USE_CONTENT_BOOSTER"] = "false"
+
+
+class SessionConfig(BaseModel):
+    """Smithery session configuration passed per user/session.
+
+    These values mirror the credentials our server expects. All fields are optional
+    because callers may also provide credentials via headers or environment.
+    """
+
+    retrieval_endpoint: Optional[str] = Field(
+        default=None, description="Retriever backend base URL"
+    )
+    retrieval_api_key: Optional[str] = Field(
+        default=None, description="Retriever backend API key"
+    )
+    llm_api_url: Optional[str] = Field(default=None, description="LLM API base URL")
+    llm_model: Optional[str] = Field(default=None, description="LLM model name")
+    llm_api_token: Optional[str] = Field(
+        default=None, description="LLM provider token (if required)"
+    )
+    rerank_url: Optional[str] = Field(
+        default=None, description="Reranking provider base URL"
+    )
+    rerank_model: Optional[str] = Field(
+        default=None, description="Reranking model identifier"
+    )
 
 
 def get_current_credentials() -> Optional[Credentials]:
@@ -426,6 +454,17 @@ async def file_count(
         return json.dumps(
             {"error": "Tool execution failed", "status": "error", "message": str(e)}
         )
+
+
+@smithery.server(config_schema=SessionConfig)
+def create_server() -> FastMCP:
+    """Create and return the FastMCP server instance for Smithery.
+
+    Smithery imports this function to obtain the server with configured tools.
+    The tools will read per-session config via ctx.session_config (wired in our
+    decorators) or fall back to headers / environment credentials.
+    """
+    return mcp
 
 
 async def main():

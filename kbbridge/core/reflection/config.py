@@ -9,11 +9,7 @@ logger = logging.getLogger(__name__)
 def setup(
     llm_model: str, llm_api_url: str, api_key: str, temperature: float = 0.0
 ) -> dspy.LM:
-    """Configure DSPy with LLM settings for reflection.
-
-    Returns:
-        dspy.LM instance for async-safe context manager usage.
-    """
+    """Configure DSPy with LLM settings for reflection."""
     lm = dspy.LM(
         model=llm_model,
         api_base=llm_api_url,

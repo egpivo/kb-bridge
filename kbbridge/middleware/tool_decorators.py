@@ -8,12 +8,7 @@ from kbbridge.middleware.error_middleware import error_middleware
 
 
 def mcp_tool_with_auth(require_auth: bool = True):
-    """
-    Decorator for MCP tools that integrates with middleware
-
-    Args:
-        require_auth: Whether authentication is required for this tool
-    """
+    """Decorator for MCP tools that integrates with middleware."""
 
     def decorator(func: Callable) -> Callable:
         if asyncio.iscoroutinefunction(func):
@@ -173,10 +168,10 @@ def mcp_tool_with_auth(require_auth: bool = True):
 
 
 def require_auth(func: Callable) -> Callable:
-    """Decorator for tools that require authentication"""
+    """Decorator for tools that require authentication."""
     return mcp_tool_with_auth(require_auth=True)(func)
 
 
 def optional_auth(func: Callable) -> Callable:
-    """Decorator for tools that can work with or without authentication"""
+    """Decorator for tools that can work with or without authentication."""
     return mcp_tool_with_auth(require_auth=False)(func)

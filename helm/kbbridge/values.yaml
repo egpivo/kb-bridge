@@ -1,0 +1,130 @@
+# Default values for kbbridge
+replicaCount: 1
+
+image:
+  repository: kbbridge
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 5210
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: kbbridge.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Environment variables
+env:
+  # Retrieval Backend Configuration
+  RETRIEVAL_ENDPOINT: "https://api.dify.ai/v1"
+  RETRIEVAL_API_KEY: ""
+
+  # LLM Configuration
+  LLM_API_URL: ""
+  LLM_MODEL: "gpt-4o"
+  LLM_API_TOKEN: ""
+
+  # Reranking (Optional)
+  RERANK_URL: ""
+  RERANK_MODEL: ""
+
+  # Server Configuration
+  SERVER_HOST: "0.0.0.0"
+  SERVER_PORT: "5210"
+  LOG_LEVEL: "INFO"
+
+  # Uvicorn Configuration
+  UVICORN_TIMEOUT_KEEP_ALIVE: ""
+  UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN: "30"
+  UVICORN_LIMIT_CONCURRENCY: "100"
+
+# Secret references (use these instead of plain env vars in production)
+# Option 1: Reference existing Kubernetes secrets (recommended)
+# Create secrets first: kubectl create secret generic kbbridge-secrets --from-literal=RETRIEVAL_API_KEY=xxx
+envFromSecrets: []
+# Example:
+# envFromSecrets:
+#   - RETRIEVAL_API_KEY
+#   - LLM_API_TOKEN
+
+# Option 2: Provide secret values directly (less secure, use only for development)
+# secrets:
+#   RETRIEVAL_API_KEY: ""
+#   LLM_API_TOKEN: ""
+
+# ConfigMap references
+envFromConfigMaps: []
+
+# Health check configuration
+livenessProbe:
+  httpGet:
+    path: /mcp
+    port: 5210
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /mcp
+    port: 5210
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Extra volumes
+extraVolumes: []
+extraVolumeMounts: []

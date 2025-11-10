@@ -6,7 +6,7 @@ import os
 from typing import Optional
 
 from fastmcp import Context, FastMCP
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from kbbridge.config.config import Config
 from kbbridge.config.constants import AssistantDefaults, RetrieverDefaults
@@ -24,7 +24,7 @@ from kbbridge.services.retriever_service import retriever_service
 
 # Configure logging based on environment
 def get_log_level():
-    """Get log level from environment variable"""
+    """Get log level from environment variable."""
     env_level = os.getenv("LOG_LEVEL", "INFO").upper()
     level_map = {
         "DEBUG": logging.DEBUG,
@@ -85,29 +85,15 @@ if "USE_CONTENT_BOOSTER" not in os.environ:
 
 
 class SessionConfig(BaseModel):
-    """Session configuration passed per user/session.
+    """Session configuration passed per user/session."""
 
-    These values mirror the credentials our server expects. All fields are optional
-    because callers may also provide credentials via headers or environment.
-    """
-
-    retrieval_endpoint: Optional[str] = Field(
-        default=None, description="Retriever backend base URL"
-    )
-    retrieval_api_key: Optional[str] = Field(
-        default=None, description="Retriever backend API key"
-    )
-    llm_api_url: Optional[str] = Field(default=None, description="LLM API base URL")
-    llm_model: Optional[str] = Field(default=None, description="LLM model name")
-    llm_api_token: Optional[str] = Field(
-        default=None, description="LLM provider token (if required)"
-    )
-    rerank_url: Optional[str] = Field(
-        default=None, description="Reranking provider base URL"
-    )
-    rerank_model: Optional[str] = Field(
-        default=None, description="Reranking model identifier"
-    )
+    retrieval_endpoint: Optional[str] = None
+    retrieval_api_key: Optional[str] = None
+    llm_api_url: Optional[str] = None
+    llm_model: Optional[str] = None
+    llm_api_token: Optional[str] = None
+    rerank_url: Optional[str] = None
+    rerank_model: Optional[str] = None
 
 
 # MCP Tools
@@ -121,7 +107,7 @@ async def assistant(
     document_name: str = "",
     enable_query_rewriting: bool = False,
 ) -> str:
-    """Intelligent search and answer extraction from knowledge bases with optional domain-specific instructions and dual-stage reflection"""
+    """Search and extract answers from knowledge bases."""
     await ctx.info(f"Executing assistant for query: {query}")
     if custom_instructions:
         await ctx.info(f"Using custom instructions: {custom_instructions}")
@@ -202,19 +188,7 @@ async def file_discover(
     relevance_score_threshold: float = 0.0,
     backend_type: Optional[str] = None,
 ) -> str:
-    """
-    Discover files using backend retriever + DSPy (FileDiscover).
-
-    Args:
-        query: Search query
-        dataset_id: Dataset ID
-        source_path: Optional source path filter
-        top_k_recall: Number of chunks to recall
-        top_k_return: Number of files to return
-        do_file_rerank: Whether to rerank files
-        relevance_score_threshold: Minimum relevance score
-        backend_type: Backend type ("dify", "opensearch", etc.) - if None, uses RETRIEVAL_BACKEND env var
-    """
+    """Discover files using backend retriever and DSPy."""
     await ctx.info(f"Executing file_discover for query: {query}")
     try:
         credentials = get_current_credentials()
@@ -255,17 +229,7 @@ async def file_lister(
     offset: int = 0,
     backend_type: Optional[str] = None,
 ) -> str:
-    """
-    List files in knowledge base dataset with pagination support.
-
-    Args:
-        dataset_id: Dataset ID
-        folder_name: Optional folder name filter
-        timeout: Timeout in seconds
-        limit: Optional limit for pagination
-        offset: Offset for pagination
-        backend_type: Backend type ("dify", "opensearch", etc.) - if None, uses RETRIEVAL_BACKEND env var
-    """
+    """List files in knowledge base dataset with pagination support."""
     await ctx.info(
         f"Executing file_lister for dataset: {dataset_id} (limit: {limit}, offset: {offset})"
     )
@@ -301,7 +265,7 @@ async def keyword_generator(
     ctx: Context,
     max_sets: int = 5,
 ) -> str:
-    """Generate keyword sets for search"""
+    """Generate keyword sets for search."""
     await ctx.info(f"Executing keyword_generator for query: {query}")
 
     try:
@@ -347,25 +311,7 @@ async def retriever(
     verbose: bool = AssistantDefaults.VERBOSE.value,
     backend_type: Optional[str] = None,
 ) -> str:
-    """
-    Retrieve information from knowledge base.
-
-    Reranking provider and model are automatically determined by the backend adapter
-    based on backend_type (e.g., Dify uses its own reranking configuration).
-
-    Args:
-        dataset_id: Dataset ID
-        query: Search query
-        search_method: Search method to use
-        does_rerank: Whether to enable reranking (provider/model decided by adapter)
-        top_k: Number of results to return
-        score_threshold: Minimum score threshold
-        weights: Search weights
-        source_path: Optional source path filter
-        document_name: Optional document name filter
-        verbose: Verbose output flag
-        backend_type: Backend type ("dify", "opensearch", etc.) - if None, uses RETRIEVAL_BACKEND env var
-    """
+    """Retrieve information from knowledge base."""
     await ctx.info(f"Executing retriever for query: {query}")
 
     try:
@@ -406,7 +352,7 @@ async def file_count(
     ctx: Context,
     folder_name: str = "",
 ) -> str:
-    """Get file count in knowledge base dataset (optimized for counting)"""
+    """Get file count in knowledge base dataset."""
     await ctx.info(f"Executing file_count for dataset: {dataset_id}")
 
     try:
@@ -435,16 +381,12 @@ async def file_count(
 
 
 def create_server() -> FastMCP:
-    """Create and return the FastMCP server instance.
-
-    The tools will read per-session config via ctx.session_config (wired in our
-    decorators) or fall back to headers / environment credentials.
-    """
+    """Create and return the FastMCP server instance."""
     return mcp
 
 
 async def main():
-    """Main entry point for the MCP server"""
+    """Main entry point for the MCP server."""
     parser = argparse.ArgumentParser(
         description="Knowledge Base MCP Server - Working Version"
     )

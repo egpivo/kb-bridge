@@ -216,8 +216,8 @@ class ParameterValidator:
             threshold = float(score_threshold)
             if 0 <= threshold <= 1:
                 return threshold
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            logger.debug(f"Invalid score_threshold value '{score_threshold}': {e}")
 
         return None
 
@@ -235,8 +235,8 @@ class ParameterValidator:
             k = int(top_k)
             if k > 0:
                 return k
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            logger.debug(f"Invalid top_k value '{top_k}': {e}")
 
         return AssistantDefaults.TOP_K.value
 
@@ -254,8 +254,8 @@ class ParameterValidator:
             workers = int(max_workers)
             if 1 <= workers <= 5:
                 return workers
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            logger.debug(f"Invalid max_workers value '{max_workers}': {e}")
 
         return AssistantDefaults.MAX_WORKERS.value
 
@@ -275,8 +275,10 @@ class ParameterValidator:
             keywords = int(max_boost_keywords)
             if 1 <= keywords <= 100:  # increased range to allow higher values like 50
                 return keywords
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            logger.debug(
+                f"Invalid max_boost_keywords value '{max_boost_keywords}': {e}"
+            )
 
         return 5  # default value
 
@@ -316,7 +318,8 @@ class CredentialParser:
                 llm_timeout = int(llm_timeout_raw)
                 if llm_timeout <= 0:
                     llm_timeout = None
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as e:
+                logger.debug(f"Invalid llm_timeout value '{llm_timeout_raw}': {e}")
                 llm_timeout = None
 
         credentials = Credentials(

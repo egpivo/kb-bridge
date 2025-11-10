@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional
 
 import dspy
 
-from .constants import AnswerExtractorDefaults
+from .constants import AnswerExtractorDefaults, ResponseMessages
 
 
 class AnswerExtractionSignature(dspy.Signature):
@@ -21,7 +21,7 @@ class AnswerExtractionSignature(dspy.Signature):
     )
     user_query: str = dspy.InputField(desc="The user's question or request")
     answer: str = dspy.OutputField(
-        desc="Comprehensive answer based on the context, or 'N/A' if no relevant information is found"
+        desc=f"Comprehensive answer based on the context, or '{ResponseMessages.NO_ANSWER}' if no relevant information is found"
     )
 
 

@@ -2,58 +2,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
-try:
-    import dspy  # type: ignore
-except Exception:  # pragma: no cover - lightweight shim for tests
-
-    class _DummyDSPY:  # minimal interface to satisfy imports without DSPy
-        class Signature:
-            pass
-
-        class Module:
-            def __init__(self, *args, **kwargs):
-                pass
-
-        def InputField(self, desc: str = "", default=None):  # noqa: N802
-            return None
-
-        def OutputField(self, desc: str = ""):  # noqa: N802
-            return None
-
-        def Predict(self, signature):  # noqa: N802
-            class _P:
-                def __call__(self, *args, **kwargs):
-                    class _R:
-                        def __init__(self):
-                            self.keyword_sets = []
-                            self.answer = ""
-                            self.sources = []
-                            self.total_sources = 0
-                            self.confidence = "low"
-
-                    return _R()
-
-            return _P()
-
-        def ChainOfThought(self, signature):  # noqa: N802
-            return self.Predict(signature)
-
-        class settings:
-            class context:
-                def __init__(self, *args, **kwargs):
-                    pass
-
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    pass
-
-        class LM:
-            def __init__(self, *args, **kwargs):
-                pass
-
-    dspy = _DummyDSPY()
+import dspy
 
 from kbbridge.core.utils.json_utils import parse_json_from_markdown
 

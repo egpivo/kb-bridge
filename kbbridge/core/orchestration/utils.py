@@ -3,6 +3,7 @@ from urllib.parse import unquote
 
 from kbbridge.core.synthesis.answer_formatter import StructuredAnswerFormatter
 from kbbridge.core.synthesis.answer_reranker import AnswerReranker
+from kbbridge.core.synthesis.constants import ResponseMessages
 
 from .models import Credentials
 
@@ -16,7 +17,7 @@ class ResultFormatter:
     ) -> str:
         """Format the best answer from candidates"""
         if not candidates:
-            return "N/A - No relevant information found"
+            return ResponseMessages.NO_ANSWER_WITH_CONTEXT
 
         if len(candidates) == 1:
             return ResultFormatter._format_single_candidate(candidates[0])
@@ -35,12 +36,12 @@ class ResultFormatter:
     def _combine_candidates(candidates: List[Dict[str, Any]], query: str) -> str:
         """Combine multiple candidates into a comprehensive answer"""
         if not candidates:
-            return "N/A - No relevant information found"
+            return ResponseMessages.NO_ANSWER_WITH_CONTEXT
 
         # Prefer successful, non-empty candidates (excluding trivial N/A)
         def is_nontrivial(c: Dict[str, Any]) -> bool:
             ans = (c.get("answer", "") or "").strip()
-            return bool(ans) and ans.upper() != "N/A"
+            return bool(ans) and ans.upper() != ResponseMessages.NO_ANSWER
 
         successful_candidates = [
             c for c in candidates if c.get("success", False) and is_nontrivial(c)
@@ -61,7 +62,7 @@ class ResultFormatter:
             return ResultFormatter._format_single_candidate(nonempty[0])
 
         # Still nothing usable
-        return "N/A - No relevant information found"
+        return ResponseMessages.NO_ANSWER_WITH_CONTEXT
 
     @staticmethod
     def _format_single_candidate(candidate: Dict[str, Any]) -> str:

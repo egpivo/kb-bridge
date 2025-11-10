@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Reflector:
-    """Manages answer quality reflection and refinement process."""
+    """Manages answer quality reflection and refinement."""
 
     def __init__(
         self,
@@ -82,7 +82,7 @@ class Reflector:
             return None
 
     def should_refine(self, reflection: ReflectionResult, current_attempt: int) -> bool:
-        """Determine if answer should be refined based on reflection result."""
+        """Determine if answer should be refined."""
         if reflection.passed:
             return False
         if current_attempt >= self.max_iterations:

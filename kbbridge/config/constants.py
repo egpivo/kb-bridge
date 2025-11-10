@@ -54,14 +54,14 @@ class AssistantDefaults(Enum):
     MAX_QUERY_WORKERS = 4  # Maximum parallel query workers
     DATASET_FILTER_WORKERS = 5  # Maximum workers for parallel dataset filtering
 
-    # Comprehensive query detection keywords (disable reranking for these)
-    COMPREHENSIVE_QUERY_KEYWORDS = [
-        "TERMS",
-        "DEFINITIONS",
-        "LIST ALL",
-        "EXTRACT ALL",
-        "COMPREHENSIVE",
-    ]
+    # Display limits
+    MAX_TOP_ANSWERS_TO_COMBINE = 3  # Limit for combining answers
+    MAX_SOURCE_FILES_TO_SHOW = 5  # Maximum source files to include
+    MAX_DISPLAY_SOURCES = 3  # Maximum sources to show in display_source
+    MAX_FILE_SEARCH_KEYWORDS_TO_LOG = 5  # Maximum keywords to log
+
+    # Query processing limits
+    MAX_TOP_K_PER_FILE_QUERY = 40  # Maximum top_k per file query in advanced approach
 
     # LLM configuration defaults
     LLM_MAX_TOKENS = 12800

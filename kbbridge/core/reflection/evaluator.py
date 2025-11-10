@@ -122,7 +122,7 @@ class Evaluator:
         return "\n".join(formatted)
 
     def _parse_json(self, text: str) -> List[str]:
-        """Parse JSON array from text, with fallback to simple parsing."""
+        """Parse JSON array from text."""
         try:
             parsed = json.loads(text)
             return parsed if isinstance(parsed, list) else []
@@ -132,7 +132,5 @@ class Evaluator:
 
 
 def get_default_examples() -> List[Any]:
-    """
-    Returns empty list. Examples should be generated dynamically based on dataset context.
-    """
+    """Return empty list. Examples should be generated dynamically."""
     return []

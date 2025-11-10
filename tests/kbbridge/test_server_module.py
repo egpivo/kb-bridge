@@ -94,23 +94,16 @@ class TestServerModule:
 
     def test_imports_work(self):
         """Test that all imports work correctly"""
-        # Test that functions can be imported from server (re-exported)
-        # Also test direct import from middleware
+        # Test direct import from middleware (where functions are actually defined)
         from kbbridge.middleware._auth_core import (
             get_current_credentials as get_creds_direct,
         )
         from kbbridge.middleware._auth_core import (
             set_current_credentials as set_creds_direct,
         )
-        from kbbridge.server import (
-            get_current_credentials,
-            main,
-            set_current_credentials,
-        )
+        from kbbridge.server import main
 
         # These should not raise import errors
-        assert callable(get_current_credentials)
-        assert callable(set_current_credentials)
         assert callable(main)
         assert callable(get_creds_direct)
         assert callable(set_creds_direct)

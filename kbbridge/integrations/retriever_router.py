@@ -5,10 +5,13 @@ Routes retrieval requests to the appropriate backend based on environment config
 Supports multiple backends: Dify, OpenSearch, n8n, etc.
 """
 
+import logging
 import os
 from typing import Any, Dict, Optional, Type
 
 from .retriever_base import Retriever
+
+logger = logging.getLogger(__name__)
 
 
 class RetrieverRouter:
@@ -161,26 +164,19 @@ class RetrieverRouter:
 
 # Auto-register available retrievers
 def _register_default_retrievers():
-    """Register default retriever implementations."""
+    """
+    Register default retriever implementations.
+
+    TODO: Add support for additional retrievers:
+    - OpenSearchRetriever (from .opensearch.opensearch_retriever)
+    - N8NRetriever (from .n8n.n8n_retriever)
+    """
     try:
         from .dify.dify_retriever import DifyRetriever
 
         RetrieverRouter.register_retriever("dify", DifyRetriever)
-    except ImportError:
-        pass  # Dify retriever not available
-
-    # Future: Add other retrievers
-    # try:
-    #     from .opensearch.opensearch_retriever import OpenSearchRetriever
-    #     RetrieverRouter.register_retriever("opensearch", OpenSearchRetriever)
-    # except ImportError:
-    #     pass
-
-    # try:
-    #     from .n8n.n8n_retriever import N8NRetriever
-    #     RetrieverRouter.register_retriever("n8n", N8NRetriever)
-    # except ImportError:
-    #     pass
+    except ImportError as e:
+        logger.debug(f"Dify retriever not available: {e}")
 
 
 # Initialize default retrievers

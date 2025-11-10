@@ -10,12 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class ReflectionIntegration:
-    """
-    Adapter for integrating Reflector into services with optional MCP Context support.
-
-    This class wraps the core Reflector and provides convenience methods for
-    using reflection in service layers with optional progress logging via FastMCP Context.
-    """
+    """Adapter for integrating Reflector into services with optional MCP Context support."""
 
     def __init__(
         self,
@@ -26,17 +21,7 @@ class ReflectionIntegration:
         quality_threshold: float = ReflectorDefaults.QUALITY_THRESHOLD.value,
         max_iterations: int = ReflectorDefaults.MAX_ANSWER_ITERATIONS.value,
     ):
-        """
-        Initialize reflection integration.
-
-        Args:
-            llm_api_url: LLM API endpoint
-            llm_model: Model name
-            llm_api_token: API token
-            enable_reflection: Enable/disable reflection
-            quality_threshold: Quality threshold (0-1)
-            max_iterations: Max refinement attempts
-        """
+        """Initialize reflection integration."""
         self.enable_reflection = enable_reflection
         self.reflector = None
 
@@ -76,18 +61,7 @@ class ReflectionIntegration:
         sources: List[Dict],
         ctx: Optional[Context] = None,
     ) -> tuple[str, Optional[Dict]]:
-        """
-        Reflect on answer quality and optionally refine.
-
-        Args:
-            query: Original query
-            answer: Generated answer
-            sources: List of sources used
-            ctx: MCP context for logging
-
-        Returns:
-            Tuple of (final_answer, reflection_metadata)
-        """
+        """Reflect on answer quality and optionally refine."""
         if not self.enable_reflection or not self.reflector:
             return answer, None
 

@@ -8,6 +8,7 @@ from fastmcp import Context
 
 import kbbridge.core.orchestration as _orch
 from kbbridge.core.orchestration import ParameterValidator, profile_stage
+from kbbridge.core.orchestration.utils import ResultFormatter
 from kbbridge.core.utils.json_utils import parse_dataset_info
 
 logger = logging.getLogger(__name__)
@@ -473,11 +474,7 @@ async def assistant_service(
             await ctx.info("Formatting structured answer...")
             logger.info(f"Final Answer Formatting: {len(candidates)} candidates")
 
-            # Resolve formatter dynamically via orchestration.utils for patching
-            from kbbridge.core.orchestration import utils as _or_utils
-
-            _Formatter = getattr(_or_utils, "ResultFormatter")
-            structured_result = _Formatter.format_structured_answer(
+            structured_result = ResultFormatter.format_structured_answer(
                 candidates, config.query, credentials
             )
             if structured_result.get("success"):
@@ -536,8 +533,7 @@ async def assistant_service(
                 await ctx.warning(
                     "Structured formatting failed, falling back to simple format"
                 )
-                # Prefer local class for patching; fallback to shim
-                final_answer = _Formatter.format_final_answer(
+                final_answer = ResultFormatter.format_final_answer(
                     candidates, config.query, credentials
                 )
                 await ctx.info(f"Final answer: '{final_answer}'")
@@ -681,7 +677,6 @@ async def _rewrite_query(
     from kbbridge.core.query import rewriter as _rew
 
     LLMQueryRewriter = getattr(_rew, "LLMQueryRewriter")
-    from kbbridge.core.utils.profiling_utils import profile_stage
 
     try:
         with profile_stage("query_rewriting", profiling_data, verbose=True):
@@ -869,11 +864,9 @@ def _return_verbose_results(
     profiling_data: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Return verbose results with debugging information"""
-    # Format best answer
-    from kbbridge.core.orchestration import utils as _or_utils
-
-    _Formatter = getattr(_or_utils, "ResultFormatter")
-    text_summary = _Formatter.format_final_answer(candidates, config.query, credentials)
+    text_summary = ResultFormatter.format_final_answer(
+        candidates, config.query, credentials
+    )
 
     # Build complete result
     result = {

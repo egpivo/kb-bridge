@@ -93,7 +93,6 @@ class Evaluator:
             )
         except Exception as e:
             logger.error(f"Evaluation failed: {e}", exc_info=True)
-            from .models import QualityScores, ReflectionResult
 
             return ReflectionResult(
                 scores=QualityScores(

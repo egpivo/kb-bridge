@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Callable
 
 from kbbridge.config.config import Credentials
-from kbbridge.middleware._auth_core import auth_middleware
+from kbbridge.middleware._auth_core import auth_middleware, set_current_credentials
 from kbbridge.middleware.error_middleware import error_middleware
 
 
@@ -79,14 +79,10 @@ def mcp_tool_with_auth(require_auth: bool = True):
                             )
                             return error_msg
 
-                        from kbbridge.server import set_current_credentials
-
                         set_current_credentials(credentials)
                     else:
                         credentials = auth_middleware.get_available_credentials()
                         if credentials:
-                            from kbbridge.server import set_current_credentials
-
                             set_current_credentials(credentials)
 
                     result = await func(*args, **kwargs)
@@ -158,14 +154,10 @@ def mcp_tool_with_auth(require_auth: bool = True):
                             )
                             return error_msg
 
-                        from kbbridge.server import set_current_credentials
-
                         set_current_credentials(credentials)
                     else:
                         credentials = auth_middleware.get_available_credentials()
                         if credentials:
-                            from kbbridge.server import set_current_credentials
-
                             set_current_credentials(credentials)
 
                     result = func(*args, **kwargs)

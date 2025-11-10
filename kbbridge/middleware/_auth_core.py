@@ -99,5 +99,25 @@ class AuthMiddleware:
 # Global middleware instance
 auth_middleware = AuthMiddleware()
 
+
+def get_current_credentials() -> Optional[Credentials]:
+    """Get the current request credentials using the auth middleware"""
+    return auth_middleware.get_available_credentials()
+
+
+def set_current_credentials(credentials: Optional[Credentials]):
+    """Set the current request credentials using the auth middleware"""
+    if credentials:
+        auth_middleware.set_session_credentials(credentials)
+    else:
+        auth_middleware.clear_session_credentials()
+
+
 # Export for testing
-__all__ = ["AuthMiddleware", "auth_middleware", "Credentials"]
+__all__ = [
+    "AuthMiddleware",
+    "auth_middleware",
+    "Credentials",
+    "get_current_credentials",
+    "set_current_credentials",
+]

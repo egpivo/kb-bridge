@@ -8,11 +8,12 @@ from typing import Optional
 from fastmcp import Context, FastMCP
 from pydantic import BaseModel, Field
 
-from kbbridge.config.config import Config, Credentials
+from kbbridge.config.config import Config
 from kbbridge.config.constants import AssistantDefaults, RetrieverDefaults
 from kbbridge.config.env_loader import get_env_int, load_env_file, print_env_status
+from kbbridge.integrations import RetrieverRouter
 from kbbridge.middleware import MCPConfigHelper, require_auth
-from kbbridge.middleware._auth_core import auth_middleware
+from kbbridge.middleware._auth_core import get_current_credentials
 from kbbridge.prompts import mcp as prompts_mcp
 from kbbridge.services.assistant_service import assistant_service
 from kbbridge.services.file_discover_service import file_discover_service
@@ -107,19 +108,6 @@ class SessionConfig(BaseModel):
     rerank_model: Optional[str] = Field(
         default=None, description="Reranking model identifier"
     )
-
-
-def get_current_credentials() -> Optional[Credentials]:
-    """Get the current request credentials using the auth middleware"""
-    return auth_middleware.get_available_credentials()
-
-
-def set_current_credentials(credentials: Optional[Credentials]):
-    """Set the current request credentials using the auth middleware"""
-    if credentials:
-        auth_middleware.set_session_credentials(credentials)
-    else:
-        auth_middleware.clear_session_credentials()
 
 
 # MCP Tools
@@ -428,8 +416,6 @@ async def file_count(
             return "Error: No credentials available"
 
         # Use integrations retriever to list files and count
-        from kbbridge.integrations import RetrieverRouter
-
         retriever = RetrieverRouter.create_retriever(
             dataset_id,
             endpoint=credentials.retrieval_endpoint,

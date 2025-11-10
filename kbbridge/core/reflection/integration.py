@@ -42,6 +42,11 @@ class ReflectionIntegration:
 
         if enable_reflection:
             try:
+                if not llm_api_token:
+                    logger.warning("Reflection disabled: API token is empty")
+                    self.enable_reflection = False
+                    return
+
                 self.reflector = Reflector(
                     llm_model=llm_model,
                     llm_api_url=llm_api_url,
@@ -49,12 +54,19 @@ class ReflectionIntegration:
                     threshold=quality_threshold,
                     max_iterations=max_iterations,
                 )
+
+                if not self.reflector.evaluator:
+                    logger.warning("Reflection disabled: Evaluator not initialized")
+                    self.enable_reflection = False
+                    return
+
                 logger.info(
                     f"Reflector initialized: threshold={quality_threshold}, "
-                    f"max_iterations={max_iterations}"
+                    f"max_iterations={max_iterations}, "
+                    f"dspy_enabled={self.reflector.use_dspy}"
                 )
             except Exception as e:
-                logger.warning(f"Reflector initialization failed: {e}")
+                logger.warning(f"Reflector initialization failed: {e}", exc_info=True)
                 self.enable_reflection = False
 
     async def reflect_on_answer(
@@ -91,6 +103,21 @@ class ReflectionIntegration:
                 attempt=1,
             )
 
+            if reflection is None:
+                logger.warning(
+                    "Initial reflection returned None, using original answer"
+                )
+                if ctx:
+                    await ctx.warning(
+                        "Reflection evaluation failed, using original answer"
+                    )
+                return answer, {
+                    "enabled": True,
+                    "error": "Reflection evaluation returned None",
+                    "quality_score": None,
+                    "passed": False,
+                }
+
             reflections_history = [reflection]
 
             if ctx:
@@ -99,7 +126,6 @@ class ReflectionIntegration:
                     f"(threshold: {reflection.threshold})"
                 )
 
-            # Check if refinement needed
             current_answer = answer
             attempt = 1
 
@@ -131,6 +157,14 @@ class ReflectionIntegration:
                         attempt=attempt,
                     )
 
+                    if reflection is None:
+                        logger.warning(f"Reflection attempt {attempt} returned None")
+                        if ctx:
+                            await ctx.warning(
+                                f"Reflection evaluation failed at attempt {attempt}"
+                            )
+                        break
+
                     reflections_history.append(reflection)
 
                     if ctx:
@@ -139,13 +173,33 @@ class ReflectionIntegration:
                         )
 
                 except Exception as e:
-                    logger.error(f"Refinement attempt {attempt} failed: {e}")
+                    logger.error(
+                        f"Refinement attempt {attempt} failed: {e}", exc_info=True
+                    )
                     if ctx:
                         await ctx.error(f"Refinement error: {e}")
                     break
 
-            # Prepare reflection metadata
+            if not reflections_history:
+                logger.warning("No reflection history available")
+                return answer, {
+                    "enabled": True,
+                    "error": "No reflection history available",
+                    "quality_score": None,
+                    "passed": False,
+                }
+
             final_reflection = reflections_history[-1]
+
+            if final_reflection is None:
+                logger.warning("Final reflection is None")
+                return answer, {
+                    "enabled": True,
+                    "error": "Final reflection is None",
+                    "quality_score": None,
+                    "passed": False,
+                }
+
             metadata = {
                 "enabled": True,
                 "quality_score": final_reflection.overall_score,
@@ -156,10 +210,12 @@ class ReflectionIntegration:
             }
 
             if len(reflections_history) > 1:
-                initial_score = reflections_history[0].overall_score
-                improvement = final_reflection.overall_score - initial_score
-                metadata["improvement"] = improvement
-                metadata["initial_score"] = initial_score
+                initial_reflection = reflections_history[0]
+                if initial_reflection is not None:
+                    initial_score = initial_reflection.overall_score
+                    improvement = final_reflection.overall_score - initial_score
+                    metadata["improvement"] = improvement
+                    metadata["initial_score"] = initial_score
 
             if not final_reflection.passed and ctx:
                 await ctx.warning(
@@ -177,7 +233,6 @@ class ReflectionIntegration:
             logger.error(f"Reflection failed: {e}", exc_info=True)
             if ctx:
                 await ctx.error(f"Reflection error: {e}")
-            # Return original answer on reflection failure
             return answer, {
                 "enabled": True,
                 "error": str(e),

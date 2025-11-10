@@ -18,7 +18,6 @@ dependencies = [
     "uvicorn>=0.31.0",
     "fastapi>=0.116.1",
     "starlette>=0.27.0",
-    "smithery>=0.4.2",
 ]
 
 [project.optional-dependencies]
@@ -41,11 +40,6 @@ Source = "https://github.com/egpivo/kb-bridge.git"
 "Bug Tracker" = "https://github.com/egpivo/kb-bridge/issues"
 
 [project.scripts]
-dev = "smithery.cli.dev:main"
-playground = "smithery.cli.playground:main"
-
-[tool.smithery]
-server = "kbbridge.server:create_server"
 
 [build-system]
 requires = ["uv_build>=0.8.15,<0.9.0"]

@@ -7,7 +7,6 @@ from typing import Optional
 
 from fastmcp import Context, FastMCP
 from pydantic import BaseModel, Field
-from smithery.decorators import smithery
 
 from kbbridge.config.config import Config, Credentials
 from kbbridge.config.constants import AssistantDefaults, RetrieverDefaults
@@ -85,7 +84,7 @@ if "USE_CONTENT_BOOSTER" not in os.environ:
 
 
 class SessionConfig(BaseModel):
-    """Smithery session configuration passed per user/session.
+    """Session configuration passed per user/session.
 
     These values mirror the credentials our server expects. All fields are optional
     because callers may also provide credentials via headers or environment.
@@ -141,11 +140,9 @@ async def assistant(
     if enable_query_rewriting:
         await ctx.info("Query rewriting enabled (LLM-based expansion/relaxation)")
 
-    # Get the timeout value from configuration
     timeout_seconds = AssistantDefaults.OVERALL_REQUEST_TIMEOUT.value
 
     try:
-        # Get current credentials from context
         credentials = get_current_credentials()
         if not credentials:
             await ctx.error("No credentials available")
@@ -157,7 +154,6 @@ async def assistant(
 
         await ctx.info("Calling assistant_service...")
 
-        # Wrap the service call with timeout enforcement
         try:
             result = await asyncio.wait_for(
                 assistant_service(
@@ -287,7 +283,6 @@ async def file_lister(
     )
 
     try:
-        # Get current credentials from context
         credentials = get_current_credentials()
         if not credentials:
             await ctx.error("No credentials available")
@@ -322,7 +317,6 @@ async def keyword_generator(
     await ctx.info(f"Executing keyword_generator for query: {query}")
 
     try:
-        # Get current credentials from context
         credentials = get_current_credentials()
         if not credentials:
             await ctx.error("No credentials available")
@@ -387,7 +381,6 @@ async def retriever(
     await ctx.info(f"Executing retriever for query: {query}")
 
     try:
-        # Get current credentials from context
         credentials = get_current_credentials()
         if not credentials:
             await ctx.error("No credentials available")
@@ -429,7 +422,6 @@ async def file_count(
     await ctx.info(f"Executing file_count for dataset: {dataset_id}")
 
     try:
-        # Get current credentials from context
         credentials = get_current_credentials()
         if not credentials:
             await ctx.error("No credentials available")
@@ -456,11 +448,9 @@ async def file_count(
         )
 
 
-@smithery.server(config_schema=SessionConfig)
 def create_server() -> FastMCP:
-    """Create and return the FastMCP server instance for Smithery.
+    """Create and return the FastMCP server instance.
 
-    Smithery imports this function to obtain the server with configured tools.
     The tools will read per-session config via ctx.session_config (wired in our
     decorators) or fall back to headers / environment credentials.
     """

@@ -1,5 +1,6 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import dspy
 import pytest
 
 from kbbridge.core.reflection import (
@@ -152,9 +153,14 @@ class TestFeedbackGenerator:
 
 @pytest.mark.slow
 class TestEvaluator:
+    @pytest.fixture
+    def mock_lm(self):
+        """Create a mock LM instance for testing"""
+        return MagicMock(spec=dspy.LM)
+
     @pytest.mark.asyncio
-    async def test_evaluate_minimal(self):
-        evaluator = Evaluator(threshold=0.75)
+    async def test_evaluate_minimal(self, mock_lm):
+        evaluator = Evaluator(lm=mock_lm, threshold=0.75)
         sources = [{"title": "doc1", "content": "test content"}]
 
         result = await evaluator.evaluate(
@@ -167,26 +173,26 @@ class TestEvaluator:
         assert isinstance(result, ReflectionResult)
         assert 0 <= result.overall_score <= 1
 
-    def test_evaluator_initialization(self):
+    def test_evaluator_initialization(self, mock_lm):
         """Test evaluator initialization with default threshold"""
-        evaluator = Evaluator()
+        evaluator = Evaluator(lm=mock_lm)
         assert evaluator.threshold == ReflectionConstants.DEFAULT_QUALITY_THRESHOLD
         assert evaluator.examples == []
 
-    def test_evaluator_with_custom_threshold(self):
+    def test_evaluator_with_custom_threshold(self, mock_lm):
         """Test evaluator with custom threshold"""
-        evaluator = Evaluator(threshold=0.85)
+        evaluator = Evaluator(lm=mock_lm, threshold=0.85)
         assert evaluator.threshold == 0.85
 
-    def test_format_sources_empty(self):
+    def test_format_sources_empty(self, mock_lm):
         """Test source formatting with empty list"""
-        evaluator = Evaluator()
+        evaluator = Evaluator(lm=mock_lm)
         formatted = evaluator._format_sources([])
         assert formatted == "No sources"
 
-    def test_format_sources_with_content(self):
+    def test_format_sources_with_content(self, mock_lm):
         """Test source formatting with actual sources"""
-        evaluator = Evaluator()
+        evaluator = Evaluator(lm=mock_lm)
         sources = [
             {"title": "Doc 1", "content": "Content 1"},
             {"title": "Doc 2", "content": "Content 2"},
@@ -195,15 +201,15 @@ class TestEvaluator:
         assert "Doc 1" in formatted
         assert "Doc 2" in formatted
 
-    def test_parse_json_valid(self):
+    def test_parse_json_valid(self, mock_lm):
         """Test JSON parsing with valid input"""
-        evaluator = Evaluator()
+        evaluator = Evaluator(lm=mock_lm)
         result = evaluator._parse_json('["item1", "item2"]')
         assert result == ["item1", "item2"]
 
-    def test_parse_json_invalid(self):
+    def test_parse_json_invalid(self, mock_lm):
         """Test JSON parsing with invalid input"""
-        evaluator = Evaluator()
+        evaluator = Evaluator(lm=mock_lm)
         result = evaluator._parse_json("not valid json")
         assert isinstance(result, list)
 
@@ -401,7 +407,10 @@ class TestReflector:
 
     def test_reflector_initialization_success(self):
         """Test reflector initialization with successful DSPy setup (lines 36-38)"""
-        with patch("kbbridge.core.reflection.reflector.setup") as mock_setup:
+        mock_lm = MagicMock(spec=dspy.LM)
+        with patch(
+            "kbbridge.core.reflection.reflector.setup", return_value=mock_lm
+        ) as mock_setup:
             with patch(
                 "kbbridge.core.reflection.reflector.get_default_examples",
                 return_value=[],
@@ -413,6 +422,7 @@ class TestReflector:
                 )
                 assert reflector.use_dspy is True
                 assert reflector.evaluator is not None
+                assert reflector._lm is mock_lm
                 mock_setup.assert_called_once()
 
     @pytest.mark.asyncio
@@ -420,7 +430,8 @@ class TestReflector:
         """Test reflect when evaluator is successfully initialized (lines 52-65)"""
         from unittest.mock import AsyncMock
 
-        with patch("kbbridge.core.reflection.reflector.setup"):
+        mock_lm = MagicMock(spec=dspy.LM)
+        with patch("kbbridge.core.reflection.reflector.setup", return_value=mock_lm):
             with patch(
                 "kbbridge.core.reflection.reflector.get_default_examples",
                 return_value=[],

@@ -32,9 +32,11 @@ class Evaluator:
 
     def __init__(
         self,
+        lm: dspy.LM,
         threshold: float = ReflectionConstants.DEFAULT_QUALITY_THRESHOLD,
         examples: Optional[List[Any]] = None,
     ) -> None:
+        self._lm = lm
         self.threshold = threshold
         self.examples = (
             examples[: ReflectionConstants.MAX_EXAMPLES_TO_USE] if examples else []
@@ -56,11 +58,12 @@ class Evaluator:
                 f"query_length={len(query)}, answer_length={len(answer)}"
             )
 
-            result = self.evaluator(
-                query=query,
-                answer=answer,
-                sources=sources_text,
-            )
+            with dspy.settings.context(lm=self._lm):
+                result = self.evaluator(
+                    query=query,
+                    answer=answer,
+                    sources=sources_text,
+                )
 
             scores = QualityScores(
                 completeness=float(result.completeness),
@@ -89,16 +92,16 @@ class Evaluator:
                 threshold=self.threshold,
             )
         except Exception as e:
-            logger.error(f"Evaluation failed: {e}")
+            logger.error(f"Evaluation failed: {e}", exc_info=True)
             from .models import QualityScores, ReflectionResult
 
             return ReflectionResult(
                 scores=QualityScores(
-                    ReflectionConstants.FALLBACK_SCORE,
-                    ReflectionConstants.FALLBACK_SCORE,
-                    ReflectionConstants.FALLBACK_SCORE,
-                    ReflectionConstants.FALLBACK_SCORE,
-                    ReflectionConstants.FALLBACK_SCORE,
+                    completeness=ReflectionConstants.FALLBACK_SCORE,
+                    accuracy=ReflectionConstants.FALLBACK_SCORE,
+                    clarity=ReflectionConstants.FALLBACK_SCORE,
+                    relevance=ReflectionConstants.FALLBACK_SCORE,
+                    confidence=ReflectionConstants.FALLBACK_SCORE,
                 ),
                 overall_score=ReflectionConstants.FALLBACK_SCORE,
                 passed=True,

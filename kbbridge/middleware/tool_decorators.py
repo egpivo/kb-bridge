@@ -17,11 +17,11 @@ def mcp_tool_with_auth(require_auth: bool = True):
 
     def decorator(func: Callable) -> Callable:
         if asyncio.iscoroutinefunction(func):
-            # Handle async functions
+
             @wraps(func)
             async def async_wrapper(*args, **kwargs):
                 try:
-                    # Attempt to extract Smithery session config from ctx and set session creds
+                    # Attempt to extract session config from ctx and set session creds
                     ctx = (
                         kwargs.get("ctx")
                         if "ctx" in kwargs
@@ -79,34 +79,30 @@ def mcp_tool_with_auth(require_auth: bool = True):
                             )
                             return error_msg
 
-                        # Set current credentials in global context
                         from kbbridge.server import set_current_credentials
 
                         set_current_credentials(credentials)
                     else:
-                        # Optional auth - set if available
                         credentials = auth_middleware.get_available_credentials()
                         if credentials:
                             from kbbridge.server import set_current_credentials
 
                             set_current_credentials(credentials)
 
-                    # Execute the async tool
                     result = await func(*args, **kwargs)
                     return result
 
                 except Exception as e:
-                    # Handle errors
                     error_result = error_middleware.handle_error(e, func.__name__)
                     return error_result
 
             return async_wrapper
         else:
-            # Handle sync functions
+
             @wraps(func)
             def sync_wrapper(*args, **kwargs):
                 try:
-                    # Attempt to extract Smithery session config from ctx and set session creds
+                    # Attempt to extract session config from ctx and set session creds
                     ctx = (
                         kwargs.get("ctx")
                         if "ctx" in kwargs
@@ -147,7 +143,6 @@ def mcp_tool_with_auth(require_auth: bool = True):
                                     )
                                 )
 
-                    # Handle authentication
                     if require_auth:
                         credentials = auth_middleware.get_available_credentials()
                         if not credentials:
@@ -156,7 +151,6 @@ def mcp_tool_with_auth(require_auth: bool = True):
                             )
                             return error_msg
 
-                        # Validate credentials
                         validation = auth_middleware.validate_credentials(credentials)
                         if not validation["valid"]:
                             error_msg = auth_middleware.create_auth_error_response(
@@ -164,24 +158,20 @@ def mcp_tool_with_auth(require_auth: bool = True):
                             )
                             return error_msg
 
-                        # Set current credentials in global context
                         from kbbridge.server import set_current_credentials
 
                         set_current_credentials(credentials)
                     else:
-                        # Optional auth - set if available
                         credentials = auth_middleware.get_available_credentials()
                         if credentials:
                             from kbbridge.server import set_current_credentials
 
                             set_current_credentials(credentials)
 
-                    # Execute the sync tool
                     result = func(*args, **kwargs)
                     return result
 
                 except Exception as e:
-                    # Handle errors
                     error_result = error_middleware.handle_error(e, func.__name__)
                     return error_result
 

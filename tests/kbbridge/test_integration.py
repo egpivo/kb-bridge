@@ -1,8 +1,10 @@
 import os
 
+import pytest
 import requests
 
 
+@pytest.mark.integration
 def test_mcp_server():
     """Test MCP server connection"""
     print("\nTesting MCP Server Connection")
@@ -23,6 +25,7 @@ def test_mcp_server():
         raise
 
 
+@pytest.mark.integration
 def test_imports():
     """Test that core modules can be imported"""
     print("\nTesting Core Imports")
@@ -35,6 +38,7 @@ def test_imports():
         raise
 
 
+@pytest.mark.integration
 def test_dify_retriever():
     """Test Dify retriever functionality"""
     print("\nTesting Dify Retriever")
@@ -83,6 +87,7 @@ def test_dify_retriever():
         raise
 
 
+@pytest.mark.integration
 def test_dify_credentials():
     """Test Dify credentials parsing"""
     print("\nTesting Dify Credentials")
@@ -126,6 +131,7 @@ def test_dify_credentials():
         raise
 
 
+@pytest.mark.integration
 def test_dify_parameter_validation():
     """Test Dify parameter validation"""
     print("\nTesting Parameter Validation")

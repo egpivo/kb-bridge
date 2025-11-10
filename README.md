@@ -53,6 +53,49 @@ make start
 
 Server runs on `http://0.0.0.0:5210` with MCP endpoint at `http://0.0.0.0:5210/mcp`.
 
+### Deployment Options
+
+#### Option 1: Kubernetes with Helm (Recommended for Production)
+
+For production Kubernetes deployments, use the Helm chart:
+
+```bash
+# Build and push Docker image to your registry
+docker build -t your-registry/kbbridge:0.1.0 .
+docker push your-registry/kbbridge:0.1.0
+
+# Install with Helm
+helm install kbbridge ./helm/kbbridge \
+  --set image.repository=your-registry/kbbridge \
+  --set image.tag=0.1.0 \
+  --set env.RETRIEVAL_API_KEY=your-key \
+  --set env.LLM_API_TOKEN=your-token
+```
+
+See `helm/kbbridge/README.md` for detailed configuration options.
+
+#### Option 2: Docker (Local Development / Simple Deployments)
+
+For local development or simple single-container deployments:
+
+```bash
+# Build the image
+docker build -t kbbridge:latest .
+
+# Run with environment variables
+docker run -d \
+  --name kbbridge \
+  -p 5210:5210 \
+  --env-file .env \
+  kbbridge:latest
+```
+
+**When to use what:**
+- **Helm/Kubernetes**: Production clusters, multi-node deployments, scaling, orchestration, high availability
+- **Docker/Docker Compose**: Local development, quick testing, simple single-node deployments, CI/CD pipelines
+
+> **Note**: If you're deploying to Kubernetes, you only need Helm. Docker Compose is optional and primarily for local development convenience.
+
 ## Features
 
 - **Backend Integration**: Extensible architecture supporting multiple retrieval backends

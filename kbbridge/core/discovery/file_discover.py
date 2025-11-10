@@ -1,9 +1,12 @@
+import logging
 from typing import Dict, List, Tuple
 
 import dspy
 
 from kbbridge.core.utils.text_processing_utils import build_file_surrogate_text
 from kbbridge.integrations.retriever_base import ChunkHit, FileHit, Retriever
+
+logger = logging.getLogger(__name__)
 
 
 class FileDiscover(dspy.Module):
@@ -145,8 +148,8 @@ class FileDiscover(dspy.Module):
                 f = by_name[name]
                 try:
                     f.score = float(scores.get(name, f.score))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Failed to convert score for file '{name}': {e}")
                 reranked.append(f)
         seen = set(order)
         tail = [f for f in files if getattr(f, "file_name", "") not in seen]

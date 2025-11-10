@@ -10,16 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 class AuthMiddleware:
-    """
-    Authentication middleware that extracts and validates credentials
-    from HTTP headers and makes them available to tools.
-    """
+    """Authentication middleware for extracting and validating credentials."""
 
     def __init__(self):
         self._session_credentials: Optional[Credentials] = None
 
     def get_credentials_from_request(self) -> Optional[Credentials]:
-        """Extract credentials from the current HTTP request"""
+        """Extract credentials from the current HTTP request."""
         try:
             headers = get_http_headers(include_all=True)
             if headers:
@@ -30,19 +27,19 @@ class AuthMiddleware:
             return None
 
     def get_session_credentials(self) -> Optional[Credentials]:
-        """Get session credentials"""
+        """Get session credentials."""
         return self._session_credentials
 
     def set_session_credentials(self, credentials: Credentials):
-        """Set session credentials"""
+        """Set session credentials."""
         self._session_credentials = credentials
 
     def clear_session_credentials(self):
-        """Clear session credentials"""
+        """Clear session credentials."""
         self._session_credentials = None
 
     def get_available_credentials(self) -> Optional[Credentials]:
-        """Get credentials from request or session"""
+        """Get credentials from request or session."""
         # Try request headers first
         credentials = self.get_credentials_from_request()
         if credentials:
@@ -57,13 +54,13 @@ class AuthMiddleware:
             env_creds = Config.get_default_credentials()
             if env_creds:
                 return env_creds
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to get default credentials from config: {e}")
 
         return None
 
     def validate_credentials(self, credentials: Credentials) -> Dict[str, Any]:
-        """Validate credentials and return validation result"""
+        """Validate credentials and return validation result."""
         try:
             # Basic validation
             if not credentials.retrieval_endpoint or not credentials.retrieval_api_key:
@@ -79,7 +76,7 @@ class AuthMiddleware:
             return {"valid": False, "errors": [f"Validation error: {str(e)}"]}
 
     def create_auth_error_response(self, message: str, errors: list = None) -> str:
-        """Create standardized authentication error response"""
+        """Create standardized authentication error response."""
         return json.dumps(
             {
                 "error": "Authentication failed",
@@ -99,5 +96,25 @@ class AuthMiddleware:
 # Global middleware instance
 auth_middleware = AuthMiddleware()
 
+
+def get_current_credentials() -> Optional[Credentials]:
+    """Get the current request credentials."""
+    return auth_middleware.get_available_credentials()
+
+
+def set_current_credentials(credentials: Optional[Credentials]):
+    """Set the current request credentials."""
+    if credentials:
+        auth_middleware.set_session_credentials(credentials)
+    else:
+        auth_middleware.clear_session_credentials()
+
+
 # Export for testing
-__all__ = ["AuthMiddleware", "auth_middleware", "Credentials"]
+__all__ = [
+    "AuthMiddleware",
+    "auth_middleware",
+    "Credentials",
+    "get_current_credentials",
+    "set_current_credentials",
+]

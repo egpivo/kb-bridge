@@ -1,5 +1,7 @@
 import json
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from kbbridge.config.config import Credentials
 from kbbridge.middleware import (
@@ -280,3 +282,334 @@ class TestMiddlewareIntegration:
         """Test that decorator functions are callable"""
         assert callable(require_auth)
         assert callable(optional_auth)
+
+
+class TestAsyncToolDecorators:
+    """Test async tool decorators functionality"""
+
+    @pytest.mark.asyncio
+    async def test_require_auth_async_decorator_without_credentials(self):
+        """Test require_auth decorator with async function without credentials"""
+
+        @require_auth
+        async def test_tool(query: str):
+            return f"Processed: {query}"
+
+        with patch(
+            "kbbridge.middleware._auth_core.auth_middleware.get_available_credentials",
+            return_value=None,
+        ):
+            result = await test_tool("test query")
+            data = json.loads(result)
+            assert data["error"] == "Authentication failed"
+
+    @pytest.mark.asyncio
+    async def test_require_auth_async_decorator_with_invalid_credentials(self):
+        """Test require_auth decorator with async function and invalid credentials"""
+
+        @require_auth
+        async def test_tool(query: str):
+            return f"Processed: {query}"
+
+        invalid_credentials = Credentials(
+            retrieval_endpoint="", retrieval_api_key="test-key"
+        )
+
+        with patch(
+            "kbbridge.middleware._auth_core.auth_middleware.get_available_credentials",
+            return_value=invalid_credentials,
+        ):
+            with patch(
+                "kbbridge.middleware._auth_core.auth_middleware.validate_credentials",
+                return_value={"valid": False, "errors": ["Invalid endpoint"]},
+            ):
+                result = await test_tool("test query")
+                data = json.loads(result)
+                assert data["error"] == "Authentication failed"
+
+    @pytest.mark.asyncio
+    async def test_require_auth_async_decorator_with_valid_credentials(self):
+        """Test require_auth decorator with async function and valid credentials"""
+
+        @require_auth
+        async def test_tool(query: str):
+            from kbbridge.middleware._auth_core import get_current_credentials
+
+            credentials = get_current_credentials()
+            endpoint = credentials.retrieval_endpoint if credentials else None
+            return f"Processed: {query} with endpoint: {endpoint}"
+
+        valid_credentials = Credentials(
+            retrieval_endpoint="https://test.com", retrieval_api_key="test-key"
+        )
+
+        with patch(
+            "kbbridge.middleware._auth_core.auth_middleware.get_available_credentials",
+            return_value=valid_credentials,
+        ):
+            with patch(
+                "kbbridge.middleware._auth_core.auth_middleware.validate_credentials",
+                return_value={"valid": True, "errors": []},
+            ):
+                result = await test_tool("test query")
+                assert "Processed: test query with endpoint: https://test.com" in result
+
+    @pytest.mark.asyncio
+    async def test_optional_auth_async_decorator_without_credentials(self):
+        """Test optional_auth decorator with async function without credentials"""
+
+        @optional_auth
+        async def test_tool(query: str):
+            return f"Processed: {query}"
+
+        with patch(
+            "kbbridge.middleware._auth_core.auth_middleware.get_available_credentials",
+            return_value=None,
+        ):
+            result = await test_tool("test query")
+            assert "Processed: test query" in result
+
+    @pytest.mark.asyncio
+    async def test_optional_auth_async_decorator_with_credentials(self):
+        """Test optional_auth decorator with async function and credentials"""
+
+        @optional_auth
+        async def test_tool(query: str):
+            from kbbridge.middleware._auth_core import get_current_credentials
+
+            credentials = get_current_credentials()
+            endpoint = credentials.retrieval_endpoint if credentials else "no-auth"
+            return f"Processed: {query} with endpoint: {endpoint}"
+
+        valid_credentials = Credentials(
+            retrieval_endpoint="https://test.com", retrieval_api_key="test-key"
+        )
+
+        with patch(
+            "kbbridge.middleware._auth_core.auth_middleware.get_available_credentials",
+            return_value=valid_credentials,
+        ):
+            result = await test_tool("test query")
+            assert "Processed: test query with endpoint: https://test.com" in result
+
+    @pytest.mark.asyncio
+    async def test_async_decorator_error_handling(self):
+        """Test async decorator error handling"""
+
+        @require_auth
+        async def test_tool(query: str):
+            raise ValueError("Test error")
+
+        valid_credentials = Credentials(
+            retrieval_endpoint="https://test.com", retrieval_api_key="test-key"
+        )
+
+        with patch(
+            "kbbridge.middleware._auth_core.auth_middleware.get_available_credentials",
+            return_value=valid_credentials,
+        ):
+            with patch(
+                "kbbridge.middleware._auth_core.auth_middleware.validate_credentials",
+                return_value={"valid": True, "errors": []},
+            ):
+                result = await test_tool("test query")
+                data = json.loads(result)
+                assert data["error"] == "Tool execution failed"
+                assert "Test error" in data["message"]
+
+
+class TestSessionConfigDecorators:
+    """Test decorators with session config extraction"""
+
+    def test_sync_decorator_with_session_config_pydantic(self):
+        """Test sync decorator with Pydantic session config"""
+
+        @require_auth
+        def test_tool(ctx, query: str):
+            return f"Processed: {query}"
+
+        # Create a mock context with Pydantic session config
+        mock_ctx = MagicMock()
+        from kbbridge.server import SessionConfig
+
+        session_config = SessionConfig(
+            retrieval_endpoint="https://session.com",
+            retrieval_api_key="session-key",
+            llm_api_url="https://llm.com",
+            llm_model="gpt-4",
+        )
+        mock_ctx.session_config = session_config
+
+        valid_credentials = Credentials(
+            retrieval_endpoint="https://session.com", retrieval_api_key="session-key"
+        )
+
+        with patch(
+            "kbbridge.middleware._auth_core.auth_middleware.get_available_credentials",
+            return_value=valid_credentials,
+        ):
+            with patch(
+                "kbbridge.middleware._auth_core.auth_middleware.validate_credentials",
+                return_value={"valid": True, "errors": []},
+            ):
+                with patch(
+                    "kbbridge.middleware.tool_decorators.auth_middleware.set_session_credentials"
+                ) as mock_set_session:
+                    result = test_tool(mock_ctx, "test query")
+                    assert "Processed: test query" in result
+                    # Verify session credentials were set (called at least once from session config)
+                    assert mock_set_session.call_count >= 1
+                    # Check the first call (from session config extraction)
+                    first_call_args = mock_set_session.call_args_list[0][0][0]
+                    assert first_call_args.retrieval_endpoint == "https://session.com"
+                    assert first_call_args.retrieval_api_key == "session-key"
+
+    def test_sync_decorator_with_session_config_dict(self):
+        """Test sync decorator with dict-like session config"""
+
+        @require_auth
+        def test_tool(ctx, query: str):
+            return f"Processed: {query}"
+
+        # Create a mock context with dict-like session config
+        mock_ctx = MagicMock()
+        session_config = {
+            "retrieval_endpoint": "https://dict.com",
+            "retrieval_api_key": "dict-key",
+            "llm_api_url": "https://llm.com",
+        }
+        mock_ctx.session_config = session_config
+
+        valid_credentials = Credentials(
+            retrieval_endpoint="https://dict.com", retrieval_api_key="dict-key"
+        )
+
+        with patch(
+            "kbbridge.middleware._auth_core.auth_middleware.get_available_credentials",
+            return_value=valid_credentials,
+        ):
+            with patch(
+                "kbbridge.middleware._auth_core.auth_middleware.validate_credentials",
+                return_value={"valid": True, "errors": []},
+            ):
+                with patch(
+                    "kbbridge.middleware.tool_decorators.auth_middleware.set_session_credentials"
+                ) as mock_set_session:
+                    result = test_tool(mock_ctx, "test query")
+                    assert "Processed: test query" in result
+                    # May be called multiple times (session config + set_current_credentials)
+                    assert mock_set_session.call_count >= 1
+
+    def test_sync_decorator_with_session_config_in_kwargs(self):
+        """Test sync decorator with session config in kwargs"""
+
+        @require_auth
+        def test_tool(query: str, ctx=None):
+            return f"Processed: {query}"
+
+        mock_ctx = MagicMock()
+        from kbbridge.server import SessionConfig
+
+        session_config = SessionConfig(
+            retrieval_endpoint="https://kwargs.com",
+            retrieval_api_key="kwargs-key",
+        )
+        mock_ctx.session_config = session_config
+
+        valid_credentials = Credentials(
+            retrieval_endpoint="https://kwargs.com", retrieval_api_key="kwargs-key"
+        )
+
+        with patch(
+            "kbbridge.middleware._auth_core.auth_middleware.get_available_credentials",
+            return_value=valid_credentials,
+        ):
+            with patch(
+                "kbbridge.middleware._auth_core.auth_middleware.validate_credentials",
+                return_value={"valid": True, "errors": []},
+            ):
+                with patch(
+                    "kbbridge.middleware.tool_decorators.auth_middleware.set_session_credentials"
+                ):
+                    result = test_tool("test query", ctx=mock_ctx)
+                    assert "Processed: test query" in result
+
+    @pytest.mark.asyncio
+    async def test_async_decorator_with_session_config(self):
+        """Test async decorator with session config"""
+
+        @require_auth
+        async def test_tool(ctx, query: str):
+            return f"Processed: {query}"
+
+        mock_ctx = MagicMock()
+        from kbbridge.server import SessionConfig
+
+        session_config = SessionConfig(
+            retrieval_endpoint="https://async.com",
+            retrieval_api_key="async-key",
+        )
+        mock_ctx.session_config = session_config
+
+        valid_credentials = Credentials(
+            retrieval_endpoint="https://async.com", retrieval_api_key="async-key"
+        )
+
+        with patch(
+            "kbbridge.middleware._auth_core.auth_middleware.get_available_credentials",
+            return_value=valid_credentials,
+        ):
+            with patch(
+                "kbbridge.middleware._auth_core.auth_middleware.validate_credentials",
+                return_value={"valid": True, "errors": []},
+            ):
+                with patch(
+                    "kbbridge.middleware.tool_decorators.auth_middleware.set_session_credentials"
+                ):
+                    result = await test_tool(mock_ctx, "test query")
+                    assert "Processed: test query" in result
+
+    def test_sync_decorator_with_session_config_missing_required_fields(self):
+        """Test sync decorator with session config missing required fields"""
+
+        @require_auth
+        def test_tool(ctx, query: str):
+            return f"Processed: {query}"
+
+        mock_ctx = MagicMock()
+        from kbbridge.server import SessionConfig
+
+        # Missing retrieval_endpoint or retrieval_api_key
+        session_config = SessionConfig(
+            retrieval_endpoint=None,
+            retrieval_api_key="key",
+        )
+        mock_ctx.session_config = session_config
+
+        valid_credentials = Credentials(
+            retrieval_endpoint="https://fallback.com", retrieval_api_key="fallback-key"
+        )
+
+        with patch(
+            "kbbridge.middleware._auth_core.auth_middleware.get_available_credentials",
+            return_value=valid_credentials,
+        ):
+            with patch(
+                "kbbridge.middleware._auth_core.auth_middleware.validate_credentials",
+                return_value={"valid": True, "errors": []},
+            ):
+                with patch(
+                    "kbbridge.middleware.tool_decorators.auth_middleware.set_session_credentials"
+                ) as mock_set_session:
+                    result = test_tool(mock_ctx, "test query")
+                    assert "Processed: test query" in result
+                    # set_current_credentials will still call set_session_credentials,
+                    # but session config extraction should not have called it with session config
+                    # Check that no call was made with the incomplete session config
+                    for call in mock_set_session.call_args_list:
+                        creds = call[0][0]
+                        # Should not have session config values (None endpoint)
+                        assert (
+                            creds.retrieval_endpoint != None
+                            or creds.retrieval_endpoint == "https://fallback.com"
+                        )

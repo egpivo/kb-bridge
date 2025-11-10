@@ -11,7 +11,9 @@ from kbbridge.config.constants import (
     RetrieverSearchMethod,
 )
 from kbbridge.core.query.constants import KeywordGeneratorDefaults
+from kbbridge.core.query.keyword_generator import ContentBoostKeywordGenerator
 from kbbridge.core.synthesis.answer_extractor import OrganizationAnswerExtractor
+from kbbridge.core.synthesis.constants import ResponseMessages
 from kbbridge.core.utils.profiling_utils import profile_stage
 from kbbridge.integrations import Retriever
 from kbbridge.utils.formatting import format_search_results
@@ -110,8 +112,10 @@ class FileSearchStrategy:
                             )
                             try:
                                 name = unquote(name)
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logger.debug(
+                                    f"Failed to unquote filename '{name}': {e}"
+                                )
                             score = getattr(f, "score", None)
                             if score is not None:
                                 logger.info(
@@ -258,75 +262,12 @@ class NaiveApproachProcessor:
             logger.warning(f"No segments found for dataset {dataset_id}")
             return {
                 "success": True,
-                "answer": "N/A",
+                "answer": ResponseMessages.NO_ANSWER,
                 "debug_info": debug_info if self.verbose else [],
             }
 
         logger.info(f"Extracting answer from {len(segments)} segments")
         return self._extract_answer(segments, query, debug_info)
-
-    def _neutralize_query_for_reranking(self, query: str) -> str:
-        """
-        Neutralize query for reranking to avoid bias toward formal glossary sections.
-
-        For comprehensive extraction queries (containing "TERMS", "DEFINITIONS", "LIST ALL"),
-        the reranker tends to heavily favor formal glossary sections and penalize
-        process descriptions where terms are defined in context.
-
-        This method removes biasing keywords and extracts the core domain/document focus.
-
-        Args:
-            query: Original query string
-
-        Returns:
-            Neutralized query string for reranking
-        """
-        import re
-
-        # Keywords that bias reranker toward formal sections
-        bias_keywords = [
-            r"\bTERMS\b",
-            r"\bDEFINITIONS\b",
-            r"\bGLOSSARY\b",
-            r"\bLIST\s+ALL\b",
-            r"\bLIST\b",
-            r"\bEXTRACT\b",
-            r"\bfrom\b",
-            r"\bin\b",
-            r"\band\b",
-            r"\bor\b",
-            # Also remove list/array syntax
-            r"\[|\]",
-            r"'",
-            r'"',
-        ]
-
-        neutralized = query
-        for keyword in bias_keywords:
-            neutralized = re.sub(keyword, " ", neutralized, flags=re.IGNORECASE)
-
-        # Remove common punctuation and extra whitespace
-        neutralized = re.sub(r"[,;]", " ", neutralized)
-        neutralized = " ".join(neutralized.split())
-        neutralized = neutralized.strip()
-
-        # If query becomes too short after neutralization, use a generic domain query
-        if len(neutralized) < 10:
-            # Try to extract document/domain context from file name or use fallback
-            neutralized = "budget financial reporting procedure process workflow"
-            logger.info(
-                f"      Query too short after neutralization, using fallback: '{neutralized}'"
-            )
-        else:
-            logger.info(f"      Neutralized query for reranking:")
-            logger.info(
-                f"         Original: '{query[:100]}...' "
-                if len(query) > 100
-                else f"         Original: '{query}'"
-            )
-            logger.info(f"         Neutralized: '{neutralized}'")
-
-        return neutralized
 
     def _retrieve_segments(
         self,
@@ -337,33 +278,15 @@ class NaiveApproachProcessor:
         top_k: int,
     ) -> Dict[str, Any]:
         """Retrieve segments from knowledge base"""
-        # Neutralize query for reranking to avoid bias toward formal glossary sections
-        rerank_query = self._neutralize_query_for_reranking(query)
-
-        # For comprehensive extraction, DISABLE RERANKING to avoid filtering out relevant segments
-        is_comprehensive_query = any(
-            keyword in query.upper()
-            for keyword in AssistantDefaults.COMPREHENSIVE_QUERY_KEYWORDS.value
-        )
-
-        # For comprehensive queries, disable reranking (adaptive top_k handled by caller)
-        if is_comprehensive_query:
-            logger.info(f"      🔓 Disabling reranking for comprehensive extraction")
-            logger.info(f"         Using TOP_K={top_k}")
-
-        adaptive_top_k = top_k
-
         # Support both working retriever interface (retrieve) and integrations retriever (call)
         # Reranking config is handled internally by the adapter based on backend type
         if hasattr(self.retriever, "retrieve"):
             return self.retriever.retrieve(
                 dataset_id=dataset_id,
-                query=rerank_query,
+                query=query,
                 search_method=RetrieverSearchMethod.HYBRID_SEARCH.value,
-                does_rerank=False
-                if is_comprehensive_query
-                else AssistantDefaults.DOES_RERANK.value,
-                top_k=adaptive_top_k,
+                does_rerank=AssistantDefaults.DOES_RERANK.value,
+                top_k=top_k,
                 score_threshold_enabled=score_threshold is not None,
                 metadata_filter=metadata_filter,
                 score_threshold=score_threshold,
@@ -372,14 +295,10 @@ class NaiveApproachProcessor:
         else:
             # Integrations retriever (e.g., DifyRetriever) uses call()
             return self.retriever.call(
-                query=rerank_query,
+                query=query,
                 method=RetrieverSearchMethod.HYBRID_SEARCH.value,
-                top_k=adaptive_top_k,
-                does_rerank=(
-                    False
-                    if is_comprehensive_query
-                    else AssistantDefaults.DOES_RERANK.value
-                ),
+                top_k=top_k,
+                does_rerank=AssistantDefaults.DOES_RERANK.value,
                 score_threshold_enabled=score_threshold is not None,
                 metadata_filter=metadata_filter,
                 score_threshold=score_threshold,
@@ -458,7 +377,7 @@ class NaiveApproachProcessor:
             # Always include top source files for downstream citation, even when not verbose
             "source_files": list(
                 {s.get("document_name", "") for s in segments if s.get("document_name")}
-            )[:5],
+            )[: AssistantDefaults.MAX_SOURCE_FILES_TO_SHOW.value],
             "debug_info": debug_info if self.verbose else [],
         }
 
@@ -660,8 +579,8 @@ class AdvancedApproachProcessor:
             )
             if file_search_keywords:
                 logger.info(
-                    f"   - File search keywords (for diversity): {file_search_keywords[:5]}"
-                )  # Show first 5
+                    f"   - File search keywords (for diversity): {file_search_keywords[:AssistantDefaults.MAX_FILE_SEARCH_KEYWORDS_TO_LOG.value]}"
+                )
 
             if self.verbose:
                 file_profiling["content_booster_enabled"] = use_content_booster
@@ -687,10 +606,6 @@ class AdvancedApproachProcessor:
                                 "boost_start"
                             ] = "Starting content boost generation"
                             file_profiling["max_boost_keywords"] = max_boost_keywords
-
-                        from kbbridge.core.query.keyword_generator import (
-                            ContentBoostKeywordGenerator,
-                        )
 
                         keyword_generator = ContentBoostKeywordGenerator(
                             llm_api_url,
@@ -868,69 +783,6 @@ class AdvancedApproachProcessor:
         except Exception as e:
             return self._format_file_exception(file_name, str(e), file_profiling)
 
-    def _neutralize_query_for_reranking(self, query: str) -> str:
-        """
-        Neutralize query for reranking to avoid bias toward formal glossary sections.
-
-        For comprehensive extraction queries (containing "TERMS", "DEFINITIONS", "LIST ALL"),
-        the reranker tends to heavily favor formal glossary sections and penalize
-        process descriptions where terms are defined in context.
-
-        This method removes biasing keywords and extracts the core domain/document focus.
-
-        Args:
-            query: Original query string
-
-        Returns:
-            Neutralized query string for reranking
-        """
-        import re
-
-        # Keywords that bias reranker toward formal sections
-        bias_keywords = [
-            r"\bTERMS\b",
-            r"\bDEFINITIONS\b",
-            r"\bGLOSSARY\b",
-            r"\bLIST\s+ALL\b",
-            r"\bLIST\b",
-            r"\bEXTRACT\b",
-            r"\bfrom\b",
-            r"\bin\b",
-            r"\band\b",
-            r"\bor\b",
-            # Also remove list/array syntax
-            r"\[|\]",
-            r"'",
-            r'"',
-        ]
-
-        neutralized = query
-        for keyword in bias_keywords:
-            neutralized = re.sub(keyword, " ", neutralized, flags=re.IGNORECASE)
-
-        # Remove common punctuation and extra whitespace
-        neutralized = re.sub(r"[,;]", " ", neutralized)
-        neutralized = " ".join(neutralized.split())
-        neutralized = neutralized.strip()
-
-        # If query becomes too short after neutralization, use a generic domain query
-        if len(neutralized) < 10:
-            # Try to extract document/domain context from file name or use fallback
-            neutralized = "budget financial reporting procedure process workflow"
-            logger.info(
-                f"      Query too short after neutralization, using fallback: '{neutralized}'"
-            )
-        else:
-            logger.info(f"      Neutralized query for reranking:")
-            logger.info(
-                f"         Original: '{query[:100]}...' "
-                if len(query) > 100
-                else f"         Original: '{query}'"
-            )
-            logger.info(f"         Neutralized: '{neutralized}'")
-
-        return neutralized
-
     def _process_query_for_file(
         self,
         file_name: str,
@@ -962,7 +814,11 @@ class AdvancedApproachProcessor:
                         query=query_for_rerank,
                         search_method=RetrieverSearchMethod.HYBRID_SEARCH.value,
                         does_rerank=False,
-                        top_k=min(top_k, 40) if self.adaptive_top_k_enabled else top_k,
+                        top_k=min(
+                            top_k, AssistantDefaults.MAX_TOP_K_PER_FILE_QUERY.value
+                        )
+                        if self.adaptive_top_k_enabled
+                        else top_k,
                         score_threshold_enabled=False,
                         metadata_filter=metadata_filter,
                         weights=RetrieverDefaults.WEIGHTS.value,
@@ -971,7 +827,11 @@ class AdvancedApproachProcessor:
                     retrieval_result = self.retriever.call(
                         query=query_for_rerank,
                         method=RetrieverSearchMethod.HYBRID_SEARCH.value,
-                        top_k=min(top_k, 40) if self.adaptive_top_k_enabled else top_k,
+                        top_k=min(
+                            top_k, AssistantDefaults.MAX_TOP_K_PER_FILE_QUERY.value
+                        )
+                        if self.adaptive_top_k_enabled
+                        else top_k,
                         does_rerank=False,
                         score_threshold_enabled=False,
                         metadata_filter=metadata_filter,
@@ -1027,7 +887,7 @@ class AdvancedApproachProcessor:
     def _combine_file_answers(self, answers: List[Dict[str, Any]]) -> str:
         """Combine answers from multiple queries intelligently"""
         if not answers:
-            return "N/A"
+            return ResponseMessages.NO_ANSWER
 
         # Prioritize answers with higher segment count and more content
         answers_sorted = sorted(
@@ -1038,13 +898,15 @@ class AdvancedApproachProcessor:
 
         # If only one answer, return it
         if len(answers_sorted) == 1:
-            return answers_sorted[0].get("answer", "N/A")
+            return answers_sorted[0].get("answer", ResponseMessages.NO_ANSWER)
 
         # Combine top answers with clear separation and deduplication of similar lines
         combined_lines = []
         seen_lines = set()
 
-        for answer in answers_sorted[:3]:  # Limit to top 3 answers
+        for answer in answers_sorted[
+            : AssistantDefaults.MAX_TOP_ANSWERS_TO_COMBINE.value
+        ]:
             for line in answer.get("answer", "").split("\n"):
                 normalized = line.strip()
                 if normalized and normalized not in seen_lines:
@@ -1277,12 +1139,17 @@ class DatasetProcessor:
 
             # Add naive answer as fallback candidate to avoid empty candidate sets
             naive_answer_text = naive_result.get("answer", "")
-            if naive_answer_text and naive_answer_text.strip().upper() != "N/A":
+            if (
+                naive_answer_text
+                and naive_answer_text.strip().upper() != ResponseMessages.NO_ANSWER
+            ):
                 naive_sources = [
                     name for name in (naive_result.get("source_files") or []) if name
                 ]
                 display_sources = []
-                for name in naive_sources[:3]:
+                for name in naive_sources[
+                    : AssistantDefaults.MAX_DISPLAY_SOURCES.value
+                ]:
                     try:
                         display_sources.append(f"{dataset_id}/{unquote(name)}")
                     except Exception:

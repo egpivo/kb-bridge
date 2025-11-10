@@ -26,7 +26,9 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (False, "Invalid credentials")
             mock_creds.backend_type = "dify"
@@ -55,7 +57,9 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -89,7 +93,9 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -125,7 +131,9 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -167,7 +175,9 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -209,7 +219,9 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -258,7 +270,9 @@ class TestAssistantServiceCredentials:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -310,7 +324,9 @@ class TestAssistantServiceQueryProcessing:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -378,7 +394,9 @@ class TestAssistantServiceQueryProcessing:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -441,7 +459,9 @@ class TestAssistantServiceQueryProcessing:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -511,7 +531,9 @@ class TestAssistantServiceQueryProcessing:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -590,7 +612,9 @@ class TestAssistantServiceQueryProcessing:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -659,7 +683,9 @@ class TestAssistantServiceResults:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -714,7 +740,7 @@ class TestAssistantServiceResults:
                                 mock_extract.return_value = ("refined query", [])
 
                                 with patch(
-                                    "kbbridge.core.orchestration.utils.ResultFormatter"
+                                    "kbbridge.services.assistant_service.ResultFormatter"
                                 ) as mock_formatter:
                                     mock_formatter.format_final_answer.return_value = (
                                         "test answer"
@@ -740,7 +766,9 @@ class TestAssistantServiceResults:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -787,7 +815,7 @@ class TestAssistantServiceResults:
                                 mock_extract.return_value = ("refined query", [])
 
                                 with patch(
-                                    "kbbridge.core.orchestration.utils.ResultFormatter"
+                                    "kbbridge.services.assistant_service.ResultFormatter"
                                 ) as mock_formatter:
                                     # Structured formatting fails
                                     mock_formatter.format_structured_answer.return_value = {
@@ -827,7 +855,7 @@ class TestAssistantServiceHelpers:
         mock_ctx.warning = AsyncMock()
 
         with patch(
-            "kbbridge.core.query.rewriter.LLMQueryRewriter"
+            "kbbridge.services.assistant_service._rew.LLMQueryRewriter"
         ) as mock_rewriter_class:
             mock_rewriter = Mock()
             mock_result = Mock()
@@ -862,7 +890,7 @@ class TestAssistantServiceHelpers:
         mock_ctx.warning = AsyncMock()
 
         with patch(
-            "kbbridge.core.query.rewriter.LLMQueryRewriter"
+            "kbbridge.services.assistant_service._rew.LLMQueryRewriter"
         ) as mock_rewriter_class:
             mock_rewriter_class.side_effect = Exception("Rewriter error")
 
@@ -1030,7 +1058,9 @@ class TestAssistantServiceProgressReporting:
         mock_ctx.error = AsyncMock()
         # Don't add progress attribute - should handle AttributeError gracefully
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -1081,7 +1111,9 @@ class TestAssistantServiceCustomInstructions:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -1129,7 +1161,7 @@ class TestAssistantServiceCustomInstructions:
                                 mock_extract.return_value = ("refined query", [])
 
                                 with patch(
-                                    "kbbridge.core.orchestration.utils.ResultFormatter"
+                                    "kbbridge.services.assistant_service.ResultFormatter"
                                 ) as mock_formatter:
                                     mock_formatter.format_structured_answer.return_value = {
                                         "success": True,
@@ -1181,7 +1213,9 @@ class TestAssistantServiceCustomInstructions:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -1234,9 +1268,15 @@ class TestAssistantServiceCustomInstructions:
                                 )
 
                             # Check that document_name was passed to DatasetProcessor
-                            call_kwargs = mock_processor_class.call_args[1]
+                            assert mock_processor_class.called
+                            call_kwargs = (
+                                mock_processor_class.call_args.kwargs
+                                if mock_processor_class.call_args.kwargs
+                                else {}
+                            )
                             assert (
-                                call_kwargs["focus_document_name"] == "specific_doc.pdf"
+                                call_kwargs.get("focus_document_name")
+                                == "specific_doc.pdf"
                             )
 
 
@@ -1252,7 +1292,9 @@ class TestAssistantServiceReflection:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -1307,7 +1349,7 @@ class TestAssistantServiceReflection:
                                 mock_extract.return_value = ("refined query", [])
 
                                 with patch(
-                                    "kbbridge.core.orchestration.utils.ResultFormatter"
+                                    "kbbridge.services.assistant_service.ResultFormatter"
                                 ) as mock_formatter:
                                     mock_formatter.format_structured_answer.return_value = {
                                         "success": True,
@@ -1330,8 +1372,7 @@ class TestAssistantServiceReflection:
                                         )
 
                                         with patch(
-                                            "kbbridge.config.constants.ReflectorDefaults",
-                                            create=True,
+                                            "kbbridge.services.assistant_service.ReflectorDefaults",
                                         ) as mock_ref_defaults:
                                             # Mock reflection enabled by default
                                             mock_ref_defaults.ENABLED.value = True
@@ -1361,7 +1402,9 @@ class TestAssistantServiceReflection:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"
@@ -1388,8 +1431,7 @@ class TestAssistantServiceReflection:
                     mock_parser.parse_credentials.return_value = (Mock(), None)
 
                     with patch(
-                        "kbbridge.config.constants.ReflectorDefaults",
-                        create=True,
+                        "kbbridge.services.assistant_service.ReflectorDefaults",
                     ) as mock_ref_defaults:
                         # Mock reflection enabled by default
                         mock_ref_defaults.ENABLED.value = True
@@ -1418,7 +1460,9 @@ class TestAssistantServiceCredentialParser:
         mock_ctx.error = AsyncMock()
         mock_ctx.progress = AsyncMock()
 
-        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
             mock_creds = Mock()
             mock_creds.validate.return_value = (True, None)
             mock_creds.endpoint = "https://test.com"

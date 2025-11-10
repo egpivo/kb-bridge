@@ -8,7 +8,15 @@ from fastmcp import Context
 
 import kbbridge.core.orchestration as _orch
 from kbbridge.core.orchestration import ParameterValidator, profile_stage
+from kbbridge.core.orchestration.utils import ResultFormatter
+from kbbridge.core.query import rewriter as _rew
+from kbbridge.core.reflection.constants import ReflectorDefaults
+from kbbridge.core.reflection.integration import (
+    ReflectionIntegration,
+    parse_reflection_params,
+)
 from kbbridge.core.utils.json_utils import parse_dataset_info
+from kbbridge.integrations import RetrievalCredentials
 
 logger = logging.getLogger(__name__)
 
@@ -21,17 +29,13 @@ DEFAULT_CONFIG = {
     "max_boost_keywords": 1,
 }
 
-# Simple helpers to resolve patchable orchestration symbols
-def CP():  # CredentialParser
-    return globals().get("CredentialParser") or getattr(_orch, "CredentialParser")
 
-
-def CF():  # ComponentFactory
-    return globals().get("ComponentFactory") or getattr(_orch, "ComponentFactory")
-
-
-def DP():  # DatasetProcessor
-    return globals().get("DatasetProcessor") or getattr(_orch, "DatasetProcessor")
+async def _safe_progress(ctx: Context, current: int, total: int, message: str) -> None:
+    """Safely call ctx.progress, ignoring if not available."""
+    try:
+        await ctx.progress(current, total, message)
+    except (AttributeError, TypeError):
+        logger.debug(f"Progress reporting not available: {message}")
 
 
 async def assistant_service(
@@ -42,41 +46,20 @@ async def assistant_service(
     document_name: Optional[str] = None,
     enable_query_rewriting: bool = False,
 ) -> Dict[str, Any]:
-    """
-    Knowledge Base Assistant - Intelligent search and answer extraction from knowledge bases.
-
-    This tool provides intelligent search and answer extraction from knowledge bases
-    using both naive and advanced approaches with organizational AI processing.
-
-    Args:
-        dataset_info: Dataset information in JSON format containing id and source_path pairs
-        query: The query to ask the knowledge base assistant
-        custom_instructions: Optional domain-specific instructions or context to guide the search and answer extraction (e.g., "Focus on HR compliance and UAE labor laws", "Emphasize safety protocols")
-        document_name: Optional specific document name to focus the search on
-        enable_query_rewriting: Optional flag to enable LLM-based query rewriting (expansion/relaxation) before intention extraction
-
-    Returns:
-        Dict containing the search results and extracted answers with optional reflection metadata
-    """
+    """Search and extract answers from knowledge bases."""
     # Generate session ID and start timing
     session_id = str(uuid.uuid4())[:8]
     start_time = time.time()
 
     debug_info = []
     profiling_data = {}
-    processing_stages = []
     errors = []
 
     await ctx.info(f"Starting assistant session {session_id} with query: '{query}'")
     await ctx.info(f"Dataset info: {dataset_info}")
     await ctx.info(f"Verbose mode: {DEFAULT_CONFIG['verbose']}")
 
-    # Report initial progress (if supported)
-    try:
-        await ctx.progress(0, 10, "Initializing KB Assistant...")
-    except (AttributeError, TypeError):
-        # Progress method not available, continue without progress reporting
-        pass
+    await _safe_progress(ctx, 0, 10, "Initializing KB Assistant...")
 
     try:
         # Parse dataset info FIRST so tests get dataset errors before credential validation
@@ -99,10 +82,7 @@ async def assistant_service(
 
         # Parse dataset info
         try:
-            try:
-                await ctx.progress(3, 10, "Parsing dataset information...")
-            except AttributeError:
-                pass
+            await _safe_progress(ctx, 3, 10, "Parsing dataset information...")
             dataset_pairs = parse_dataset_info(config.dataset_info)
             await ctx.info(f"Parsed dataset pairs: {dataset_pairs}")
 
@@ -116,9 +96,6 @@ async def assistant_service(
         except Exception:
             # For invalid dataset_info input, tests expect a generic 'No datasets with files found'
             return {"error": "No datasets with files found"}
-
-        # Validate retrieval backend credentials using generic RetrievalCredentials
-        from kbbridge.integrations import RetrievalCredentials
 
         retrieval_creds = RetrievalCredentials.from_env()
         retrieval_valid, retrieval_error = retrieval_creds.validate()
@@ -194,22 +171,13 @@ async def assistant_service(
                 }
 
         # Optionally warn if reflection may be enabled by default but token missing
-        try:
-            from kbbridge.config.constants import ReflectorDefaults as _RefDefaults
-
-            reflection_default = _RefDefaults.ENABLED.value
-        except Exception:
-            reflection_default = False
+        reflection_default = ReflectorDefaults.ENABLED.value
         if reflection_default and not credentials_dict.get("llm_api_token"):
             await ctx.warning(
                 "Reflection may be enabled by default but LLM_API_TOKEN is not set - reflection may fail"
             )
 
-        # Report progress - credentials validated (if supported)
-        try:
-            await ctx.progress(2, 10, "Credentials validated successfully")
-        except (AttributeError, TypeError):
-            pass
+        await _safe_progress(ctx, 2, 10, "Credentials validated successfully")
 
         # Parse credentials (tests may patch this symbol at this module path)
         CredentialParser = getattr(_orch, "CredentialParser")
@@ -237,16 +205,13 @@ async def assistant_service(
                     f"Dataset ID '{dataset_id}' seems too short - might be invalid"
                 )
 
-        # Create components
-        try:
-            await ctx.progress(4, 10, "Creating components...")
-        except (AttributeError, TypeError):
-            pass
+        await _safe_progress(ctx, 4, 10, "Creating components...")
         await ctx.info("Creating components...")
         try:
             ComponentFactory = getattr(_orch, "ComponentFactory")
             components = ComponentFactory.create_components(credentials)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to create components: {e}", exc_info=True)
             components = {"intention_extractor": object()}
 
         # Increase max_tokens for intention extractor to ensure full response
@@ -259,10 +224,7 @@ async def assistant_service(
         # Optional query rewriting (expansion/relaxation) before intention extraction
         query_to_process = config.query
         if enable_query_rewriting:
-            try:
-                await ctx.progress(4, 10, "Rewriting query...")
-            except (AttributeError, TypeError):
-                pass
+            await _safe_progress(ctx, 4, 10, "Rewriting query...")
             await ctx.info(f"Query rewriting enabled for: '{config.query}'")
             # Call local helper; tests patch kbbridge.services.assistant_service._rewrite_query
             rewritten_query = await _rewrite_query(
@@ -280,11 +242,7 @@ async def assistant_service(
             else:
                 await ctx.info("Query rewriting: no changes needed")
 
-        # Extract intention (refine query)
-        try:
-            await ctx.progress(5, 10, "Extracting user intention...")
-        except (AttributeError, TypeError):
-            pass
+        await _safe_progress(ctx, 5, 10, "Extracting user intention...")
         await ctx.info(f"Extracting intention for query: '{query_to_process}'")
         # Call local helper; tests patch kbbridge.services.assistant_service._extract_intention
         refined_query, sub_queries = await _extract_intention(
@@ -304,13 +262,9 @@ async def assistant_service(
             )
             refined_query = config.query
 
-        # Process datasets - handle multi-query execution if sub-queries exist
-        try:
-            await ctx.progress(
-                6, 10, f"Processing {len(dataset_pairs)} dataset pairs..."
-            )
-        except (AttributeError, TypeError):
-            pass
+        await _safe_progress(
+            ctx, 6, 10, f"Processing {len(dataset_pairs)} dataset pairs..."
+        )
         await ctx.info(f"Processing {len(dataset_pairs)} dataset pairs...")
 
         # Log custom instructions
@@ -359,8 +313,10 @@ async def assistant_service(
                 try:
                     if hasattr(processor, "process_datasets"):
                         processor.process_datasets(dataset_pairs, refined_query)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        f"Test path processor call failed (expected in some tests): {e}"
+                    )
             else:
                 # Single query execution
                 # If tests replaced the processor with a Mock exposing `.process`, call it
@@ -373,14 +329,12 @@ async def assistant_service(
                 dataset_results, candidates = processor.process_datasets(
                     dataset_pairs, refined_query
                 )
-            try:
-                await ctx.progress(
-                    8,
-                    10,
-                    f"Dataset processing completed. Found {len(candidates)} candidates",
-                )
-            except (AttributeError, TypeError):
-                pass
+            await _safe_progress(
+                ctx,
+                8,
+                10,
+                f"Dataset processing completed. Found {len(candidates)} candidates",
+            )
             await ctx.info(
                 f"Dataset processing completed. Found {len(candidates)} candidates"
             )
@@ -430,11 +384,7 @@ async def assistant_service(
                 "details": "All datasets are empty or inaccessible",
             }
 
-        # Format and return results
-        try:
-            await ctx.progress(9, 10, "Formatting results...")
-        except (AttributeError, TypeError):
-            pass
+        await _safe_progress(ctx, 9, 10, "Formatting results...")
         await ctx.info(f"Formatting results. Verbose mode: {config.verbose}")
 
         # Log pipeline summary
@@ -473,11 +423,7 @@ async def assistant_service(
             await ctx.info("Formatting structured answer...")
             logger.info(f"Final Answer Formatting: {len(candidates)} candidates")
 
-            # Resolve formatter dynamically via orchestration.utils for patching
-            from kbbridge.core.orchestration import utils as _or_utils
-
-            _Formatter = getattr(_or_utils, "ResultFormatter")
-            structured_result = _Formatter.format_structured_answer(
+            structured_result = ResultFormatter.format_structured_answer(
                 candidates, config.query, credentials
             )
             if structured_result.get("success"):
@@ -536,21 +482,14 @@ async def assistant_service(
                 await ctx.warning(
                     "Structured formatting failed, falling back to simple format"
                 )
-                # Prefer local class for patching; fallback to shim
-                final_answer = _Formatter.format_final_answer(
+                final_answer = ResultFormatter.format_final_answer(
                     candidates, config.query, credentials
                 )
                 await ctx.info(f"Final answer: '{final_answer}'")
                 result = {"answer": final_answer}
 
-            # NEW: Apply reflection if enabled
+            # Apply reflection if enabled
             try:
-                # Local import to avoid optional dependency at import time
-                from kbbridge.core.reflection.integration import (
-                    ReflectionIntegration,
-                    parse_reflection_params,
-                )
-
                 reflection_params = parse_reflection_params(
                     enable_reflection=None,
                     reflection_threshold=None,
@@ -602,12 +541,9 @@ async def assistant_service(
             except Exception as e:
                 await ctx.warning(f"Reflection processing failed: {e}")
 
-        try:
-            await ctx.progress(
-                10, 10, "KB Assistant processing completed successfully!"
-            )
-        except (AttributeError, TypeError):
-            pass
+        await _safe_progress(
+            ctx, 10, 10, "KB Assistant processing completed successfully!"
+        )
 
         # Calculate session metrics
         duration_ms = int((time.time() - start_time) * 1000)
@@ -664,24 +600,8 @@ async def _rewrite_query(
     profiling_data: Dict[str, Any],
     ctx: Context,
 ) -> str:
-    """
-    Optionally rewrite query using LLM-based expansion/relaxation strategies.
-
-    Args:
-        query: Original user query
-        credentials: LLM credentials
-        debug_info: List to append debug information
-        profiling_data: Dictionary for profiling metrics
-        ctx: MCP context for logging
-
-    Returns:
-        Rewritten query (or original if rewriting fails/not needed)
-    """
-    # Import via shim to avoid importing DSPy at collection time
-    from kbbridge.core.query import rewriter as _rew
-
+    """Rewrite query using LLM-based expansion/relaxation strategies."""
     LLMQueryRewriter = getattr(_rew, "LLMQueryRewriter")
-    from kbbridge.core.utils.profiling_utils import profile_stage
 
     try:
         with profile_stage("query_rewriting", profiling_data, verbose=True):
@@ -721,7 +641,7 @@ async def _extract_intention(
     profiling_data: Dict[str, Any],
     ctx: Context,
 ) -> tuple[str, List[str]]:
-    """Extract user intention and refine query, return (refined_query, sub_queries)"""
+    """Extract user intention and refine query."""
     await ctx.info(f"Starting intention extraction for query: '{query}'")
 
     # CRITICAL FIX: Never decompose "list ALL" type queries
@@ -828,12 +748,12 @@ async def _extract_intention(
 
 
 async def _execute_multi_query(
-    processor: Any,  # DatasetProcessor
+    processor: Any,
     dataset_pairs: List[Dict[str, str]],
     sub_queries: List[str],
     ctx: Context,
 ) -> tuple[List[Any], List[Dict[str, Any]]]:
-    """Execute multiple sub-queries sequentially and combine results"""
+    """Execute multiple sub-queries sequentially and combine results."""
     await ctx.info(f"Starting sequential execution of {len(sub_queries)} sub-queries")
 
     all_results = []
@@ -868,12 +788,10 @@ def _return_verbose_results(
     debug_info: List[str],
     profiling_data: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Return verbose results with debugging information"""
-    # Format best answer
-    from kbbridge.core.orchestration import utils as _or_utils
-
-    _Formatter = getattr(_or_utils, "ResultFormatter")
-    text_summary = _Formatter.format_final_answer(candidates, config.query, credentials)
+    """Return verbose results with debugging information."""
+    text_summary = ResultFormatter.format_final_answer(
+        candidates, config.query, credentials
+    )
 
     # Build complete result
     result = {

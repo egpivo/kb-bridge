@@ -8,10 +8,10 @@ class TestServerModule:
 
     def test_get_current_credentials_empty(self):
         """Test get_current_credentials when no credentials are set"""
-        from kbbridge.server import get_current_credentials
+        from kbbridge.middleware._auth_core import get_current_credentials
 
         # Mock auth_middleware to return None
-        with patch("kbbridge.server.auth_middleware") as mock_auth:
+        with patch("kbbridge.middleware._auth_core.auth_middleware") as mock_auth:
             mock_auth.get_available_credentials.return_value = None
 
             result = get_current_credentials()
@@ -19,7 +19,10 @@ class TestServerModule:
 
     def test_set_current_credentials(self):
         """Test set_current_credentials functionality"""
-        from kbbridge.server import get_current_credentials, set_current_credentials
+        from kbbridge.middleware._auth_core import (
+            get_current_credentials,
+            set_current_credentials,
+        )
 
         credentials = Credentials(
             retrieval_endpoint="https://test.com",
@@ -28,7 +31,7 @@ class TestServerModule:
             llm_model="gpt-4",
         )
 
-        with patch("kbbridge.server.auth_middleware") as mock_auth:
+        with patch("kbbridge.middleware._auth_core.auth_middleware") as mock_auth:
             mock_auth.get_available_credentials.return_value = credentials
 
             set_current_credentials(credentials)
@@ -41,9 +44,12 @@ class TestServerModule:
 
     def test_set_current_credentials_none(self):
         """Test set_current_credentials with None"""
-        from kbbridge.server import get_current_credentials, set_current_credentials
+        from kbbridge.middleware._auth_core import (
+            get_current_credentials,
+            set_current_credentials,
+        )
 
-        with patch("kbbridge.server.auth_middleware") as mock_auth:
+        with patch("kbbridge.middleware._auth_core.auth_middleware") as mock_auth:
             mock_auth.get_available_credentials.return_value = None
 
             set_current_credentials(None)
@@ -88,13 +94,16 @@ class TestServerModule:
 
     def test_imports_work(self):
         """Test that all imports work correctly"""
-        from kbbridge.server import (
-            get_current_credentials,
-            main,
-            set_current_credentials,
+        # Test direct import from middleware (where functions are actually defined)
+        from kbbridge.middleware._auth_core import (
+            get_current_credentials as get_creds_direct,
         )
+        from kbbridge.middleware._auth_core import (
+            set_current_credentials as set_creds_direct,
+        )
+        from kbbridge.server import main
 
         # These should not raise import errors
-        assert callable(get_current_credentials)
-        assert callable(set_current_credentials)
         assert callable(main)
+        assert callable(get_creds_direct)
+        assert callable(set_creds_direct)

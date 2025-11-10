@@ -1,6 +1,8 @@
 import logging
 from typing import Any, Dict, List, Optional
 
+import dspy
+
 from .config import setup
 from .constants import ReflectionConstants
 from .evaluator import Evaluator, get_default_examples
@@ -11,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Reflector:
-    """Manages answer quality reflection and refinement process."""
+    """Manages answer quality reflection and refinement."""
 
     def __init__(
         self,
@@ -24,20 +26,31 @@ class Reflector:
         self.threshold = threshold
         self.max_iterations = max_iterations
         self.evaluator: Optional[Evaluator] = None
+        self._lm: Optional[dspy.LM] = None
         self.use_dspy = False
 
         try:
-            setup(
+            if not api_key:
+                raise ValueError("API key is required for reflection")
+
+            self._lm = setup(
                 llm_model,
                 llm_api_url,
                 api_key,
                 temperature=ReflectionConstants.DEFAULT_TEMPERATURE,
             )
             examples = get_default_examples()
-            self.evaluator = Evaluator(threshold, examples=examples)
+            self.evaluator = Evaluator(
+                lm=self._lm, threshold=threshold, examples=examples
+            )
             self.use_dspy = True
+            logger.info(f"Reflection enabled: DSPy setup successful, model={llm_model}")
         except Exception as e:
-            logger.warning(f"Reflection disabled: DSPy setup failed: {e}")
+            logger.warning(
+                f"Reflection disabled: DSPy setup failed: {e}", exc_info=True
+            )
+            self.evaluator = None
+            self._lm = None
 
         self.feedback = FeedbackGenerator()
 
@@ -45,27 +58,31 @@ class Reflector:
         self, query: str, answer: str, sources: List[Dict[str, Any]], attempt: int = 1
     ) -> Optional[ReflectionResult]:
         """Reflect on answer quality and return evaluation result."""
-        if not self.evaluator:
-            logger.info("Reflection skipped: evaluator not initialized")
+        if not self.evaluator or not self._lm:
+            logger.info("Reflection skipped: evaluator or LM not initialized")
             return None
 
-        logger.info(f"Reflecting attempt {attempt}")
+        try:
+            logger.info(f"Reflecting attempt {attempt}")
 
-        reflection = await self.evaluator.evaluate(
-            query=query,
-            answer=answer,
-            sources=sources,
-            attempt=attempt,
-        )
+            reflection = await self.evaluator.evaluate(
+                query=query,
+                answer=answer,
+                sources=sources,
+                attempt=attempt,
+            )
 
-        logger.info(
-            f"Score: {reflection.overall_score:.2f}, Passed: {reflection.passed}"
-        )
+            logger.info(
+                f"Score: {reflection.overall_score:.2f}, Passed: {reflection.passed}"
+            )
 
-        return reflection
+            return reflection
+        except Exception as e:
+            logger.error(f"Reflection failed: {e}", exc_info=True)
+            return None
 
     def should_refine(self, reflection: ReflectionResult, current_attempt: int) -> bool:
-        """Determine if answer should be refined based on reflection result."""
+        """Determine if answer should be refined."""
         if reflection.passed:
             return False
         if current_attempt >= self.max_iterations:

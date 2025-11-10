@@ -32,9 +32,11 @@ class Evaluator:
 
     def __init__(
         self,
+        lm: dspy.LM,
         threshold: float = ReflectionConstants.DEFAULT_QUALITY_THRESHOLD,
         examples: Optional[List[Any]] = None,
     ) -> None:
+        self._lm = lm
         self.threshold = threshold
         self.examples = (
             examples[: ReflectionConstants.MAX_EXAMPLES_TO_USE] if examples else []
@@ -56,11 +58,12 @@ class Evaluator:
                 f"query_length={len(query)}, answer_length={len(answer)}"
             )
 
-            result = self.evaluator(
-                query=query,
-                answer=answer,
-                sources=sources_text,
-            )
+            with dspy.settings.context(lm=self._lm):
+                result = self.evaluator(
+                    query=query,
+                    answer=answer,
+                    sources=sources_text,
+                )
 
             scores = QualityScores(
                 completeness=float(result.completeness),
@@ -89,16 +92,15 @@ class Evaluator:
                 threshold=self.threshold,
             )
         except Exception as e:
-            logger.error(f"Evaluation failed: {e}")
-            from .models import QualityScores, ReflectionResult
+            logger.error(f"Evaluation failed: {e}", exc_info=True)
 
             return ReflectionResult(
                 scores=QualityScores(
-                    ReflectionConstants.FALLBACK_SCORE,
-                    ReflectionConstants.FALLBACK_SCORE,
-                    ReflectionConstants.FALLBACK_SCORE,
-                    ReflectionConstants.FALLBACK_SCORE,
-                    ReflectionConstants.FALLBACK_SCORE,
+                    completeness=ReflectionConstants.FALLBACK_SCORE,
+                    accuracy=ReflectionConstants.FALLBACK_SCORE,
+                    clarity=ReflectionConstants.FALLBACK_SCORE,
+                    relevance=ReflectionConstants.FALLBACK_SCORE,
+                    confidence=ReflectionConstants.FALLBACK_SCORE,
                 ),
                 overall_score=ReflectionConstants.FALLBACK_SCORE,
                 passed=True,
@@ -120,7 +122,7 @@ class Evaluator:
         return "\n".join(formatted)
 
     def _parse_json(self, text: str) -> List[str]:
-        """Parse JSON array from text, with fallback to simple parsing."""
+        """Parse JSON array from text."""
         try:
             parsed = json.loads(text)
             return parsed if isinstance(parsed, list) else []
@@ -130,7 +132,5 @@ class Evaluator:
 
 
 def get_default_examples() -> List[Any]:
-    """
-    Returns empty list. Examples should be generated dynamically based on dataset context.
-    """
+    """Return empty list. Examples should be generated dynamically."""
     return []

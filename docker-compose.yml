@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  kbbridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kbbridge:latest
+    container_name: kbbridge
+    ports:
+      - "5210:5210"
+    environment:
+      # Retrieval Backend Configuration
+      - RETRIEVAL_ENDPOINT=${RETRIEVAL_ENDPOINT:-https://api.dify.ai/v1}
+      - RETRIEVAL_API_KEY=${RETRIEVAL_API_KEY:-}
+
+      # LLM Configuration
+      - LLM_API_URL=${LLM_API_URL:-}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o}
+      - LLM_API_TOKEN=${LLM_API_TOKEN:-}
+
+      # Reranking (Optional)
+      - RERANK_URL=${RERANK_URL:-}
+      - RERANK_MODEL=${RERANK_MODEL:-}
+
+      # Server Configuration
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=5210
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+      # Uvicorn Configuration (Optional)
+      - UVICORN_TIMEOUT_KEEP_ALIVE=${UVICORN_TIMEOUT_KEEP_ALIVE:-}
+      - UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN=${UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-30}
+      - UVICORN_LIMIT_CONCURRENCY=${UVICORN_LIMIT_CONCURRENCY:-100}
+
+    env_file:
+      - .env  # Load additional environment variables from .env file
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s = socket.socket(); s.connect(('localhost', 5210)); s.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - kbbridge-network
+
+networks:
+  kbbridge-network:
+    driver: bridge

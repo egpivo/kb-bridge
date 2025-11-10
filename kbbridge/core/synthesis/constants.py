@@ -1,6 +1,13 @@
 from enum import Enum
 
 
+class ResponseMessages:
+    """Standard response messages used across the system."""
+
+    NO_ANSWER = "N/A"
+    NO_ANSWER_WITH_CONTEXT = "N/A - No relevant information found"
+
+
 class AnswerExtractorDefaults(Enum):
     """Default values for Answer Extractor."""
 

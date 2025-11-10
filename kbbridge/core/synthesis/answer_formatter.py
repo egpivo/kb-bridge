@@ -8,7 +8,11 @@ import dspy
 from pydantic import BaseModel, Field
 
 from .answer_reranker import AnswerReranker
-from .constants import AnswerExtractorDefaults, StructuredAnswerFormatterDefaults
+from .constants import (
+    AnswerExtractorDefaults,
+    ResponseMessages,
+    StructuredAnswerFormatterDefaults,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +215,7 @@ class StructuredAnswerFormatter(dspy.Module):
                 ans = c.get("answer", "")
                 if not ans:
                     continue
-                if ans.strip().upper() == "N/A":
+                if ans.strip().upper() == ResponseMessages.NO_ANSWER:
                     continue
                 valid_candidates.append(c)
 
@@ -226,8 +230,8 @@ class StructuredAnswerFormatter(dspy.Module):
                 file_name = candidate.get("file_name", "")
                 try:
                     file_name = unquote(file_name)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Failed to unquote file_name '{file_name}': {e}")
                 logger.info(
                     f"   - Candidate {idx} [{source}/{file_name}]: {answer_len} chars"
                 )
@@ -337,7 +341,10 @@ class StructuredAnswerFormatter(dspy.Module):
                             c["display_source"] = f"{ds_id}/{unquote(fname)}"
                         else:
                             c["display_source"] = ds_id
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(
+                            f"Failed to unquote file_name '{fname}' for display_source: {e}"
+                        )
                         c["display_source"] = c.get("dataset_id", "")
 
             # Format candidates for the prompt (without indentation to save space)
@@ -403,7 +410,7 @@ class StructuredAnswerFormatter(dspy.Module):
                     f"      - Output: {output_chars:,} chars ({reduction_pct:.1f}% reduction)"
                 )
                 logger.info(
-                    f"      - Sources: {len(structured_data.get('sources', []))}, Confidence: {structured_data.get('confidence', 'N/A')}"
+                    f"      - Sources: {len(structured_data.get('sources', []))}, Confidence: {structured_data.get('confidence', ResponseMessages.NO_ANSWER)}"
                 )
 
                 total_duration = time.time() - start_time

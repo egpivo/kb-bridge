@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING, Dict, List, Union
 
 import requests
 
+from .constants import ResponseMessages
+
 if TYPE_CHECKING:
     from kbbridge.core.orchestration.models import CandidateAnswer
 
@@ -89,7 +91,11 @@ class AnswerReranker:
 
     def _is_valid_answer(self, candidate: "CandidateAnswer") -> bool:
         """Check if candidate has a valid answer."""
-        return candidate.success and candidate.answer and candidate.answer != "N/A"
+        return (
+            candidate.success
+            and candidate.answer
+            and candidate.answer != ResponseMessages.NO_ANSWER
+        )
 
     def _call_reranking_service(
         self, query: str, documents: List[str], timeout: int

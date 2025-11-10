@@ -29,9 +29,9 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
             echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          elif [ -n "${{ github.ref }}" ]; then
-            # Extract version from tag (e.g., refs/tags/v0.1.0 -> 0.1.0)
-            VERSION=$(echo "${{ github.ref }}" | sed 's/refs\/tags\/v//')
+          elif [ -n "${{ github.ref_name }}" ]; then
+            # Extract version from tag (e.g., v0.1.0 -> 0.1.0)
+            VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
             echo "version=$VERSION" >> $GITHUB_OUTPUT
           else
             # Fallback: extract from pyproject.toml
@@ -76,11 +76,20 @@ jobs:
 
       - name: Create GitHub Release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ steps.get_version.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          body: |
+            ## Release ${{ steps.get_version.outputs.version }}
+
+            Published to PyPI: https://pypi.org/project/kbbridge/${{ steps.get_version.outputs.version }}/
+
+            ### Installation
+            ```bash
+            pip install kbbridge==${{ steps.get_version.outputs.version }}
+            ```
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

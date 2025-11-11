@@ -32,7 +32,6 @@ class TestRetrieverService:
         assert "top_k" in DEFAULT_CONFIG
         assert "score_threshold" in DEFAULT_CONFIG
         assert "weights" in DEFAULT_CONFIG
-        assert "source_path" in DEFAULT_CONFIG
         assert "document_name" in DEFAULT_CONFIG
         assert "verbose" in DEFAULT_CONFIG
         # Reranking provider/model are NOT in default config - they're backend-specific
@@ -133,13 +132,12 @@ class TestKnowledgeBaseRetrieverComponents:
         """Test metadata filter building"""
         retriever = KnowledgeBaseRetriever("https://test.com", "test-key")
 
-        # Test with source_path (use keyword arguments)
-        filter_result = retriever.build_metadata_filter(
-            source_path="test/path", document_name=""
-        )
+        # Test with document_name only
+        filter_result = retriever.build_metadata_filter(document_name="test.pdf")
         assert filter_result is not None
         assert "conditions" in filter_result
-        assert filter_result["conditions"][0]["name"] == "source_path"
+        assert filter_result["conditions"][0]["name"] == "document_name"
+        assert filter_result["conditions"][0]["value"] == "test.pdf"
 
     def test_format_search_results_success(self):
         """Test format_search_results with valid data"""
@@ -387,8 +385,8 @@ class TestRetrieverServiceFunction:
                     for cond in call_kwargs["metadata_filter"]["conditions"]
                 )
 
-    def test_retriever_service_with_source_path_and_document_name(self):
-        """Test retriever_service with both source_path and document_name"""
+    def test_retriever_service_with_document_name(self):
+        """Test retriever_service with document_name filter"""
         with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             with patch(
                 "kbbridge.utils.working_components.KnowledgeBaseRetriever"
@@ -404,17 +402,16 @@ class TestRetrieverServiceFunction:
                 mock_retriever.retrieve.return_value = {"data": []}
                 mock_retriever_class.return_value = mock_retriever
 
-                # Call with both filters
+                # Call with document_name filter
                 result = retriever_service(
                     dataset_id="test-dataset",
                     query="test query",
                     retrieval_endpoint="https://test.com",
                     retrieval_api_key="test-key",
-                    source_path="/path/to/source",
                     document_name="test.pdf",
                 )
 
-                # Verify both conditions are in metadata_filter
+                # Verify document_name condition is in metadata_filter
                 assert (
                     mock_retriever.retrieve.called
                 ), "retrieve should have been called"
@@ -428,9 +425,9 @@ class TestRetrieverServiceFunction:
                     and call_kwargs["metadata_filter"] is not None
                 )
                 conditions = call_kwargs["metadata_filter"]["conditions"]
-                assert len(conditions) == 2
-                assert any(cond["name"] == "source_path" for cond in conditions)
+                assert len(conditions) == 1
                 assert any(cond["name"] == "document_name" for cond in conditions)
+                assert any(cond["value"] == "test.pdf" for cond in conditions)
 
 
 class TestListAvailableBackends:

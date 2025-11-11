@@ -15,13 +15,11 @@ class ChunkHit:
         self,
         content: str,
         document_name: str,
-        source_path: str = "",
         score: float = 0.0,
         metadata: Optional[Dict[str, Any]] = None,
     ):
         self.content = content
         self.document_name = document_name
-        self.source_path = source_path
         self.score = score
         self.metadata = metadata or {}
 
@@ -59,13 +57,9 @@ class Retriever(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def build_metadata_filter(
-        self, *, source_path: str = "", document_name: str = ""
-    ) -> Optional[dict]:
+    def build_metadata_filter(self, *, document_name: str = "") -> Optional[dict]:
         raise NotImplementedError
 
     @abstractmethod
-    def list_files(
-        self, *, dataset_id: str, source_path: str = "", timeout: int = 30
-    ) -> List[str]:
+    def list_files(self, *, dataset_id: str, timeout: int = 30) -> List[str]:
         raise NotImplementedError("list_files is not implemented for this backend")

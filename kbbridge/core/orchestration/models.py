@@ -72,7 +72,6 @@ class SearchRequest:
 
     query: str
     dataset_id: str
-    source_path: str = ""
     verbose: bool = False
 
 
@@ -169,6 +168,10 @@ class Credentials:
     rerank_url: Optional[str] = None
     rerank_model: Optional[str] = None
 
+    def is_reranking_available(self) -> bool:
+        """Check if reranking is available based on credentials."""
+        return bool(self.rerank_url and self.rerank_model)
+
 
 @dataclass
 class WorkerDistribution:
@@ -188,22 +191,20 @@ class CandidateAnswer:
     from any retrieval system (Dify, OpenSearch, Pinecone, etc.).
 
     Fields:
-        source: Processing source ("naive" or "advanced")
+        source: Processing source ("direct" or "advanced")
         answer: The extracted answer text
         success: Whether the extraction was successful
         dataset_id: Knowledge base/collection/index identifier
         file_name: Source document name (optional)
-        source_path: Folder/path within the knowledge base (optional)
         display_source: Human-readable source citation (optional)
         metadata: Additional backend-specific metadata (optional)
     """
 
-    source: str  # "naive" or "advanced"
+    source: str  # "direct" or "advanced"
     answer: str
     success: bool
     dataset_id: str = ""
     file_name: str = ""
-    source_path: str = ""
     display_source: str = ""
     metadata: Optional[Dict[str, Any]] = None
 
@@ -215,7 +216,6 @@ class CandidateAnswer:
             "success": self.success,
             "dataset_id": self.dataset_id,
             "file_name": self.file_name,
-            "source_path": self.source_path,
             "display_source": self.display_source,
             **(self.metadata or {}),
         }
@@ -229,7 +229,6 @@ class CandidateAnswer:
             "success",
             "dataset_id",
             "file_name",
-            "source_path",
             "display_source",
         }
         metadata = {k: v for k, v in data.items() if k not in known_fields}
@@ -239,7 +238,6 @@ class CandidateAnswer:
             success=data.get("success", False),
             dataset_id=data.get("dataset_id", ""),
             file_name=data.get("file_name", ""),
-            source_path=data.get("source_path", ""),
             display_source=data.get("display_source", ""),
             metadata=metadata if metadata else None,
         )
@@ -250,8 +248,7 @@ class DatasetResult:
     """Result from processing a single dataset"""
 
     dataset_id: str
-    source_path: str
-    naive_result: Dict[str, Any]
+    direct_result: Dict[str, Any]
     advanced_result: Dict[str, Any]
     candidates: List[Dict[str, Any]]  # TODO: Migrate to List[CandidateAnswer]
     debug_info: List[str]

@@ -10,8 +10,8 @@ from kbbridge.core.orchestration.models import Credentials, ProcessingConfig
 from kbbridge.core.orchestration.pipeline import (
     AdvancedApproachProcessor,
     DatasetProcessor,
+    DirectApproachProcessor,
     FileSearchStrategy,
-    NaiveApproachProcessor,
 )
 
 
@@ -43,7 +43,7 @@ class TestFileSearchStrategy:
             mock_time.side_effect = [0.0, 1.5, 0.0, 1.5]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset", source_path="test/path"
+                query="test query", dataset_id="test-dataset"
             )
 
             assert result["success"] is True
@@ -64,7 +64,7 @@ class TestFileSearchStrategy:
             mock_time.side_effect = [0.0, 0.5, 0.0, 0.5]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset", source_path="test/path"
+                query="test query", dataset_id="test-dataset"
             )
 
             assert result["success"] is False
@@ -101,15 +101,15 @@ class TestFileSearchStrategy:
         assert "File search error: Test error" in result["error"]
 
 
-class TestNaiveApproachProcessor:
-    """Test NaiveApproachProcessor class"""
+class TestDirectApproachProcessor:
+    """Test DirectApproachProcessor class"""
 
     def test_init(self):
-        """Test NaiveApproachProcessor initialization"""
+        """Test DirectApproachProcessor initialization"""
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, verbose=True
         )
         assert processor.retriever == mock_retriever
@@ -121,7 +121,7 @@ class TestNaiveApproachProcessor:
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, verbose=True
         )
 
@@ -138,7 +138,7 @@ class TestNaiveApproachProcessor:
             "answer": "Test answer",
         }
 
-        result = processor.process("test query", "test-dataset", "test/path", 0.5, 10)
+        result = processor.process("test query", "test-dataset", 0.5, 10)
 
         assert result["success"] is True
         # The actual behavior returns "N/A" when no segments are found
@@ -149,7 +149,7 @@ class TestNaiveApproachProcessor:
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, verbose=True
         )
 
@@ -161,7 +161,7 @@ class TestNaiveApproachProcessor:
             "error_message": "Knowledge base retrieval failed",
         }
 
-        result = processor.process("test query", "test-dataset", "test/path", 0.5, 10)
+        result = processor.process("test query", "test-dataset", 0.5, 10)
 
         assert result["success"] is False
         assert "Knowledge base retrieval failed" in result["error"]
@@ -171,7 +171,7 @@ class TestNaiveApproachProcessor:
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, verbose=True
         )
 
@@ -188,7 +188,7 @@ class TestNaiveApproachProcessor:
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, verbose=True
         )
 
@@ -196,7 +196,7 @@ class TestNaiveApproachProcessor:
         mock_retriever.build_metadata_filter.return_value = {"conditions": []}
         mock_retriever.retrieve.return_value = {"success": True, "result": []}
 
-        result = processor.process("test query", "test-dataset", "test/path", 0.5, 10)
+        result = processor.process("test query", "test-dataset", 0.5, 10)
 
         assert result["success"] is True
         assert result["answer"] == "N/A"
@@ -240,9 +240,7 @@ class TestAdvancedApproachProcessor:
         }
 
         file_search_result = {"success": True, "file_names": ["test.pdf"]}
-        result = processor.process(
-            "test query", "test-dataset", "test/path", file_search_result
-        )
+        result = processor.process("test query", "test-dataset", 10, file_search_result)
 
         assert result["success"] is True
         # The actual behavior returns file_answers instead of answer
@@ -266,9 +264,7 @@ class TestAdvancedApproachProcessor:
         }
 
         file_search_result = {"success": True, "file_names": ["test.pdf"]}
-        result = processor.process(
-            "test query", "test-dataset", "test/path", file_search_result
-        )
+        result = processor.process("test query", "test-dataset", 10, file_search_result)
 
         # The actual behavior returns success=True even with retrieval errors
         assert result["success"] is True
@@ -287,9 +283,7 @@ class TestAdvancedApproachProcessor:
         mock_retriever.retrieve.return_value = {"success": True, "result": []}
 
         file_search_result = {"success": True, "file_names": []}
-        result = processor.process(
-            "test query", "test-dataset", "test/path", file_search_result
-        )
+        result = processor.process("test query", "test-dataset", 10, file_search_result)
 
         # The actual behavior returns success=True even with no files
         assert result["success"] is True
@@ -326,7 +320,7 @@ class TestDatasetProcessor:
         assert processor.credentials == mock_credentials
         assert processor.profiling_data == mock_profiling_data
         assert processor.file_search_strategy is not None
-        assert processor.naive_processor is not None
+        assert processor.direct_processor is not None
         assert processor.advanced_processor is not None
 
     def test_process_datasets_success(self):
@@ -372,7 +366,7 @@ class TestDatasetProcessor:
             return_value={"success": True, "answer": "Test answer"}
         )
 
-        dataset_pairs = [{"id": "test-dataset", "source_path": ""}]
+        dataset_pairs = [{"id": "test-dataset"}]
 
         # Mock the file_lister component to return files
         mock_components["file_lister"].check_dataset_has_files.return_value = {
@@ -385,7 +379,7 @@ class TestDatasetProcessor:
         assert len(results) == 1
         # Check DatasetResult attributes
         assert hasattr(results[0], "dataset_id")
-        assert hasattr(results[0], "naive_result")
+        assert hasattr(results[0], "direct_result")
         assert hasattr(results[0], "advanced_result")
 
     def test_process_datasets_no_files(self):
@@ -417,12 +411,12 @@ class TestDatasetProcessor:
             mock_components, mock_config, mock_credentials, mock_profiling_data
         )
 
-        # Mock the naive processor
-        processor.naive_processor.process = Mock(
-            return_value={"success": True, "answer": "Naive answer"}
+        # Mock the direct processor
+        processor.direct_processor.process = Mock(
+            return_value={"success": True, "answer": "Direct answer"}
         )
 
-        dataset_pairs = [{"id": "test-dataset", "source_path": ""}]
+        dataset_pairs = [{"id": "test-dataset"}]
 
         # This should raise ValueError because no datasets have files
         with pytest.raises(ValueError, match="No datasets with files found"):
@@ -476,7 +470,7 @@ class TestDatasetProcessor:
             mock_components, mock_config, mock_credentials, mock_profiling_data
         )
 
-        dataset_pairs = [{"id": "test-dataset", "source_path": ""}]
+        dataset_pairs = [{"id": "test-dataset"}]
 
         # Mock the file_lister component to raise an exception
         mock_components["file_lister"].check_dataset_has_files.side_effect = Exception(
@@ -530,7 +524,6 @@ class TestProcessorsIntegration:
             result = strategy.parallel_search(
                 query="machine learning algorithms",
                 dataset_id="ml-dataset",
-                source_path="research/papers",
             )
 
             assert result["success"] is True
@@ -539,12 +532,12 @@ class TestProcessorsIntegration:
             assert "doc2.pdf" in result["file_names"]
             assert result["search_duration_ms"] == -2500.0  # Fixed the expected value
 
-    def test_naive_processor_with_real_data(self):
-        """Test NaiveApproachProcessor with realistic data"""
+    def test_direct_processor_with_real_data(self):
+        """Test DirectApproachProcessor with realistic data"""
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, verbose=True
         )
 
@@ -564,9 +557,7 @@ class TestProcessorsIntegration:
             "answer": "Machine learning is a subset of artificial intelligence that involves training algorithms on data to make predictions or decisions.",
         }
 
-        result = processor.process(
-            "What is machine learning?", "ml-dataset", "research/", 0.5, 10
-        )
+        result = processor.process("What is machine learning?", "ml-dataset", 0.5, 10)
 
         assert result["success"] is True
         # The actual behavior returns "N/A" when no segments are found

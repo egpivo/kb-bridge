@@ -150,7 +150,6 @@ class DifyRetriever(Retriever):
                     chunk = ChunkHit(
                         content=content,
                         document_name=doc_metadata.get("document_name", ""),
-                        source_path=doc_metadata.get("source_path", ""),
                         score=float(score),
                         metadata=doc_metadata,
                     )
@@ -207,29 +206,17 @@ class DifyRetriever(Retriever):
 
         return file_hits
 
-    def build_metadata_filter(
-        self, *, source_path: str = "", document_name: str = ""
-    ) -> Optional[dict]:
+    def build_metadata_filter(self, *, document_name: str = "") -> Optional[dict]:
         """
         Build Dify metadata filter.
 
         Args:
-            source_path: Filter by source path
             document_name: Filter by document name
 
         Returns:
             Metadata filter dict or None
         """
         conditions = []
-
-        if source_path.strip():
-            conditions.append(
-                {
-                    "name": "source_path",
-                    "comparison_operator": "contains",
-                    "value": source_path,
-                }
-            )
 
         if document_name.strip():
             conditions.append(
@@ -242,12 +229,12 @@ class DifyRetriever(Retriever):
 
         return {"conditions": conditions} if conditions else None
 
-    def list_files(self, *, source_path: str = "", timeout: int = 30) -> List[str]:
+    def list_files(self, *, dataset_id: str, timeout: int = 30) -> List[str]:
         """
         List document names in the dataset using Dify Documents API.
 
         Args:
-            source_path: Optional substring to filter by doc_metadata.source_path
+            dataset_id: Dataset ID (required by interface, but already set in __init__)
             timeout: Request timeout
 
         Returns:
@@ -262,20 +249,7 @@ class DifyRetriever(Retriever):
             resp = requests.get(url, headers=headers, timeout=timeout)
             resp.raise_for_status()
             data = resp.json().get("data", [])
-            files: List[str] = []
-            if not source_path:
-                files = [doc.get("name") for doc in data if doc.get("name")]
-            else:
-                for doc in data:
-                    name = doc.get("name")
-                    if not name:
-                        continue
-                    for md in doc.get("doc_metadata", []):
-                        if md.get("name") == "source_path" and source_path in md.get(
-                            "value", ""
-                        ):
-                            files.append(name)
-                            break
+            files = [doc.get("name") for doc in data if doc.get("name")]
             return files
         except Exception as e:
             logger.warning(f"Dify list_files failed: {e}")

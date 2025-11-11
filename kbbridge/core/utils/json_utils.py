@@ -96,7 +96,7 @@ def parse_dataset_info(raw: str) -> List[Dict[str, Any]]:
     """
     Generic parser for dataset information that can handle:
     - Simple arrays of strings/IDs: ["id1", "id2", ...]
-    - Complex arrays of dictionaries: [{"id": "id1"}, {"folder": "folder1"}, ...]
+    - Complex arrays of dictionaries: [{"id": "id1"}, ...]
     - Mixed nested JSON string layers
     - Fallback UUID extraction for malformed inputs
 
@@ -104,14 +104,14 @@ def parse_dataset_info(raw: str) -> List[Dict[str, Any]]:
         raw: Raw string containing dataset information
 
     Returns:
-        List of dictionaries with "id" and "source_path" keys
+        List of dictionaries with "id" key.
     """
     s: Union[str, Any] = raw.strip()
 
     # 0) If there are UUIDs anywhere in the raw, return them as id objects
     uuids = UUID_PATTERN.findall(raw)
     if uuids and not _looks_like_structured_json(raw):
-        return [{"id": uuid, "source_path": ""} for uuid in uuids]
+        return [{"id": uuid} for uuid in uuids]
 
     # 1) Unwrap repeated JSON string layers
     while True:
@@ -139,13 +139,13 @@ def parse_dataset_info(raw: str) -> List[Dict[str, Any]]:
                 return _process_list_items(arr)
         except json.JSONDecodeError:
             # Salvage dictionaries from malformed JSON text
-            salvaged = _salvage_id_folder_pairs(s)
+            salvaged = _salvage_id_objects(s)
             if salvaged:
                 return salvaged
 
-            # fallback: split on commas and treat as simple IDs (folder empty)
+            # fallback: split on commas and treat as simple IDs
             parts = [p.strip() for p in s.split(",") if p.strip()]
-            return [{"id": part, "source_path": ""} for part in parts]
+            return [{"id": part} for part in parts]
 
     # 4) Nothing workable found
     return []
@@ -157,10 +157,9 @@ def _looks_like_structured_json(raw: str) -> bool:
 
 
 def _process_list_items(items: List[Any]) -> List[Dict[str, Any]]:
-    """Return a sanitized list with exactly `id` and `source_path` keys.
+    """Return a sanitized list with exactly `id` key.
 
     • Only items that are dictionaries **and** contain an ``id`` key are kept.
-    • The ``source_path`` key is always present – empty string if missing.
     • All other keys are discarded.
     """
 
@@ -172,30 +171,21 @@ def _process_list_items(items: List[Any]) -> List[Dict[str, Any]]:
             if id_value in (None, ""):
                 continue
 
-            source_path_value = item.get("source_path", "")
-
-            result.append(
-                {
-                    "id": str(id_value),
-                    "source_path": str(source_path_value)
-                    if source_path_value is not None
-                    else "",
-                }
-            )
+            result.append({"id": str(id_value)})
         elif isinstance(item, (str, int, float)):
-            # Scalar treated as id-only, source_path empty
-            result.append({"id": str(item), "source_path": ""})
+            # Scalar treated as id-only
+            result.append({"id": str(item)})
         # Other types ignored
     return result
 
 
-def _salvage_id_folder_pairs(raw: str) -> List[Dict[str, Any]]:
-    """Best-effort extraction of ``{"id": …, "source_path": …}`` pairs from *raw*.
+def _salvage_id_objects(raw: str) -> List[Dict[str, Any]]:
+    """Best-effort extraction of ``{"id": …}`` objects from *raw*.
 
     This is used when the input is *not* valid JSON but still contains
     recognisable object fragments.  Only objects with an ``id`` field are kept.
-    Any missing ``source_path`` becomes an empty string.  The function is deliberately
-    permissive and *never* raises – it either returns a non-empty list or ``[]``.
+    The function is deliberately permissive and *never* raises – it either
+    returns a non-empty list or ``[]``.
     """
 
     out: List[Dict[str, Any]] = []
@@ -209,12 +199,7 @@ def _salvage_id_folder_pairs(raw: str) -> List[Dict[str, Any]]:
             obj = None
 
         if isinstance(obj, dict) and "id" in obj:
-            out.append(
-                {
-                    "id": str(obj["id"]),
-                    "source_path": str(obj.get("source_path", "")),
-                }
-            )
+            out.append({"id": str(obj["id"])})
             continue
 
         id_match = re.search(r"\"id\"\s*:\s*([^,}]+)", snippet)
@@ -225,9 +210,6 @@ def _salvage_id_folder_pairs(raw: str) -> List[Dict[str, Any]]:
         if id_token and id_token[0] in "'\"" and id_token[-1] == id_token[0]:
             id_token = id_token[1:-1]
 
-        folder_match = re.search(r"\"source_path\"\s*:\s*\"([^\"]*)\"", snippet)
-        folder_val = folder_match.group(1) if folder_match else ""
-
-        out.append({"id": id_token, "source_path": folder_val})
+        out.append({"id": id_token})
 
     return out

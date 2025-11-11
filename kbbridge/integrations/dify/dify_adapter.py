@@ -112,7 +112,6 @@ class DifyAdapter:
         method: str = "hybrid_search",
         top_k: int = 20,
         does_rerank: bool = True,
-        source_path: str = "",
         document_name: str = "",
         **options,
     ) -> Dict[str, Any]:
@@ -125,7 +124,6 @@ class DifyAdapter:
             method: Search method (semantic_search, hybrid_search, keyword_search)
             top_k: Number of results
             does_rerank: Whether to enable reranking
-            source_path: Filter by source path
             document_name: Filter by document name
             **options: Additional search options
 
@@ -139,9 +137,9 @@ class DifyAdapter:
 
         # Build metadata filter if needed
         metadata_filter = None
-        if source_path or document_name:
+        if document_name:
             metadata_filter = retriever.build_metadata_filter(
-                source_path=source_path, document_name=document_name
+                document_name=document_name
             )
 
         # Call Dify API
@@ -164,24 +162,19 @@ class DifyAdapter:
             "raw": raw_result,
         }
 
-    def list_files(
-        self, dataset_id: str, folder: str = "", timeout: int = 30
-    ) -> List[str]:
+    def list_files(self, dataset_id: str, timeout: int = 30) -> List[str]:
         """
         List files in a dataset.
 
         Args:
             dataset_id: Dataset ID
-            folder: Optional folder path to filter by
             timeout: Request timeout in seconds
 
         Returns:
             List of file names
         """
         retriever = self.create_retriever(dataset_id, timeout=timeout)
-        return retriever.list_files(
-            dataset_id=dataset_id, source_path=folder, timeout=timeout
-        )
+        return retriever.list_files(dataset_id=dataset_id, timeout=timeout)
 
     def get_credentials_summary(self) -> Dict[str, str]:
         """

@@ -101,7 +101,7 @@ class TestFormatStructuredAnswer:
                 {
                     "success": True,
                     "answer": "Test answer",
-                    "source": "naive",
+                    "source": "direct",
                     "dataset_id": "test-dataset",
                 }
             ]

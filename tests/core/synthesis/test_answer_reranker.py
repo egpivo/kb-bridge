@@ -37,7 +37,7 @@ class TestAnswerReranker:
             {
                 "success": True,
                 "answer": "First answer",
-                "source": "naive",
+                "source": "direct",
                 "dataset_id": "dataset1",
             },
             {
@@ -68,7 +68,7 @@ class TestAnswerReranker:
         reranker = AnswerReranker("https://rerank.com", "rerank-model")
 
         candidate_answers = [
-            {"success": True, "answer": "Test answer", "source": "naive"}
+            {"success": True, "answer": "Test answer", "source": "direct"}
         ]
 
         result = reranker.rerank_answers("test query", candidate_answers)
@@ -86,7 +86,7 @@ class TestAnswerReranker:
         reranker = AnswerReranker("https://rerank.com", "rerank-model")
 
         candidate_answers = [
-            {"success": True, "answer": "Test answer", "source": "naive"}
+            {"success": True, "answer": "Test answer", "source": "direct"}
         ]
 
         result = reranker.rerank_answers("test query", candidate_answers)
@@ -122,8 +122,8 @@ class TestAnswerReranker:
         assert result["detailed_results"] == []
 
     @patch("kbbridge.core.synthesis.answer_reranker.requests.post")
-    def test_rerank_answers_naive_source_formatting(self, mock_post):
-        """Test formatting for naive source answers"""
+    def test_rerank_answers_direct_source_formatting(self, mock_post):
+        """Test formatting for direct source answers"""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -137,7 +137,7 @@ class TestAnswerReranker:
             {
                 "success": True,
                 "answer": "Simple answer",
-                "source": "naive",
+                "source": "direct",
                 "dataset_id": "dataset1",
             }
         ]
@@ -173,8 +173,8 @@ class TestAnswerReranker:
         assert "**dataset1/document.pdf**: Advanced answer" in result["final_result"]
 
     @patch("kbbridge.core.synthesis.answer_reranker.requests.post")
-    def test_rerank_answers_advanced_source_with_source_path(self, mock_post):
-        """Test formatting for advanced source with source path"""
+    def test_rerank_answers_advanced_source_without_filename(self, mock_post):
+        """Test formatting for advanced source without filename (dataset only)"""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -190,13 +190,12 @@ class TestAnswerReranker:
                 "answer": "Advanced answer",
                 "source": "advanced",
                 "dataset_id": "dataset1",
-                "source_path": "/path/to/file",
             }
         ]
 
         result = reranker.rerank_answers("test query", candidate_answers)
 
-        assert "**dataset1 (/path/to/file)**: Advanced answer" in result["final_result"]
+        assert "**dataset1**: Advanced answer" in result["final_result"]
 
     @patch("kbbridge.core.synthesis.answer_reranker.requests.post")
     def test_rerank_answers_advanced_source_dataset_only(self, mock_post):
@@ -236,7 +235,7 @@ class TestAnswerReranker:
         reranker = AnswerReranker("https://rerank.com", "rerank-model")
 
         candidate_answers = [
-            {"success": True, "answer": "Test answer", "source": "naive"}
+            {"success": True, "answer": "Test answer", "source": "direct"}
         ]
 
         result = reranker.rerank_answers("test query", candidate_answers, timeout=60)
@@ -262,7 +261,7 @@ class TestAnswerReranker:
         reranker = AnswerReranker("https://rerank.com", "rerank-model")
 
         candidate_answers = [
-            {"success": True, "answer": "Test answer", "source": "naive"}
+            {"success": True, "answer": "Test answer", "source": "direct"}
         ]
 
         result = reranker.rerank_answers("test query", candidate_answers)
@@ -290,9 +289,9 @@ class TestAnswerReranker:
         reranker = AnswerReranker("https://rerank.com", "rerank-model")
 
         candidate_answers = [
-            {"success": True, "answer": "First answer", "source": "naive"},
-            {"success": True, "answer": "Second answer", "source": "naive"},
-            {"success": True, "answer": "Third answer", "source": "naive"},
+            {"success": True, "answer": "First answer", "source": "direct"},
+            {"success": True, "answer": "Second answer", "source": "direct"},
+            {"success": True, "answer": "Third answer", "source": "direct"},
         ]
 
         result = reranker.rerank_answers("test query", candidate_answers)
@@ -323,7 +322,7 @@ class TestAnswerRerankerEdgeCases:
         reranker = AnswerReranker("https://rerank.com", "rerank-model")
 
         candidate_answers = [
-            {"success": True, "answer": "Test answer", "source": "naive"}
+            {"success": True, "answer": "Test answer", "source": "direct"}
         ]
 
         result = reranker.rerank_answers("test query", candidate_answers)
@@ -342,7 +341,7 @@ class TestAnswerRerankerEdgeCases:
         reranker = AnswerReranker("https://rerank.com", "rerank-model")
 
         candidate_answers = [
-            {"success": True, "answer": "Test answer", "source": "naive"}
+            {"success": True, "answer": "Test answer", "source": "direct"}
         ]
 
         result = reranker.rerank_answers("test query", candidate_answers)
@@ -359,12 +358,12 @@ class TestAnswerRerankerEdgeCases:
             {
                 "success": True,
                 # Missing answer field
-                "source": "naive",
+                "source": "direct",
             },
             {
                 # Missing success field
                 "answer": "Test answer",
-                "source": "naive",
+                "source": "direct",
             },
         ]
 

@@ -96,7 +96,6 @@ class FileSearcherDefaults(Enum):
     RERANK_THRESHOLD = 100
     RELEVANCE_SCORE_THRESHOLD = 0.0  # Must be float
     VERBOSE_MODE = False
-    SOURCE_PATH = ""
     MAX_WORKERS_LIMIT = 10
     MIN_WORKERS_LIMIT = 1
     SEARCH_METHOD = "keyword_search"
@@ -119,7 +118,6 @@ class ContentBoosterDefaults(Enum):
     TOP_K_PER_KEYWORD = 50
     MAX_WORKERS = 10
     VERBOSE_MODE = False
-    SOURCE_PATH = ""
     MAX_WORKERS_LIMIT = 5
     MIN_WORKERS_LIMIT = 1
     CONTENT_CHUNKS_LIMIT = (

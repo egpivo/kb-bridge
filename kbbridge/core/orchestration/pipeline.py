@@ -51,7 +51,6 @@ class FileSearchStrategy:
         self,
         query: str,
         dataset_id: str,
-        source_path: str,
         max_workers: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Execute parallel file search for a dataset"""
@@ -70,7 +69,6 @@ class FileSearchStrategy:
                     search_result = self._compat_file_searcher.search_files(
                         query=query,
                         dataset_id=dataset_id,
-                        source_path=source_path,
                         max_keywords=AssistantDefaults.MAX_KEYWORDS.value,
                         top_k_per_keyword=AssistantDefaults.TOP_K_PER_KEYWORD.value,
                         max_workers=max_workers or AssistantDefaults.MAX_WORKERS.value,
@@ -78,19 +76,17 @@ class FileSearchStrategy:
                     )
                 else:
                     discover = self.discover_factory(dataset_id)
-                    metadata_filter = discover.retriever.build_metadata_filter(
-                        source_path=source_path or ""
-                    )
+                    metadata_filter = discover.retriever.build_metadata_filter()
                     files = discover(
                         query=query,
                         search_method=RetrieverSearchMethod.SEMANTIC_SEARCH.value,
                         top_k_recall=AssistantDefaults.TOP_K_PER_KEYWORD.value,
                         top_k_return=AssistantDefaults.MAX_FILES.value,
                         do_chunk_rerank=False,
-                        do_file_rerank=bool(
-                            self.credentials
-                            and self.credentials.rerank_url
-                            and self.credentials.rerank_model
+                        do_file_rerank=(
+                            self.credentials.is_reranking_available()
+                            if self.credentials
+                            else False
                         ),
                         metadata_filter=metadata_filter,
                         rerank_url=self.credentials.rerank_url
@@ -202,8 +198,8 @@ class FileSearchStrategy:
         }
 
 
-class NaiveApproachProcessor:
-    """Processes queries using the naive approach"""
+class DirectApproachProcessor:
+    """Processes queries using the direct approach"""
 
     def __init__(
         self,
@@ -211,31 +207,32 @@ class NaiveApproachProcessor:
         answer_extractor: OrganizationAnswerExtractor,
         verbose: bool = False,
         custom_instructions: Optional[str] = None,
+        credentials: Optional[Credentials] = None,
     ):
         self.retriever = retriever
         self.answer_extractor = answer_extractor
         self.verbose = verbose
         self.custom_instructions = custom_instructions
+        self.credentials = credentials
 
     def process(
         self,
         query: str,
         dataset_id: str,
-        source_path: str,
         score_threshold: Optional[float],
         top_k: int,
         document_name: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Execute naive approach: query -> retrieval -> answer"""
+        """Execute direct approach: query -> retrieval -> answer"""
         debug_info = []
-        logger.info(f"Starting naive approach processing for dataset {dataset_id}")
+        logger.info(f"Starting direct approach processing for dataset {dataset_id}")
         logger.debug(
             f"Query: '{query}', top_k: {top_k}, score_threshold: {score_threshold}"
         )
 
         # Build metadata filter
         metadata_filter = self.retriever.build_metadata_filter(
-            source_path=source_path, document_name=(document_name or "")
+            document_name=(document_name or "")
         )
         logger.debug(f"Built metadata filter: {metadata_filter}")
 
@@ -278,6 +275,11 @@ class NaiveApproachProcessor:
         top_k: int,
     ) -> Dict[str, Any]:
         """Retrieve segments from knowledge base"""
+        # Check if reranking should be enabled based on credentials
+        does_rerank = (
+            self.credentials.is_reranking_available() if self.credentials else False
+        )
+
         # Support both working retriever interface (retrieve) and integrations retriever (call)
         # Reranking config is handled internally by the adapter based on backend type
         if hasattr(self.retriever, "retrieve"):
@@ -285,7 +287,7 @@ class NaiveApproachProcessor:
                 dataset_id=dataset_id,
                 query=query,
                 search_method=RetrieverSearchMethod.HYBRID_SEARCH.value,
-                does_rerank=AssistantDefaults.DOES_RERANK.value,
+                does_rerank=does_rerank,
                 top_k=top_k,
                 score_threshold_enabled=score_threshold is not None,
                 metadata_filter=metadata_filter,
@@ -298,7 +300,7 @@ class NaiveApproachProcessor:
                 query=query,
                 method=RetrieverSearchMethod.HYBRID_SEARCH.value,
                 top_k=top_k,
-                does_rerank=AssistantDefaults.DOES_RERANK.value,
+                does_rerank=does_rerank,
                 score_threshold_enabled=score_threshold is not None,
                 metadata_filter=metadata_filter,
                 score_threshold=score_threshold,
@@ -386,7 +388,7 @@ class NaiveApproachProcessor:
     ) -> Dict[str, Any]:
         """Format retrieval error response"""
         if self.verbose:
-            debug_info.append(f"Naive retrieval failed: {retrieval_result}")
+            debug_info.append(f"Direct retrieval failed: {retrieval_result}")
             if "debug_payload" in retrieval_result:
                 debug_info.append("Debug payload sent to Dify API:")
                 debug_info.extend(
@@ -416,6 +418,7 @@ class AdvancedApproachProcessor:
         custom_instructions: Optional[str] = None,
         adaptive_top_k_enabled: bool = AssistantDefaults.ADAPTIVE_TOP_K_ENABLED.value,
         total_segment_budget: int = AssistantDefaults.TOTAL_SEGMENT_BUDGET.value,
+        credentials: Optional[Credentials] = None,
     ):
         self.retriever = retriever
         self.answer_extractor = answer_extractor
@@ -423,6 +426,7 @@ class AdvancedApproachProcessor:
         self.custom_instructions = custom_instructions
         self.adaptive_top_k_enabled = adaptive_top_k_enabled
         self.total_segment_budget = total_segment_budget
+        self.credentials = credentials
 
     def process(
         self,
@@ -802,7 +806,7 @@ class AdvancedApproachProcessor:
             ):
                 # Build metadata filter targeting this specific file
                 metadata_filter = self.retriever.build_metadata_filter(
-                    source_path="", document_name=file_name
+                    document_name=file_name
                 )
 
                 # Retrieve relevant segments
@@ -997,11 +1001,12 @@ class DatasetProcessor:
             self.credentials,
             verbose=config.verbose,
         )
-        self.naive_processor = NaiveApproachProcessor(
+        self.direct_processor = DirectApproachProcessor(
             components.get("retriever"),
             components["answer_extractor"],
             verbose=config.verbose,
             custom_instructions=custom_instructions,
+            credentials=credentials,
         )
         self.advanced_processor = AdvancedApproachProcessor(
             components.get("retriever"),
@@ -1010,6 +1015,7 @@ class DatasetProcessor:
             custom_instructions=custom_instructions,
             adaptive_top_k_enabled=config.adaptive_top_k_enabled,
             total_segment_budget=config.total_segment_budget,
+            credentials=credentials,
         )
         self.retriever_factory = components.get("retriever_factory")
         self.profiling_data = profiling_data or {}
@@ -1033,13 +1039,12 @@ class DatasetProcessor:
         datasets_with_files = []
         for pair in dataset_pairs:
             dataset_id = pair.get("id")
-            source_path = pair.get("source_path", "")
             try:
                 has_files = True
                 if self.retriever_factory:
                     r = self.retriever_factory(dataset_id)
                     if hasattr(r, "list_files"):
-                        files = r.list_files(source_path=source_path or "")
+                        files = r.list_files(dataset_id=dataset_id, timeout=30)
                         has_files = len(files) > 0
             except Exception as e:
                 # NEW BEHAVIOR: If file lister fails, proceed assuming dataset may have files
@@ -1048,9 +1053,7 @@ class DatasetProcessor:
                 )
                 has_files = True
 
-            datasets_with_files.append(
-                {"id": dataset_id, "source_path": source_path, "has_files": has_files}
-            )
+            datasets_with_files.append({"id": dataset_id, "has_files": has_files})
 
         # Check if at least one dataset has files
         if not any(d.get("has_files", False) for d in datasets_with_files):
@@ -1059,7 +1062,6 @@ class DatasetProcessor:
         # Process datasets with available files
         for pair in datasets_with_files:
             dataset_id = pair["id"]
-            source_path = pair["source_path"]
             has_files = pair.get("has_files", False)
 
             if not has_files:
@@ -1072,11 +1074,12 @@ class DatasetProcessor:
                 per_dataset_components["retriever"] = retriever_factory(dataset_id)
 
             # IMPORTANT: Use per-dataset processors so retriever is bound to the dataset
-            naive_processor = NaiveApproachProcessor(
+            direct_processor = DirectApproachProcessor(
                 per_dataset_components.get("retriever"),
                 self.components["answer_extractor"],
                 verbose=self.config.verbose,
                 custom_instructions=self.custom_instructions,
+                credentials=self.credentials,
             )
 
             advanced_processor = AdvancedApproachProcessor(
@@ -1086,6 +1089,7 @@ class DatasetProcessor:
                 custom_instructions=self.custom_instructions,
                 adaptive_top_k_enabled=self.config.adaptive_top_k_enabled,
                 total_segment_budget=self.config.total_segment_budget,
+                credentials=self.credentials,
             )
 
             # First stage: standalone file search (or pin to a specific file if requested)
@@ -1097,14 +1101,13 @@ class DatasetProcessor:
                 }
             else:
                 file_search_result = self.file_search_strategy.parallel_search(
-                    query, dataset_id, source_path, worker_dist.file_workers
+                    query, dataset_id, worker_dist.file_workers
                 )
 
-            # Second stage: naive approach
-            naive_result = naive_processor.process(
+            # Second stage: direct approach
+            direct_result = direct_processor.process(
                 query,
                 dataset_id,
-                source_path,
                 self.config.score_threshold,
                 self.config.top_k,
                 document_name=(self.focus_document_name or None),
@@ -1137,17 +1140,17 @@ class DatasetProcessor:
                     }
                 )
 
-            # Add naive answer as fallback candidate to avoid empty candidate sets
-            naive_answer_text = naive_result.get("answer", "")
+            # Add direct answer as fallback candidate to avoid empty candidate sets
+            direct_answer_text = direct_result.get("answer", "")
             if (
-                naive_answer_text
-                and naive_answer_text.strip().upper() != ResponseMessages.NO_ANSWER
+                direct_answer_text
+                and direct_answer_text.strip().upper() != ResponseMessages.NO_ANSWER
             ):
-                naive_sources = [
-                    name for name in (naive_result.get("source_files") or []) if name
+                direct_sources = [
+                    name for name in (direct_result.get("source_files") or []) if name
                 ]
                 display_sources = []
-                for name in naive_sources[
+                for name in direct_sources[
                     : AssistantDefaults.MAX_DISPLAY_SOURCES.value
                 ]:
                     try:
@@ -1157,13 +1160,13 @@ class DatasetProcessor:
                 display_source_str = (
                     "; ".join(display_sources) if display_sources else dataset_id
                 )
-                file_name_hint = naive_sources[0] if naive_sources else ""
+                file_name_hint = direct_sources[0] if direct_sources else ""
                 candidates.append(
                     {
-                        "source": "naive",
+                        "source": "direct",
                         "dataset_id": dataset_id,
                         "file_name": file_name_hint,
-                        "answer": naive_answer_text,
+                        "answer": direct_answer_text,
                         "success": True,
                         "display_source": display_source_str,
                     }
@@ -1172,8 +1175,7 @@ class DatasetProcessor:
             # Create standardized result
             result = DatasetResult(
                 dataset_id=dataset_id,
-                source_path=source_path,
-                naive_result=naive_result,
+                direct_result=direct_result,
                 advanced_result=advanced_result,
                 candidates=candidates,
                 debug_info=[],

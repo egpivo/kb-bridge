@@ -723,7 +723,7 @@ class TestAssistantServiceResults:
                             mock_dataset_result = Mock()
                             mock_dataset_result.dataset_id = "test-dataset"
                             mock_dataset_result.source_path = ""
-                            mock_dataset_result.naive_result = {}
+                            mock_dataset_result.direct_result = {}
                             mock_dataset_result.advanced_result = {}
                             mock_dataset_result.candidates = []
 

@@ -21,7 +21,7 @@ NEVER show: reasoning, tool selection, custom instructions, processing steps
 ## Tools
 
 **assistant**: Answer questions (primary)
-- dataset_info (required): [{"id": "...", "source_path": ""}]
+- dataset_info (required): [{"id": "..."}]
 - query, custom_instructions, document_name
 - enable_reflection: true for comprehensive queries ("all/every/complete")
 
@@ -60,12 +60,11 @@ def dataset_setup_guide() -> List[Dict[str, Any]]:
             "content": """# Dataset Setup Guide
 
 ## Required Format
-dataset_info: [{"id": "dataset-id", "source_path": "optional/path"}]
+dataset_info: [{"id": "dataset-id"}]
 
 ## Examples
-Single dataset: [{"id": "hr-docs", "source_path": ""}]
-With path: [{"id": "legal", "source_path": "contracts/2024"}]
-Multiple: [{"id": "hr", "source_path": ""}, {"id": "finance", "source_path": ""}]
+Single dataset: [{"id": "hr-docs"}]
+Multiple: [{"id": "hr"}, {"id": "finance"}]
 
 ## Common Patterns
 - HR: employee, policies, benefits, handbook

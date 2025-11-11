@@ -53,9 +53,7 @@ def test_dify_retriever():
         )
 
         # Test metadata filter building
-        filter_result = retriever.build_metadata_filter(
-            source_path="/test/path", document_name="test_doc.pdf"
-        )
+        filter_result = retriever.build_metadata_filter(document_name="test_doc.pdf")
 
         assert filter_result is not None
         assert "conditions" in filter_result

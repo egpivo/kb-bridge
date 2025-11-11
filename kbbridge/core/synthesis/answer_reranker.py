@@ -14,7 +14,7 @@ class AnswerReranker:
     Handles reranking of candidate answers using external reranking services.
 
     This class is backend-agnostic and works with any RAG system that produces
-    candidate answers with standard metadata (dataset_id, file_name, source_path).
+    candidate answers with standard metadata (dataset_id, file_name).
     """
 
     def __init__(self, rerank_url: str, rerank_model: str):
@@ -137,14 +137,12 @@ class AnswerReranker:
 
     def _format_candidate(self, candidate: "CandidateAnswer") -> str:
         """Format candidate answer with source citation."""
-        if candidate.source == "naive":
+        if candidate.source == "direct":
             return candidate.answer
 
         # Advanced answer with citation
         dataset = candidate.dataset_id or "Unknown dataset"
         if candidate.file_name:
             return f"**{dataset}/{candidate.file_name}**: {candidate.answer}"
-        elif candidate.source_path:
-            return f"**{dataset} ({candidate.source_path})**: {candidate.answer}"
         else:
             return f"**{dataset}**: {candidate.answer}"

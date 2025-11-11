@@ -85,7 +85,7 @@ class TestDifyRetrieverPayloadStructure:
                 method="semantic_search",
                 top_k=10,
                 metadata_filter={
-                    "conditions": [{"key": "source_path", "value": "/docs"}]
+                    "conditions": [{"name": "document_name", "value": "test.pdf"}]
                 },
             )
 
@@ -94,7 +94,7 @@ class TestDifyRetrieverPayloadStructure:
             model = payload["retrieval_model"]
             assert "metadata_filtering_conditions" in model
             assert model["metadata_filtering_conditions"] == {
-                "conditions": [{"key": "source_path", "value": "/docs"}]
+                "conditions": [{"name": "document_name", "value": "test.pdf"}]
             }
 
     def test_call_with_optional_parameters(self):
@@ -217,7 +217,6 @@ class TestDifyRetrieverNormalizeChunks:
                         "document": {
                             "doc_metadata": {
                                 "document_name": "doc1.pdf",
-                                "source_path": "/path/doc1.pdf",
                             }
                         },
                     },
@@ -229,7 +228,6 @@ class TestDifyRetrieverNormalizeChunks:
                         "document": {
                             "doc_metadata": {
                                 "document_name": "doc2.pdf",
-                                "source_path": "/path/doc2.pdf",
                             }
                         },
                     },
@@ -421,21 +419,21 @@ class TestDifyRetrieverGroupFiles:
 class TestDifyRetrieverBuildMetadataFilter:
     """Test building metadata filters"""
 
-    def test_build_metadata_filter_with_source_path(self):
-        """Test building filter with source path"""
+    def test_build_metadata_filter_with_document_name_only(self):
+        """Test building filter with document name only"""
         retriever = DifyRetriever(
             endpoint="https://test.com",
             api_key="test-key",
             dataset_id="test-dataset",
         )
 
-        filter_dict = retriever.build_metadata_filter(source_path="/docs/legal")
+        filter_dict = retriever.build_metadata_filter(document_name="legal.pdf")
 
         assert filter_dict is not None
         assert "conditions" in filter_dict
         assert len(filter_dict["conditions"]) == 1
-        assert filter_dict["conditions"][0]["name"] == "source_path"
-        assert filter_dict["conditions"][0]["value"] == "/docs/legal"
+        assert filter_dict["conditions"][0]["name"] == "document_name"
+        assert filter_dict["conditions"][0]["value"] == "legal.pdf"
 
     def test_build_metadata_filter_with_document_name(self):
         """Test building filter with document name"""
@@ -460,12 +458,11 @@ class TestDifyRetrieverBuildMetadataFilter:
             dataset_id="test-dataset",
         )
 
-        filter_dict = retriever.build_metadata_filter(
-            source_path="/docs", document_name="report.pdf"
-        )
+        filter_dict = retriever.build_metadata_filter(document_name="report.pdf")
 
         assert filter_dict is not None
-        assert len(filter_dict["conditions"]) == 2
+        assert len(filter_dict["conditions"]) == 1
+        assert filter_dict["conditions"][0]["name"] == "document_name"
 
     def test_build_metadata_filter_empty(self):
         """Test that empty filters return None"""
@@ -475,7 +472,7 @@ class TestDifyRetrieverBuildMetadataFilter:
             dataset_id="test-dataset",
         )
 
-        filter_dict = retriever.build_metadata_filter(source_path="", document_name="")
+        filter_dict = retriever.build_metadata_filter(document_name="")
 
         assert filter_dict is None
 
@@ -487,9 +484,7 @@ class TestDifyRetrieverBuildMetadataFilter:
             dataset_id="test-dataset",
         )
 
-        filter_dict = retriever.build_metadata_filter(
-            source_path="   ", document_name="  "
-        )
+        filter_dict = retriever.build_metadata_filter(document_name="  ")
 
         assert filter_dict is None
 
@@ -517,14 +512,14 @@ class TestDifyRetrieverListFiles:
             mock_response.status_code = 200
             mock_get.return_value = mock_response
 
-            files = retriever.list_files()
+            files = retriever.list_files(dataset_id="test-dataset")
 
             assert len(files) == 2
             assert "doc1.pdf" in files
             assert "doc2.pdf" in files
 
-    def test_list_files_with_source_path_filter(self):
-        """Test listing files filtered by source path"""
+    def test_list_files_success(self):
+        """Test successfully listing files"""
         retriever = DifyRetriever(
             endpoint="https://test.com",
             api_key="test-key",
@@ -535,28 +530,19 @@ class TestDifyRetrieverListFiles:
             mock_response = Mock()
             mock_response.json.return_value = {
                 "data": [
-                    {
-                        "name": "doc1.pdf",
-                        "doc_metadata": [
-                            {"name": "source_path", "value": "/legal/doc1.pdf"}
-                        ],
-                    },
-                    {
-                        "name": "doc2.pdf",
-                        "doc_metadata": [
-                            {"name": "source_path", "value": "/medical/doc2.pdf"}
-                        ],
-                    },
+                    {"name": "doc1.pdf"},
+                    {"name": "doc2.pdf"},
                 ]
             }
             mock_response.status_code = 200
             mock_get.return_value = mock_response
 
-            files = retriever.list_files(source_path="/legal")
+            files = retriever.list_files(dataset_id="test-dataset")
 
-            # Should only return files matching source path
-            assert len(files) == 1
+            # Should return all files
+            assert len(files) == 2
             assert "doc1.pdf" in files
+            assert "doc2.pdf" in files
 
     def test_list_files_exception_handling(self):
         """Test that list_files returns empty list on exception"""
@@ -567,7 +553,7 @@ class TestDifyRetrieverListFiles:
         )
 
         with patch("requests.get", side_effect=Exception("Network error")):
-            files = retriever.list_files()
+            files = retriever.list_files(dataset_id="test-dataset")
 
             # Should return empty list on error
             assert files == []

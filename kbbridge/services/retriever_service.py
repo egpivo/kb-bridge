@@ -28,7 +28,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "top_k": RetrieverDefaults.TOP_K.value,
     "score_threshold": RetrieverDefaults.SCORE_THRESHOLD.value,
     "weights": RetrieverDefaults.WEIGHTS.value,
-    "source_path": "",
     "document_name": "",
     "verbose": False,
 }
@@ -44,7 +43,6 @@ def retriever_service(
     score_threshold: Optional[float] = None,
     score_threshold_enabled: bool = False,
     weights: Optional[float] = None,
-    source_path: str = "",
     document_name: str = "",
     timeout: int = 30,
     # Backend selection
@@ -75,7 +73,6 @@ def retriever_service(
         score_threshold: Minimum score threshold
         score_threshold_enabled: Whether to enable score threshold
         weights: Search weights for hybrid search
-        source_path: Filter by source path
         document_name: Filter by document name
         timeout: Timeout in seconds for the operation (default: 30)
         backend_type: Backend type ("dify", "opensearch", "n8n") - if None, uses RETRIEVER_BACKEND env var
@@ -133,19 +130,12 @@ def retriever_service(
         # "kbbridge.utils.working_components.KnowledgeBaseRetriever"
         kb_retriever = working_components.KnowledgeBaseRetriever(endpoint, api_key)
 
-        # Build optional metadata filter for document/source_path
+        # Build optional metadata filter for document_name
         metadata_filter = None
-        # KnowledgeBaseRetriever.retrieve accepts "metadata_filter" but does not provide a builder
-        if source_path:
-            metadata_filter = {
-                "conditions": [{"name": "source_path", "value": source_path}]
-            }
         if document_name:
-            # Simple filter by document name when provided
-            metadata_filter = metadata_filter or {"conditions": []}
-            metadata_filter["conditions"].append(
-                {"name": "document_name", "value": document_name}
-            )
+            metadata_filter = {
+                "conditions": [{"name": "document_name", "value": document_name}]
+            }
 
         # Pass reranking config via **kwargs - adapter will use its own defaults
         resp = kb_retriever.retrieve(

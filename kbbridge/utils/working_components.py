@@ -61,29 +61,17 @@ class KnowledgeBaseRetriever:
         self.endpoint = endpoint
         self.api_key = api_key
 
-    def build_metadata_filter(
-        self, *, source_path: str = "", document_name: str = ""
-    ) -> Optional[dict]:
+    def build_metadata_filter(self, *, document_name: str = "") -> Optional[dict]:
         """
         Build metadata filter for retrieval.
 
         Args:
-            source_path: Filter by source path
             document_name: Filter by document name
 
         Returns:
             Metadata filter dict or None
         """
         conditions = []
-
-        if source_path.strip():
-            conditions.append(
-                {
-                    "name": "source_path",
-                    "comparison_operator": "contains",
-                    "value": source_path,
-                }
-            )
 
         if document_name.strip():
             conditions.append(
@@ -378,12 +366,11 @@ class WorkingDatasetProcessor:
 
         for dataset_pair in dataset_pairs:
             dataset_id = dataset_pair["id"]
-            source_path = dataset_pair.get("source_path", "")
 
-            # Use naive approach (simple search)
-            naive_result = self._process_naive_approach(dataset_id, refined_query)
-            if naive_result.get("candidates"):
-                all_candidates.extend(naive_result["candidates"])
+            # Use direct approach (simple search)
+            direct_result = self._process_direct_approach(dataset_id, refined_query)
+            if direct_result.get("candidates"):
+                all_candidates.extend(direct_result["candidates"])
 
             # Use advanced approach (with reranking)
             advanced_result = self._process_advanced_approach(dataset_id, refined_query)
@@ -393,16 +380,15 @@ class WorkingDatasetProcessor:
             dataset_results.append(
                 {
                     "dataset_id": dataset_id,
-                    "source_path": source_path,
-                    "naive_results": naive_result,
+                    "direct_results": direct_result,
                     "advanced_results": advanced_result,
                 }
             )
 
         return dataset_results, all_candidates
 
-    def _process_naive_approach(self, dataset_id: str, query: str) -> Dict[str, Any]:
-        """Process using naive approach (simple search)"""
+    def _process_direct_approach(self, dataset_id: str, query: str) -> Dict[str, Any]:
+        """Process using direct approach (simple search)"""
         retriever = self.components["retriever"]
 
         result = retriever.retrieve(
@@ -419,8 +405,8 @@ class WorkingDatasetProcessor:
                 candidates.append(
                     {
                         "content": item.get("content", ""),
-                        "score": 1.0,  # Naive approach doesn't provide scores
-                        "source": "dify_naive_search",
+                        "score": 1.0,  # Direct approach doesn't provide scores
+                        "source": "dify_direct_search",
                         "metadata": {"document_name": item.get("document_name", "")},
                     }
                 )
@@ -468,8 +454,8 @@ class WorkingResultFormatter:
             return "No relevant information found in the knowledge base."
 
         # Group by source
-        naive_results = [
-            c for c in candidates if c.get("source") == "dify_naive_search"
+        direct_results = [
+            c for c in candidates if c.get("source") == "dify_direct_search"
         ]
         advanced_results = [
             c for c in candidates if c.get("source") == "dify_advanced_search"
@@ -477,9 +463,9 @@ class WorkingResultFormatter:
 
         answer_parts = []
 
-        if naive_results:
+        if direct_results:
             answer_parts.append("**Search Results:**")
-            for i, result in enumerate(naive_results[:3], 1):
+            for i, result in enumerate(direct_results[:3], 1):
                 content = result.get("content", "").strip()
                 if content:
                     answer_parts.append(f"{i}. {content}")
@@ -491,7 +477,7 @@ class WorkingResultFormatter:
             ):  # Top 2 additional results
                 content = result.get("content", "").strip()
                 if content and content not in [
-                    r.get("content", "") for r in naive_results
+                    r.get("content", "") for r in direct_results
                 ]:
                     answer_parts.append(f"{i}. {content}")
 

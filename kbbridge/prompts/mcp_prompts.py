@@ -21,7 +21,7 @@ NEVER show: reasoning, tool selection, custom instructions, processing steps
 ## Tools
 
 **assistant**: Answer questions (primary)
-- dataset_info (required): [{"id": "..."}] (source_path is accepted but ignored)
+- dataset_info (required): [{"id": "..."}]
 - query, custom_instructions, document_name
 - enable_reflection: true for comprehensive queries ("all/every/complete")
 
@@ -61,8 +61,6 @@ def dataset_setup_guide() -> List[Dict[str, Any]]:
 
 ## Required Format
 dataset_info: [{"id": "dataset-id"}]
-
-Note: source_path is accepted for backward compatibility but is ignored.
 
 ## Examples
 Single dataset: [{"id": "hr-docs"}]

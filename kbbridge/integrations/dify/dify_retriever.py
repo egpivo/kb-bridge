@@ -70,6 +70,8 @@ class DifyRetriever(Retriever):
         if kw.get("weights") is not None:
             model["weights"] = kw["weights"]
         if kw.get("metadata_filter") is not None:
+            # Ensure metadata is enabled when using metadata filters
+            self.enable_metadata(timeout=self.timeout)
             model["metadata_filtering_conditions"] = kw["metadata_filter"]
 
         payload = {"query": query, "retrieval_model": model}
@@ -119,12 +121,12 @@ class DifyRetriever(Retriever):
                         continue
 
                     # Extract metadata
-                    doc = record.get("segment", {}).get("document", {})
+                    doc = record.get("document") or {}
                     if not isinstance(doc, dict):
-                        continue
-                    doc_metadata = doc.get("doc_metadata", {})
+                        doc = {}
+                    doc_metadata = doc.get("doc_metadata") or {}
                     if not isinstance(doc_metadata, dict):
-                        continue
+                        doc_metadata = {}
                     document_name = doc.get("name", "") or doc_metadata.get(
                         "document_name", ""
                     )
@@ -226,16 +228,30 @@ class DifyRetriever(Retriever):
             logger.warning(f"Dify list_files failed: {e}")
             return []
 
-    def enable_metadata(self, timeout: int = 30) -> bool:
+    def enable_metadata(self, timeout: int = 30, force: bool = False) -> bool:
         """
         Enable built-in metadata for the dataset.
 
+        Checks current status first and only enables if metadata is disabled.
+        Use force=True to enable even if already enabled.
+
         Args:
             timeout: Request timeout in seconds
+            force: If True, enable even if already enabled (default: False)
 
         Returns:
-            True if metadata was enabled successfully, False otherwise
+            True if metadata was enabled successfully or already enabled, False otherwise
         """
+        # Check current status first
+        if not force:
+            status = self.check_metadata_status(timeout=timeout)
+            if status and status.get("enabled"):
+                logger.info(
+                    f"Metadata already enabled for dataset {self.dataset_id}, skipping enable"
+                )
+                return True
+
+        # Enable metadata
         url = f"{self.endpoint}/v1/datasets/{self.dataset_id}/metadata/built-in/enable"
         headers = {
             "Authorization": f"Bearer {self.api_key}",

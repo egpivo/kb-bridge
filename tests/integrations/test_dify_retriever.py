@@ -66,7 +66,7 @@ class TestDifyRetrieverPayloadStructure:
             )
 
     def test_call_with_metadata_filter(self):
-        """Test that metadata_filter becomes metadata_filtering_conditions"""
+        """Test that metadata_filter becomes metadata_filtering_conditions and enables metadata"""
         retriever = DifyRetriever(
             endpoint="https://test.com",
             api_key="test-key",
@@ -74,11 +74,33 @@ class TestDifyRetrieverPayloadStructure:
             timeout=30,
         )
 
-        with patch("requests.post") as mock_post:
-            mock_response = Mock()
-            mock_response.json.return_value = {"records": []}
-            mock_response.status_code = 200
-            mock_post.return_value = mock_response
+        with patch("requests.get") as mock_get, patch("requests.post") as mock_post:
+            # Mock enable_metadata check (metadata is disabled, so it will enable)
+            status_response = Mock()
+            status_response.json.return_value = {"enabled": False}
+            status_response.status_code = 200
+            status_response.raise_for_status.return_value = None
+            mock_get.return_value = status_response
+
+            # Mock enable POST response
+            enable_response = Mock()
+            enable_response.status_code = 200
+            enable_response.raise_for_status.return_value = None
+
+            # Mock retrieve POST response
+            retrieve_response = Mock()
+            retrieve_response.json.return_value = {"records": []}
+            retrieve_response.status_code = 200
+            retrieve_response.raise_for_status.return_value = None
+
+            # Set up mock_post to return different responses for enable vs retrieve
+            def post_side_effect(*args, **kwargs):
+                url = args[0] if args else kwargs.get("url", "")
+                if "metadata/built-in/enable" in url:
+                    return enable_response
+                return retrieve_response
+
+            mock_post.side_effect = post_side_effect
 
             retriever.call(
                 query="test query",
@@ -89,8 +111,18 @@ class TestDifyRetrieverPayloadStructure:
                 },
             )
 
+            # Verify enable_metadata was called (check status first)
+            assert mock_get.call_count >= 1
+
             # Verify metadata_filtering_conditions is in retrieval_model
-            payload = mock_post.call_args[1]["json"]
+            # Find the retrieve call (not the enable call)
+            retrieve_calls = [
+                call
+                for call in mock_post.call_args_list
+                if "retrieve" in (call[0][0] if call[0] else "")
+            ]
+            assert len(retrieve_calls) > 0
+            payload = retrieve_calls[0][1]["json"]
             model = payload["retrieval_model"]
             assert "metadata_filtering_conditions" in model
             assert model["metadata_filtering_conditions"] == {
@@ -694,23 +726,32 @@ class TestDifyRetrieverMetadata:
     """Test metadata enable and status check methods"""
 
     def test_enable_metadata_success(self):
-        """Test successfully enabling metadata"""
+        """Test successfully enabling metadata when disabled"""
         retriever = DifyRetriever(
             endpoint="https://test.com",
             api_key="test-key",
             dataset_id="test-dataset",
         )
 
-        with patch("requests.post") as mock_post:
-            mock_response = Mock()
-            mock_response.status_code = 200
-            mock_response.raise_for_status.return_value = None
-            mock_post.return_value = mock_response
+        with patch("requests.get") as mock_get, patch("requests.post") as mock_post:
+            # Mock check_metadata_status to return disabled status
+            status_response = Mock()
+            status_response.json.return_value = {"enabled": False}
+            status_response.status_code = 200
+            status_response.raise_for_status.return_value = None
+            mock_get.return_value = status_response
+
+            # Mock enable_metadata POST response
+            enable_response = Mock()
+            enable_response.status_code = 200
+            enable_response.raise_for_status.return_value = None
+            mock_post.return_value = enable_response
 
             result = retriever.enable_metadata()
 
             assert result is True
-            mock_post.assert_called_once()
+            mock_get.assert_called_once()  # Should check status first
+            mock_post.assert_called_once()  # Should then enable
             call_url = mock_post.call_args[0][0]
             assert (
                 call_url
@@ -719,6 +760,47 @@ class TestDifyRetrieverMetadata:
             headers = mock_post.call_args[1]["headers"]
             assert headers["Authorization"] == "Bearer test-key"
             assert headers["Content-Type"] == "application/json"
+
+    def test_enable_metadata_already_enabled(self):
+        """Test that enable_metadata skips if already enabled"""
+        retriever = DifyRetriever(
+            endpoint="https://test.com",
+            api_key="test-key",
+            dataset_id="test-dataset",
+        )
+
+        with patch("requests.get") as mock_get, patch("requests.post") as mock_post:
+            # Mock check_metadata_status to return enabled status
+            status_response = Mock()
+            status_response.json.return_value = {"enabled": True}
+            status_response.status_code = 200
+            status_response.raise_for_status.return_value = None
+            mock_get.return_value = status_response
+
+            result = retriever.enable_metadata()
+
+            assert result is True
+            mock_get.assert_called_once()  # Should check status
+            mock_post.assert_not_called()  # Should NOT call enable if already enabled
+
+    def test_enable_metadata_force(self):
+        """Test that force=True enables even if already enabled"""
+        retriever = DifyRetriever(
+            endpoint="https://test.com",
+            api_key="test-key",
+            dataset_id="test-dataset",
+        )
+
+        with patch("requests.post") as mock_post:
+            enable_response = Mock()
+            enable_response.status_code = 200
+            enable_response.raise_for_status.return_value = None
+            mock_post.return_value = enable_response
+
+            result = retriever.enable_metadata(force=True)
+
+            assert result is True
+            mock_post.assert_called_once()  # Should call enable even if already enabled
 
     def test_enable_metadata_http_error(self):
         """Test enable_metadata returns False on HTTP error"""

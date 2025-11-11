@@ -5,46 +5,48 @@ Backend abstraction for retrieval systems (Dify, OpenSearch, Pinecone, etc.)
 ## Usage
 
 ```python
-from kbbridge.integrations import DifyAdapter, DifyCredentials
+from kbbridge.integrations import BackendAdapterFactory, RetrievalCredentials
 
-# Create adapter
-credentials = DifyCredentials.from_env()
-adapter = DifyAdapter(credentials=credentials)
+# Create resource-bound adapter
+credentials = RetrievalCredentials.from_env()
+adapter = BackendAdapterFactory.create(
+    resource_id="my-resource",
+    credentials=credentials
+)
 
-# Search
+# Search (no resource_id needed - adapter is resource-bound)
 results = adapter.search(
-    dataset_id="my-dataset",
     query="What is the vacation policy?",
     top_k=20
 )
 
-# List files
-files = adapter.list_files(dataset_id="my-dataset")
+# List files (no resource_id needed - adapter is resource-bound)
+files = adapter.list_files()
 ```
 
 ## Architecture
 
 ```
 integrations/
-├── retriever_base.py        # Abstract Retriever, ChunkHit, FileHit
+├── backend_adapter.py        # BackendAdapter (ABC) and BackendAdapterFactory
+├── credentials.py            # RetrievalCredentials
+├── retriever_base.py         # Abstract Retriever, ChunkHit, FileHit
 ├── retriever_router.py       # Factory for creating retrievers
 ├── dify/
-│   ├── dify_credentials.py   # Credential management
-│   ├── dify_adapter.py       # High-level API
-│   └── dify_retriever.py     # Low-level implementation
+│   ├── dify_credentials.py   # DifyCredentials (backward compatibility)
+│   ├── dify_backend_adapter.py  # DifyBackendAdapter implementation
+│   └── dify_retriever.py     # Low-level DifyRetriever implementation
 └── README.md
 ```
 
 ## Adding New Backends
 
-1. Implement `Retriever` interface from `retriever_base.py`
-2. Register with `RetrieverRouter`
+1. Implement `BackendAdapter` interface from `backend_adapter.py`
+2. Register with `BackendAdapterFactory`
 
 ```python
-class OpenSearchRetriever(Retriever):
-    def call(self, *, query, method, top_k, **kw): ...
-    def normalize_chunks(self, resp): ...
-    def group_files(self, chunks): ...
-    def build_metadata_filter(self, **kwargs): ...
-    def list_files(self, **kwargs): ...
+class OpenSearchBackendAdapter(BackendAdapter):
+    def search(self, query: str, **options) -> Dict[str, Any]: ...
+    def list_files(self, timeout: int = 30) -> List[str]: ...
+    def build_metadata_filter(self, document_name: str = "") -> Optional[Dict]: ...
 ```

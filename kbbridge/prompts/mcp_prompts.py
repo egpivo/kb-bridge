@@ -21,7 +21,7 @@ NEVER show: reasoning, tool selection, custom instructions, processing steps
 ## Tools
 
 **assistant**: Answer questions (primary)
-- dataset_id (required): Dataset ID string (e.g., "dataset-id-123")
+- resource_id (required): Resource ID string (e.g., "resource-id-123")
 - query, custom_instructions, document_name
 - enable_reflection: true for comprehensive queries ("all/every/complete")
 
@@ -41,7 +41,7 @@ NEVER show: reasoning, tool selection, custom instructions, processing steps
 
 When you need to find relevant files before querying:
 
-1. **Call file_discover** with query and dataset_id:
+1. **Call file_discover** with query and resource_id:
    - Returns: `{"success": true, "distinct_files": ["file1.pdf", "file2.pdf"], "total_files": 2}`
    - If empty: `{"success": true, "distinct_files": [], "total_files": 0, "debug_info": {...}}`
    - Check `debug_info` if `distinct_files` is empty to diagnose issues
@@ -55,11 +55,11 @@ When you need to find relevant files before querying:
 
 **Example workflow**:
 ```
-1. file_discover(query="employment policies", dataset_id="hr-docs")
+1. file_discover(query="employment policies", resource_id="hr-docs")
    → Returns: {"distinct_files": ["employee_handbook.pdf", "policies.pdf"]}
 
 2. assistant(
-     dataset_id="hr-docs",
+     resource_id="hr-docs",
      query="What are the vacation policies?",
      document_name="employee_handbook.pdf"  # Use file from step 1
    )
@@ -82,18 +82,18 @@ Format: (Source: file.pdf) or (Source: file1.pdf; file2.pdf)""",
 
 
 @mcp.prompt()
-def dataset_setup_guide() -> List[Dict[str, Any]]:
-    """Guide for setting up datasets in KBBridge."""
+def resource_setup_guide() -> List[Dict[str, Any]]:
+    """Guide for setting up resources in KBBridge."""
     return [
         {
             "role": "user",
-            "content": """# Dataset Setup Guide
+            "content": """# Resource Setup Guide
 
 ## Required Format
-dataset_id: "dataset-id"
+resource_id: "resource-id"
 
 ## Examples
-Single dataset: "hr-docs"
+Single resource: "hr-docs"
 
 ## Common Patterns
 - HR: employee, policies, benefits, handbook

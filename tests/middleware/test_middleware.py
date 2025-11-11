@@ -430,7 +430,7 @@ class TestSessionConfigDecorators:
 
         # Create a mock context with Pydantic session config
         mock_ctx = MagicMock()
-        from kbbridge.server import SessionConfig
+        from kbbridge.config.config import SessionConfig
 
         session_config = SessionConfig(
             retrieval_endpoint="https://session.com",
@@ -508,7 +508,7 @@ class TestSessionConfigDecorators:
             return f"Processed: {query}"
 
         mock_ctx = MagicMock()
-        from kbbridge.server import SessionConfig
+        from kbbridge.config.config import SessionConfig
 
         session_config = SessionConfig(
             retrieval_endpoint="https://kwargs.com",
@@ -543,7 +543,7 @@ class TestSessionConfigDecorators:
             return f"Processed: {query}"
 
         mock_ctx = MagicMock()
-        from kbbridge.server import SessionConfig
+        from kbbridge.config.config import SessionConfig
 
         session_config = SessionConfig(
             retrieval_endpoint="https://async.com",
@@ -577,7 +577,7 @@ class TestSessionConfigDecorators:
             return f"Processed: {query}"
 
         mock_ctx = MagicMock()
-        from kbbridge.server import SessionConfig
+        from kbbridge.config.config import SessionConfig
 
         # Missing retrieval_endpoint or retrieval_api_key
         session_config = SessionConfig(

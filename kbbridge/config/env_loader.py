@@ -83,7 +83,7 @@ def print_env_status():
     timeout_vars = [
         "OVERALL_REQUEST_TIMEOUT",
         "MCP_CLIENT_TIMEOUT",
-        "DIFY_API_TIMEOUT",
+        "RETRIEVAL_API_TIMEOUT",
         "LLM_TIMEOUT_SECONDS",
     ]
     for var in timeout_vars:

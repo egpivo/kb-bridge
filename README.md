@@ -118,30 +118,25 @@ await session.call_tool("assistant", {
 })
 ```
 
-### With Quality Reflection
+### With Query Rewriting
 
 ```python
 await session.call_tool("assistant", {
     "resource_id": "resource-id",
     "query": "What are the safety protocols?",
-    "reflection_mode": "standard",  # "off", "standard", or "comprehensive"
-    "reflection_threshold": 0.75,
-    "max_reflection_iterations": 2
+    "enable_query_rewriting": True  # Enables LLM-based query expansion/relaxation
 })
 ```
 
-## Reflection Modes
+### With Document Filtering
 
-- **`off`**: No reflection (fastest)
-- **`standard`** (default): Answer quality evaluation only
-- **`comprehensive`**: Search coverage + answer quality evaluation
-
-Reflection evaluates answers on:
-- **Completeness** (30%): Does the answer fully address the query?
-- **Accuracy** (30%): Are sources relevant and correctly cited?
-- **Relevance** (20%): Does the answer stay on topic?
-- **Clarity** (10%): Is the answer clear and well-structured?
-- **Confidence** (10%): Quality of supporting sources?
+```python
+await session.call_tool("assistant", {
+    "resource_id": "resource-id",
+    "query": "What are the safety protocols?",
+    "document_name": "safety_manual.pdf"  # Limit search to specific document
+})
+```
 
 ## Development
 

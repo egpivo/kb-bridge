@@ -1,16 +1,17 @@
 import argparse
 import asyncio
 import json
-import logging
 import os
+from pathlib import Path
 from typing import Optional
 
+from dotenv import load_dotenv
 from fastmcp import Context, FastMCP
-from pydantic import BaseModel
 
 from kbbridge.config.config import Config
 from kbbridge.config.constants import AssistantDefaults, RetrieverDefaults
 from kbbridge.config.env_loader import get_env_int, load_env_file, print_env_status
+from kbbridge.logger import setup_logging
 from kbbridge.middleware import MCPConfigHelper, require_auth
 from kbbridge.middleware._auth_core import get_current_credentials
 from kbbridge.prompts import mcp as prompts_mcp
@@ -20,50 +21,10 @@ from kbbridge.services.file_lister_service import file_lister_service
 from kbbridge.services.keyword_generator_service import keyword_generator_service
 from kbbridge.services.retriever_service import retriever_service
 
-
-# Configure logging based on environment
-def get_log_level():
-    """Get log level from environment variable."""
-    env_level = os.getenv("LOG_LEVEL", "INFO").upper()
-    level_map = {
-        "DEBUG": logging.DEBUG,
-        "INFO": logging.INFO,
-        "WARNING": logging.WARNING,
-        "ERROR": logging.ERROR,
-        "CRITICAL": logging.CRITICAL,
-    }
-    return level_map.get(env_level, logging.INFO)
-
-
-# Load environment variables from .env file
-load_env_file()
-
-# Configure logging
-log_level = get_log_level()
-
-# Setup handlers for both console and file output
-handlers = [logging.StreamHandler()]  # Console output
-
-# Add file handler if enabled (useful for STDIO transport where console is captured)
-if os.getenv("LOG_TO_FILE", "false").lower() == "true":
-    log_file = os.getenv("LOG_FILE", "kbbridge_server.log")
-    file_handler = logging.FileHandler(log_file, mode="a")
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    )
-    handlers.append(file_handler)
-
-logging.basicConfig(
-    level=log_level,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=handlers,
-)
-logger = logging.getLogger(__name__)
-logger.info(f"Logging configured with level: {logging.getLevelName(log_level)}")
-if os.getenv("LOG_TO_FILE") == "true":
-    logger.info(f"File logging enabled: {os.getenv('LOG_FILE', 'qa_hub_server.log')}")
-
-print_env_status()
+# Note: Environment variables are auto-loaded by env_loader module
+# Custom env file can be specified via --env-file argument in main()
+# Configure logging (uses env vars if available)
+logger = setup_logging()
 
 # Initialize FastMCP
 mcp = FastMCP("kb-mcp-server")
@@ -81,18 +42,6 @@ if "MAX_WORKERS" not in os.environ:
     os.environ["MAX_WORKERS"] = "1"
 if "USE_CONTENT_BOOSTER" not in os.environ:
     os.environ["USE_CONTENT_BOOSTER"] = "false"
-
-
-class SessionConfig(BaseModel):
-    """Session configuration passed per user/session."""
-
-    retrieval_endpoint: Optional[str] = None
-    retrieval_api_key: Optional[str] = None
-    llm_api_url: Optional[str] = None
-    llm_model: Optional[str] = None
-    llm_api_token: Optional[str] = None
-    rerank_url: Optional[str] = None
-    rerank_model: Optional[str] = None
 
 
 # MCP Tools
@@ -403,18 +352,48 @@ async def main():
     parser.add_argument(
         "--transport", default="streamable-http", help="Transport method"
     )
+    parser.add_argument(
+        "--env-file",
+        type=str,
+        default=None,
+        help="Path to .env file (default: .env in project root)",
+    )
 
     args = parser.parse_args()
 
-    logger.info("Starting Knowledge Base MCP Server (Working Version)")
-    logger.info(f"Host: {args.host}")
-    logger.info(f"Port: {args.port}")
-    logger.info(f"URL: http://{args.host}:{args.port}")
-    logger.info(f"MCP Endpoint: http://{args.host}:{args.port}/mcp")
-    logger.info("Authentication: Header-based credential support")
-    logger.info("Fixes: Single-threaded processing, no multiprocessing")
+    # Load environment variables from custom .env file if provided
+    # This will override any values from the default .env file loaded at startup
+    if args.env_file:
+        logger.info(f"Loading environment variables from: {args.env_file}")
+        env_path = Path(args.env_file)
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+            logger.info(f"Loaded environment variables from {env_path} (override=True)")
 
-    # Show credential configuration status
+            # Re-initialize components that depend on environment variables
+            # Reconfigure logging with new env vars
+            import logging
+
+            root_logger = logging.getLogger()
+            root_logger.handlers.clear()
+            global logger
+            logger = setup_logging()
+
+            # Re-initialize credential manager with new env vars
+            config_helper.apply_to_environment()
+
+            # Re-set MAX_WORKERS and USE_CONTENT_BOOSTER if not in custom env file
+            if "MAX_WORKERS" not in os.environ:
+                os.environ["MAX_WORKERS"] = "1"
+            if "USE_CONTENT_BOOSTER" not in os.environ:
+                os.environ["USE_CONTENT_BOOSTER"] = "false"
+        else:
+            logger.warning(f"Env file not found at {env_path}, using default")
+    else:
+        # Ensure default .env is loaded (may already be loaded by env_loader)
+        load_env_file()
+
+    print_env_status()
     validation = config_helper.validate_credentials()
     env_creds_present = Config.get_default_credentials() is not None
     if validation["valid"]:

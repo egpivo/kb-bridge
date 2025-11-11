@@ -181,7 +181,7 @@ class KnowledgeBaseRetriever:
                 url,
                 headers=headers,
                 json=payload,
-                timeout=AssistantDefaults.DIFY_API_TIMEOUT.value,
+                timeout=AssistantDefaults.RETRIEVAL_API_TIMEOUT.value,
             )
             response.raise_for_status()
 

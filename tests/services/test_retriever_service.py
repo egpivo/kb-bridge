@@ -355,7 +355,14 @@ class TestRetrieverServiceFunction:
                 mock_creds_class.return_value = mock_creds
 
                 mock_retriever = Mock()
-                mock_retriever.retrieve.return_value = {"data": []}
+                # Return non-empty results to avoid fallback logic
+                mock_retriever.retrieve.return_value = {
+                    "records": [{"segment": {"content": "test"}}]
+                }
+                # Mock build_metadata_filter to return proper filter
+                mock_retriever.build_metadata_filter.return_value = {
+                    "conditions": [{"name": "document_name", "value": "test.pdf"}]
+                }
                 mock_retriever_class.return_value = mock_retriever
 
                 # Call with document_name filter
@@ -371,11 +378,11 @@ class TestRetrieverServiceFunction:
                 assert (
                     mock_retriever.retrieve.called
                 ), "retrieve should have been called"
-                call_args = mock_retriever.retrieve.call_args
-                assert (
-                    call_args is not None
-                ), "retrieve should have been called with arguments"
-                call_kwargs = call_args.kwargs if call_args.kwargs else {}
+                # Check the first call (not the fallback call)
+                call_args_list = mock_retriever.retrieve.call_args_list
+                assert len(call_args_list) > 0, "retrieve should have been called"
+                first_call = call_args_list[0]
+                call_kwargs = first_call.kwargs if first_call.kwargs else {}
                 assert (
                     "metadata_filter" in call_kwargs
                     and call_kwargs["metadata_filter"] is not None
@@ -399,7 +406,14 @@ class TestRetrieverServiceFunction:
                 mock_creds_class.return_value = mock_creds
 
                 mock_retriever = Mock()
-                mock_retriever.retrieve.return_value = {"data": []}
+                # Return non-empty results to avoid fallback logic
+                mock_retriever.retrieve.return_value = {
+                    "records": [{"segment": {"content": "test"}}]
+                }
+                # Mock build_metadata_filter to return proper filter
+                mock_retriever.build_metadata_filter.return_value = {
+                    "conditions": [{"name": "document_name", "value": "test.pdf"}]
+                }
                 mock_retriever_class.return_value = mock_retriever
 
                 # Call with document_name filter
@@ -415,11 +429,11 @@ class TestRetrieverServiceFunction:
                 assert (
                     mock_retriever.retrieve.called
                 ), "retrieve should have been called"
-                call_args = mock_retriever.retrieve.call_args
-                assert (
-                    call_args is not None
-                ), "retrieve should have been called with arguments"
-                call_kwargs = call_args.kwargs if call_args.kwargs else {}
+                # Check the first call (not the fallback call)
+                call_args_list = mock_retriever.retrieve.call_args_list
+                assert len(call_args_list) > 0, "retrieve should have been called"
+                first_call = call_args_list[0]
+                call_kwargs = first_call.kwargs if first_call.kwargs else {}
                 assert (
                     "metadata_filter" in call_kwargs
                     and call_kwargs["metadata_filter"] is not None

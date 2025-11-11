@@ -278,9 +278,11 @@ class TestFormatSearchResults:
             {"id": "dataset2", "source_path": "path2"},
         ]
 
-        with patch.object(processor, "_process_naive_approach") as mock_naive:
+        with patch.object(processor, "_process_direct_approach") as mock_direct:
             with patch.object(processor, "_process_advanced_approach") as mock_advanced:
-                mock_naive.return_value = {"candidates": [{"content": "naive result"}]}
+                mock_direct.return_value = {
+                    "candidates": [{"content": "direct result"}]
+                }
                 mock_advanced.return_value = {
                     "candidates": [{"content": "advanced result"}]
                 }
@@ -294,8 +296,8 @@ class TestFormatSearchResults:
                 assert dataset_results[0]["dataset_id"] == "dataset1"
                 assert dataset_results[1]["dataset_id"] == "dataset2"
 
-    def test_process_naive_approach(self):
-        """Test _process_naive_approach (covers lines 304-326)"""
+    def test_process_direct_approach(self):
+        """Test _process_direct_approach (covers lines 304-326)"""
         credentials = Credentials(
             retrieval_endpoint="https://test.com",
             retrieval_api_key="test-key",
@@ -316,13 +318,13 @@ class TestFormatSearchResults:
                 "result": [{"content": "test content", "document_name": "test.pdf"}]
             }
 
-            result = processor._process_naive_approach("test-dataset", "test query")
+            result = processor._process_direct_approach("test-dataset", "test query")
 
             assert "candidates" in result
             assert len(result["candidates"]) == 1
             assert result["candidates"][0]["content"] == "test content"
             assert result["candidates"][0]["score"] == 1.0
-            assert result["candidates"][0]["source"] == "dify_naive_search"
+            assert result["candidates"][0]["source"] == "dify_direct_search"
 
     def test_process_advanced_approach(self):
         """Test _process_advanced_approach (covers lines 330-354)"""
@@ -354,15 +356,15 @@ class TestFormatSearchResults:
             assert result["candidates"][0]["score"] == 0.8
             assert result["candidates"][0]["source"] == "dify_advanced_search"
 
-    def test_format_final_answer_with_naive_results(self):
-        """Test format_final_answer with naive results (covers lines 379-383)"""
+    def test_format_final_answer_with_direct_results(self):
+        """Test format_final_answer with direct results (covers lines 379-383)"""
         candidates = [
-            {"content": "Result 1", "source": "dify_naive_search"},
-            {"content": "Result 2", "source": "dify_naive_search"},
-            {"content": "Result 3", "source": "dify_naive_search"},
+            {"content": "Result 1", "source": "dify_direct_search"},
+            {"content": "Result 2", "source": "dify_direct_search"},
+            {"content": "Result 3", "source": "dify_direct_search"},
             {
                 "content": "Result 4",
-                "source": "dify_naive_search",
+                "source": "dify_direct_search",
             },  # Should be limited to top 3
         ]
 
@@ -384,9 +386,9 @@ class TestFormatSearchResults:
 
     def test_format_final_answer_with_additional_results(self):
         """Test format_final_answer with additional results (covers lines 386-394)"""
-        # Only 1 naive result so advanced results will be shown (len(answer_parts) < 3)
+        # Only 1 direct result so advanced results will be shown (len(answer_parts) < 3)
         candidates = [
-            {"content": "Naive Result 1", "source": "dify_naive_search"},
+            {"content": "Direct Result 1", "source": "dify_direct_search"},
             {"content": "Advanced Result 1", "source": "dify_advanced_search"},
             {"content": "Advanced Result 2", "source": "dify_advanced_search"},
             {
@@ -406,7 +408,7 @@ class TestFormatSearchResults:
             candidates, "test query", credentials
         )
 
-        assert "Naive Result 1" in result
+        assert "Direct Result 1" in result
         assert "Advanced Result 1" in result
         assert "Advanced Result 2" in result
         assert (
@@ -416,7 +418,7 @@ class TestFormatSearchResults:
     def test_format_final_answer_duplicate_content(self):
         """Test format_final_answer with duplicate content (covers lines 391-393)"""
         candidates = [
-            {"content": "Duplicate Content", "source": "dify_naive_search"},
+            {"content": "Duplicate Content", "source": "dify_direct_search"},
             {
                 "content": "Duplicate Content",
                 "source": "dify_advanced_search",

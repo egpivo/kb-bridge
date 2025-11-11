@@ -137,7 +137,7 @@ class AnswerReranker:
 
     def _format_candidate(self, candidate: "CandidateAnswer") -> str:
         """Format candidate answer with source citation."""
-        if candidate.source == "naive":
+        if candidate.source == "direct":
             return candidate.answer
 
         # Advanced answer with citation

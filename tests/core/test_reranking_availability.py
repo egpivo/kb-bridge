@@ -4,7 +4,7 @@ import pytest
 
 from kbbridge.config.config import Credentials as ConfigCredentials
 from kbbridge.core.orchestration.models import Credentials as ModelCredentials
-from kbbridge.core.orchestration.pipeline import NaiveApproachProcessor
+from kbbridge.core.orchestration.pipeline import DirectApproachProcessor
 
 
 class TestConfigCredentialsRerankingAvailability:
@@ -404,11 +404,11 @@ class TestServerRetrieverRerankingNormalization:
                 assert call_kwargs["does_rerank"] is False
 
 
-class TestNaiveApproachProcessorRerankingNormalization:
-    """Test reranking normalization in NaiveApproachProcessor"""
+class TestDirectApproachProcessorRerankingNormalization:
+    """Test reranking normalization in DirectApproachProcessor"""
 
-    def test_naive_processor_reranking_disabled_when_credentials_missing(self):
-        """Test NaiveApproachProcessor disables reranking when credentials are missing"""
+    def test_direct_processor_reranking_disabled_when_credentials_missing(self):
+        """Test DirectApproachProcessor disables reranking when credentials are missing"""
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
@@ -422,7 +422,7 @@ class TestNaiveApproachProcessorRerankingNormalization:
             rerank_model=None,
         )
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, credentials=creds
         )
 
@@ -443,8 +443,8 @@ class TestNaiveApproachProcessorRerankingNormalization:
         call_kwargs = mock_retriever.retrieve.call_args.kwargs
         assert call_kwargs["does_rerank"] is False
 
-    def test_naive_processor_reranking_enabled_when_credentials_available(self):
-        """Test NaiveApproachProcessor enables reranking when credentials are available"""
+    def test_direct_processor_reranking_enabled_when_credentials_available(self):
+        """Test DirectApproachProcessor enables reranking when credentials are available"""
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
@@ -458,7 +458,7 @@ class TestNaiveApproachProcessorRerankingNormalization:
             rerank_model="test-model",
         )
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, credentials=creds
         )
 
@@ -479,12 +479,12 @@ class TestNaiveApproachProcessorRerankingNormalization:
         call_kwargs = mock_retriever.retrieve.call_args.kwargs
         assert call_kwargs["does_rerank"] is True
 
-    def test_naive_processor_reranking_disabled_when_no_credentials(self):
-        """Test NaiveApproachProcessor disables reranking when credentials are None"""
+    def test_direct_processor_reranking_disabled_when_no_credentials(self):
+        """Test DirectApproachProcessor disables reranking when credentials are None"""
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, credentials=None
         )
 
@@ -505,8 +505,8 @@ class TestNaiveApproachProcessorRerankingNormalization:
         call_kwargs = mock_retriever.retrieve.call_args.kwargs
         assert call_kwargs["does_rerank"] is False
 
-    def test_naive_processor_uses_call_method_when_retrieve_not_available(self):
-        """Test NaiveApproachProcessor uses call() when retriever doesn't have retrieve()"""
+    def test_direct_processor_uses_call_method_when_retrieve_not_available(self):
+        """Test DirectApproachProcessor uses call() when retriever doesn't have retrieve()"""
         mock_retriever = Mock()
         del mock_retriever.retrieve  # Remove retrieve method
         mock_retriever.call = Mock(return_value={"success": True, "result": []})
@@ -522,7 +522,7 @@ class TestNaiveApproachProcessorRerankingNormalization:
             rerank_model=None,
         )
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, credentials=creds
         )
 

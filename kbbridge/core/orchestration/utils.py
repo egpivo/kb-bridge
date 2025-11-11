@@ -67,7 +67,7 @@ class ResultFormatter:
     @staticmethod
     def _format_single_candidate(candidate: Dict[str, Any]) -> str:
         """Format a single candidate answer"""
-        if candidate["source"] == "naive":
+        if candidate["source"] == "direct":
             return candidate["answer"]
         else:
             dataset_id = candidate["dataset_id"]

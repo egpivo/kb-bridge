@@ -100,15 +100,15 @@ class TestResultFormatterFormatFinalAnswer:
         result = ResultFormatter.format_final_answer([], "test query", credentials)
         assert result == "N/A - No relevant information found"
 
-    def test_format_final_answer_single_candidate_naive(self):
-        """Test formatting single naive candidate"""
-        candidates = [{"source": "naive", "answer": "This is a naive answer"}]
+    def test_format_final_answer_single_candidate_direct(self):
+        """Test formatting single direct candidate"""
+        candidates = [{"source": "direct", "answer": "This is a direct answer"}]
         credentials = Mock()
 
         result = ResultFormatter.format_final_answer(
             candidates, "test query", credentials
         )
-        assert result == "This is a naive answer"
+        assert result == "This is a direct answer"
 
     def test_format_final_answer_single_candidate_advanced_with_file(self):
         """Test formatting single advanced candidate with file name"""
@@ -146,8 +146,8 @@ class TestResultFormatterFormatFinalAnswer:
     def test_format_final_answer_multiple_candidates_with_reranking(self):
         """Test formatting multiple candidates with reranking available"""
         candidates = [
-            {"source": "naive", "answer": "Answer 1"},
-            {"source": "naive", "answer": "Answer 2"},
+            {"source": "direct", "answer": "Answer 1"},
+            {"source": "direct", "answer": "Answer 2"},
         ]
         credentials = Mock()
         credentials.rerank_url = "https://rerank.test.com"
@@ -177,8 +177,8 @@ class TestResultFormatterFormatFinalAnswer:
     def test_format_final_answer_multiple_candidates_reranking_no_result(self):
         """Test formatting multiple candidates when reranking returns no result"""
         candidates = [
-            {"source": "naive", "answer": "Answer 1"},
-            {"source": "naive", "answer": "Answer 2"},
+            {"source": "direct", "answer": "Answer 1"},
+            {"source": "direct", "answer": "Answer 2"},
         ]
         credentials = Mock()
         credentials.rerank_url = "https://rerank.test.com"
@@ -203,8 +203,8 @@ class TestResultFormatterFormatFinalAnswer:
     def test_format_final_answer_multiple_candidates_no_reranking(self):
         """Test formatting multiple candidates without reranking"""
         candidates = [
-            {"source": "naive", "answer": "Answer 1"},
-            {"source": "naive", "answer": "Answer 2"},
+            {"source": "direct", "answer": "Answer 1"},
+            {"source": "direct", "answer": "Answer 2"},
         ]
         credentials = Mock()
         credentials.rerank_url = None
@@ -230,13 +230,13 @@ class TestResultFormatterCombineCandidates:
         """Test combining candidates for terms and definitions query"""
         candidates = [
             {
-                "source": "naive",
+                "source": "direct",
                 "answer": "1. Term A: Definition A\n2. Term B: Definition B",
                 "success": True,
             },
-            {"source": "naive", "answer": "1. Term X: Definition X", "success": True},
+            {"source": "direct", "answer": "1. Term X: Definition X", "success": True},
             {
-                "source": "naive",
+                "source": "direct",
                 "answer": "1. Term 1: Definition 1\n2. Term 2: Definition 2\n3. Term 3: Definition 3",
                 "success": True,
             },
@@ -253,8 +253,8 @@ class TestResultFormatterCombineCandidates:
     def test_combine_candidates_terms_definitions_no_numbered_items(self):
         """Test combining candidates for terms query with no numbered definitions"""
         candidates = [
-            {"source": "naive", "answer": "Some text without numbered items"},
-            {"source": "naive", "answer": "More text without definitions"},
+            {"source": "direct", "answer": "Some text without numbered items"},
+            {"source": "direct", "answer": "More text without definitions"},
         ]
 
         result = ResultFormatter._combine_candidates(
@@ -267,8 +267,8 @@ class TestResultFormatterCombineCandidates:
     def test_combine_candidates_non_terms_query(self):
         """Test combining candidates for non-terms query"""
         candidates = [
-            {"source": "naive", "answer": "First answer"},
-            {"source": "naive", "answer": "Second answer"},
+            {"source": "direct", "answer": "First answer"},
+            {"source": "direct", "answer": "Second answer"},
         ]
 
         result = ResultFormatter._combine_candidates(candidates, "regular query")
@@ -280,10 +280,10 @@ class TestResultFormatterCombineCandidates:
         """Test combining candidates with escaped newlines"""
         candidates = [
             {
-                "source": "naive",
+                "source": "direct",
                 "answer": "1. Term A: Definition A\\n2. Term B: Definition B\\n3. Term C: Definition C",
             },
-            {"source": "naive", "answer": "1. Term X: Definition X"},
+            {"source": "direct", "answer": "1. Term X: Definition X"},
         ]
 
         result = ResultFormatter._combine_candidates(
@@ -297,10 +297,10 @@ class TestResultFormatterCombineCandidates:
         """Test combining candidates with various numbering formats"""
         candidates = [
             {
-                "source": "naive",
+                "source": "direct",
                 "answer": "1. First\n2. Second\n10. Tenth\n15. Fifteenth",  # 4 definitions
             },
-            {"source": "naive", "answer": "1. Only one"},  # 1 definition
+            {"source": "direct", "answer": "1. Only one"},  # 1 definition
         ]
 
         result = ResultFormatter._combine_candidates(
@@ -315,12 +315,12 @@ class TestResultFormatterCombineCandidates:
 class TestResultFormatterFormatSingleCandidate:
     """Test ResultFormatter._format_single_candidate method"""
 
-    def test_format_single_candidate_naive(self):
-        """Test formatting naive candidate"""
-        candidate = {"source": "naive", "answer": "Naive answer content"}
+    def test_format_single_candidate_direct(self):
+        """Test formatting direct candidate"""
+        candidate = {"source": "direct", "answer": "Direct answer content"}
 
         result = ResultFormatter._format_single_candidate(candidate)
-        assert result == "Naive answer content"
+        assert result == "Direct answer content"
 
     def test_format_single_candidate_advanced_with_file(self):
         """Test formatting advanced candidate with file"""
@@ -374,7 +374,7 @@ class TestResultFormatterFormatStructuredAnswer:
     def test_format_structured_answer_with_candidates(self):
         """Test formatting structured answer with candidates"""
         candidates = [
-            {"source": "naive", "answer": "Test answer 1"},
+            {"source": "direct", "answer": "Test answer 1"},
             {"source": "advanced", "dataset_id": "ds1", "answer": "Test answer 2"},
         ]
         credentials = Mock()
@@ -413,7 +413,7 @@ class TestResultFormatterFormatStructuredAnswer:
 
     def test_format_structured_answer_formatter_failure(self):
         """Test formatting structured answer when formatter fails"""
-        candidates = [{"source": "naive", "answer": "Test answer"}]
+        candidates = [{"source": "direct", "answer": "Test answer"}]
         credentials = Mock()
         credentials.llm_api_url = "https://llm.test.com"
         credentials.llm_model = "gpt-4"
@@ -441,7 +441,7 @@ class TestResultFormatterFormatStructuredAnswer:
 
     def test_format_structured_answer_credentials_passed_correctly(self):
         """Test that credentials are passed correctly to formatter"""
-        candidates = [{"source": "naive", "answer": "Test answer"}]
+        candidates = [{"source": "direct", "answer": "Test answer"}]
         credentials = Mock()
         credentials.llm_api_url = "https://custom-llm.com"
         credentials.llm_model = "custom-model"
@@ -499,7 +499,7 @@ class TestResultFormatterIntegration:
                 "file_name": "contract_terms.pdf",
                 "answer": "1. Force Majeure: An unforeseeable circumstance\\n2. Liability: Legal responsibility",
             },
-            {"source": "naive", "answer": "1. Contract: A legal agreement"},
+            {"source": "direct", "answer": "1. Contract: A legal agreement"},
         ]
 
         credentials = Mock()

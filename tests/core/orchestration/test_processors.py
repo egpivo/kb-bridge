@@ -10,8 +10,8 @@ from kbbridge.core.orchestration.models import Credentials, ProcessingConfig
 from kbbridge.core.orchestration.pipeline import (
     AdvancedApproachProcessor,
     DatasetProcessor,
+    DirectApproachProcessor,
     FileSearchStrategy,
-    NaiveApproachProcessor,
 )
 
 
@@ -101,15 +101,15 @@ class TestFileSearchStrategy:
         assert "File search error: Test error" in result["error"]
 
 
-class TestNaiveApproachProcessor:
-    """Test NaiveApproachProcessor class"""
+class TestDirectApproachProcessor:
+    """Test DirectApproachProcessor class"""
 
     def test_init(self):
-        """Test NaiveApproachProcessor initialization"""
+        """Test DirectApproachProcessor initialization"""
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, verbose=True
         )
         assert processor.retriever == mock_retriever
@@ -121,7 +121,7 @@ class TestNaiveApproachProcessor:
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, verbose=True
         )
 
@@ -149,7 +149,7 @@ class TestNaiveApproachProcessor:
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, verbose=True
         )
 
@@ -171,7 +171,7 @@ class TestNaiveApproachProcessor:
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, verbose=True
         )
 
@@ -188,7 +188,7 @@ class TestNaiveApproachProcessor:
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, verbose=True
         )
 
@@ -320,7 +320,7 @@ class TestDatasetProcessor:
         assert processor.credentials == mock_credentials
         assert processor.profiling_data == mock_profiling_data
         assert processor.file_search_strategy is not None
-        assert processor.naive_processor is not None
+        assert processor.direct_processor is not None
         assert processor.advanced_processor is not None
 
     def test_process_datasets_success(self):
@@ -379,7 +379,7 @@ class TestDatasetProcessor:
         assert len(results) == 1
         # Check DatasetResult attributes
         assert hasattr(results[0], "dataset_id")
-        assert hasattr(results[0], "naive_result")
+        assert hasattr(results[0], "direct_result")
         assert hasattr(results[0], "advanced_result")
 
     def test_process_datasets_no_files(self):
@@ -411,9 +411,9 @@ class TestDatasetProcessor:
             mock_components, mock_config, mock_credentials, mock_profiling_data
         )
 
-        # Mock the naive processor
-        processor.naive_processor.process = Mock(
-            return_value={"success": True, "answer": "Naive answer"}
+        # Mock the direct processor
+        processor.direct_processor.process = Mock(
+            return_value={"success": True, "answer": "Direct answer"}
         )
 
         dataset_pairs = [{"id": "test-dataset"}]
@@ -532,12 +532,12 @@ class TestProcessorsIntegration:
             assert "doc2.pdf" in result["file_names"]
             assert result["search_duration_ms"] == -2500.0  # Fixed the expected value
 
-    def test_naive_processor_with_real_data(self):
-        """Test NaiveApproachProcessor with realistic data"""
+    def test_direct_processor_with_real_data(self):
+        """Test DirectApproachProcessor with realistic data"""
         mock_retriever = Mock()
         mock_answer_extractor = Mock()
 
-        processor = NaiveApproachProcessor(
+        processor = DirectApproachProcessor(
             mock_retriever, mock_answer_extractor, verbose=True
         )
 

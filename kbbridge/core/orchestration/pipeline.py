@@ -198,8 +198,8 @@ class FileSearchStrategy:
         }
 
 
-class NaiveApproachProcessor:
-    """Processes queries using the naive approach"""
+class DirectApproachProcessor:
+    """Processes queries using the direct approach"""
 
     def __init__(
         self,
@@ -223,9 +223,9 @@ class NaiveApproachProcessor:
         top_k: int,
         document_name: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Execute naive approach: query -> retrieval -> answer"""
+        """Execute direct approach: query -> retrieval -> answer"""
         debug_info = []
-        logger.info(f"Starting naive approach processing for dataset {dataset_id}")
+        logger.info(f"Starting direct approach processing for dataset {dataset_id}")
         logger.debug(
             f"Query: '{query}', top_k: {top_k}, score_threshold: {score_threshold}"
         )
@@ -388,7 +388,7 @@ class NaiveApproachProcessor:
     ) -> Dict[str, Any]:
         """Format retrieval error response"""
         if self.verbose:
-            debug_info.append(f"Naive retrieval failed: {retrieval_result}")
+            debug_info.append(f"Direct retrieval failed: {retrieval_result}")
             if "debug_payload" in retrieval_result:
                 debug_info.append("Debug payload sent to Dify API:")
                 debug_info.extend(
@@ -1001,7 +1001,7 @@ class DatasetProcessor:
             self.credentials,
             verbose=config.verbose,
         )
-        self.naive_processor = NaiveApproachProcessor(
+        self.direct_processor = DirectApproachProcessor(
             components.get("retriever"),
             components["answer_extractor"],
             verbose=config.verbose,
@@ -1074,7 +1074,7 @@ class DatasetProcessor:
                 per_dataset_components["retriever"] = retriever_factory(dataset_id)
 
             # IMPORTANT: Use per-dataset processors so retriever is bound to the dataset
-            naive_processor = NaiveApproachProcessor(
+            direct_processor = DirectApproachProcessor(
                 per_dataset_components.get("retriever"),
                 self.components["answer_extractor"],
                 verbose=self.config.verbose,
@@ -1104,8 +1104,8 @@ class DatasetProcessor:
                     query, dataset_id, worker_dist.file_workers
                 )
 
-            # Second stage: naive approach
-            naive_result = naive_processor.process(
+            # Second stage: direct approach
+            direct_result = direct_processor.process(
                 query,
                 dataset_id,
                 self.config.score_threshold,
@@ -1140,17 +1140,17 @@ class DatasetProcessor:
                     }
                 )
 
-            # Add naive answer as fallback candidate to avoid empty candidate sets
-            naive_answer_text = naive_result.get("answer", "")
+            # Add direct answer as fallback candidate to avoid empty candidate sets
+            direct_answer_text = direct_result.get("answer", "")
             if (
-                naive_answer_text
-                and naive_answer_text.strip().upper() != ResponseMessages.NO_ANSWER
+                direct_answer_text
+                and direct_answer_text.strip().upper() != ResponseMessages.NO_ANSWER
             ):
-                naive_sources = [
-                    name for name in (naive_result.get("source_files") or []) if name
+                direct_sources = [
+                    name for name in (direct_result.get("source_files") or []) if name
                 ]
                 display_sources = []
-                for name in naive_sources[
+                for name in direct_sources[
                     : AssistantDefaults.MAX_DISPLAY_SOURCES.value
                 ]:
                     try:
@@ -1160,13 +1160,13 @@ class DatasetProcessor:
                 display_source_str = (
                     "; ".join(display_sources) if display_sources else dataset_id
                 )
-                file_name_hint = naive_sources[0] if naive_sources else ""
+                file_name_hint = direct_sources[0] if direct_sources else ""
                 candidates.append(
                     {
-                        "source": "naive",
+                        "source": "direct",
                         "dataset_id": dataset_id,
                         "file_name": file_name_hint,
-                        "answer": naive_answer_text,
+                        "answer": direct_answer_text,
                         "success": True,
                         "display_source": display_source_str,
                     }
@@ -1175,7 +1175,7 @@ class DatasetProcessor:
             # Create standardized result
             result = DatasetResult(
                 dataset_id=dataset_id,
-                naive_result=naive_result,
+                direct_result=direct_result,
                 advanced_result=advanced_result,
                 candidates=candidates,
                 debug_info=[],

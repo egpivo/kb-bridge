@@ -191,7 +191,7 @@ class CandidateAnswer:
     from any retrieval system (Dify, OpenSearch, Pinecone, etc.).
 
     Fields:
-        source: Processing source ("naive" or "advanced")
+        source: Processing source ("direct" or "advanced")
         answer: The extracted answer text
         success: Whether the extraction was successful
         dataset_id: Knowledge base/collection/index identifier
@@ -200,7 +200,7 @@ class CandidateAnswer:
         metadata: Additional backend-specific metadata (optional)
     """
 
-    source: str  # "naive" or "advanced"
+    source: str  # "direct" or "advanced"
     answer: str
     success: bool
     dataset_id: str = ""
@@ -248,7 +248,7 @@ class DatasetResult:
     """Result from processing a single dataset"""
 
     dataset_id: str
-    naive_result: Dict[str, Any]
+    direct_result: Dict[str, Any]
     advanced_result: Dict[str, Any]
     candidates: List[Dict[str, Any]]  # TODO: Migrate to List[CandidateAnswer]
     debug_info: List[str]

@@ -125,12 +125,14 @@ class DifyRetriever(Retriever):
                     doc_metadata = doc.get("doc_metadata", {})
                     if not isinstance(doc_metadata, dict):
                         continue
-
+                    document_name = doc.get("name", "") or doc_metadata.get(
+                        "document_name", ""
+                    )
                     score = record.get("score", 1.0)
 
                     chunk = ChunkHit(
                         content=content,
-                        document_name=doc_metadata.get("document_name", ""),
+                        document_name=document_name,
                         score=float(score),
                         metadata=doc_metadata,
                     )

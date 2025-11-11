@@ -1,10 +1,5 @@
-"""
-Dify Retriever Implementation
-
-Concrete implementation of Retriever interface for Dify backend.
-"""
-
 import logging
+from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -17,9 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class DifyRetriever(Retriever):
-    """
-    Dify backend
-    implementation of Retriever interface.
+    """Dify backend implementation of Retriever interface.
 
     Example:
         retriever = DifyRetriever(
@@ -35,15 +28,7 @@ class DifyRetriever(Retriever):
     """
 
     def __init__(self, endpoint: str, api_key: str, dataset_id: str, timeout: int = 30):
-        """
-        Initialize Dify retriever.
-
-        Args:
-            endpoint: Dify API endpoint
-            api_key: Dify API key
-            dataset_id: Dataset ID
-            timeout: Request timeout in seconds
-        """
+        """Initialize Dify retriever."""
         self.endpoint = endpoint.rstrip("/")
         self.api_key = api_key
         self.dataset_id = dataset_id
@@ -118,15 +103,6 @@ class DifyRetriever(Retriever):
         return response.json()
 
     def normalize_chunks(self, resp: Dict[str, Any]) -> List[ChunkHit]:
-        """
-        Normalize Dify response to ChunkHit objects.
-
-        Args:
-            resp: Dify API response
-
-        Returns:
-            List of ChunkHit objects
-        """
         chunks = []
 
         try:
@@ -135,16 +111,21 @@ class DifyRetriever(Retriever):
             for record in records:
                 try:
                     segment = record.get("segment") or {}
-                    content = segment.get("content", "")
+                    if not isinstance(segment, dict):
+                        continue
 
+                    content = segment.get("content", "")
                     if not content:
                         continue
 
                     # Extract metadata
                     doc = record.get("segment", {}).get("document", {})
+                    if not isinstance(doc, dict):
+                        continue
                     doc_metadata = doc.get("doc_metadata", {})
+                    if not isinstance(doc_metadata, dict):
+                        continue
 
-                    # Get score
                     score = record.get("score", 1.0)
 
                     chunk = ChunkHit(
@@ -168,22 +149,19 @@ class DifyRetriever(Retriever):
         return chunks
 
     def group_files(self, chunks: List[ChunkHit], agg: str = "max") -> List[FileHit]:
-        """
-        Group chunks by file and aggregate scores.
-
-        Args:
-            chunks: List of ChunkHit objects
-            agg: Aggregation method ("max", "mean", "sum")
-
-        Returns:
-            List of FileHit with aggregated scores
-        """
-        from collections import defaultdict
-
-        # Group by document name
+        # Group by document name, skipping chunks with empty document_name
         by_file = defaultdict(list)
+        skipped = 0
         for chunk in chunks:
+            if not chunk.document_name or not chunk.document_name.strip():
+                skipped += 1
+                continue
             by_file[chunk.document_name].append(chunk)
+
+        if skipped > 0:
+            logger.warning(
+                f"Skipped {skipped} chunks with empty document_name out of {len(chunks)} total chunks"
+            )
 
         # Aggregate scores
         file_hits = []
@@ -230,16 +208,7 @@ class DifyRetriever(Retriever):
         return {"conditions": conditions} if conditions else None
 
     def list_files(self, *, dataset_id: str, timeout: int = 30) -> List[str]:
-        """
-        List document names in the dataset using Dify Documents API.
-
-        Args:
-            dataset_id: Dataset ID (required by interface, but already set in __init__)
-            timeout: Request timeout
-
-        Returns:
-            List of file names (strings)
-        """
+        """List document names in the dataset using Dify Documents API."""
         url = f"{self.endpoint}/v1/datasets/{self.dataset_id}/documents"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -260,12 +229,8 @@ def make_retriever(kind: str, **kwargs) -> Retriever:
     """
     Factory function to create a retriever instance.
 
-    Args:
-        kind: Retriever type ("dify", "opensearch", etc.)
-        **kwargs: Retriever-specific configuration
-
-    Returns:
-        Retriever instance
+    TODO:
+     - Future: Add other backends: e.g., OpenSearchRetriever (from .opensearch.opensearch_retriever)
 
     Example:
         retriever = make_retriever(
@@ -284,9 +249,5 @@ def make_retriever(kind: str, **kwargs) -> Retriever:
             dataset_id=kwargs["dataset_id"],
             timeout=kwargs.get("timeout", 30),
         )
-
-    # Future: Add other backends
-    # elif kind in ("opensearch", "opensearch_retriever"):
-    #     return OpenSearchRetriever(**kwargs)
 
     raise ValueError(f"Unknown retriever type: {kind}")

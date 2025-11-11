@@ -5,11 +5,14 @@ This service provides file discovery functionality using the integrations retrie
 and the DSPy-based FileDiscover module.
 """
 
+import logging
 import os
 from typing import Any, Dict, Optional
 
 from kbbridge.core.discovery.file_reranker import rerank_files_by_names
 from kbbridge.integrations import RetrievalCredentials, RetrieverRouter
+
+logger = logging.getLogger(__name__)
 
 
 def file_discover_service(
@@ -93,10 +96,35 @@ def file_discover_service(
             relevance_score_threshold=relevance_score_threshold,
         )
 
+        # Extract file names, filtering out empty ones
+        file_names = [
+            getattr(f, "file_name", "") for f in files if getattr(f, "file_name", "")
+        ]
+
+        if not file_names:
+            logger.warning(
+                f"file_discover returned {len(files)} files but none have file_name. "
+                f"Files: {[f.__dict__ for f in files[:3]]}"
+            )
+
         return {
             "success": True,
-            "distinct_files": [getattr(f, "file_name", "") for f in files],
-            "total_files": len(files),
+            "distinct_files": file_names,
+            "total_files": len(file_names),
+            "debug_info": {
+                "files_found": len(files),
+                "files_with_names": len(file_names),
+                "sample_file_attrs": [
+                    {
+                        "file_name": getattr(f, "file_name", None),
+                        "score": getattr(f, "score", None),
+                        "has_chunks": bool(getattr(f, "chunks", [])),
+                    }
+                    for f in files[:5]
+                ],
+            }
+            if not file_names
+            else None,  # Only include debug info if empty
         }
     except Exception as e:
         return {"error": f"Error in file discover: {e}"}

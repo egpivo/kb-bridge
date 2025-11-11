@@ -1,3 +1,8 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def format_search_results(results: list) -> dict:
     """Format search results according to the specified structure"""
     try:
@@ -13,7 +18,8 @@ def format_search_results(results: list) -> dict:
         segments = []
         for record in records:
             try:
-                segment = record.get("segment")
+                # Handle case where record is None
+                segment = record.get("segment") or {}
                 if segment:
                     content = segment.get("content", "")
                     doc_metadata = segment.get("document", {}).get("doc_metadata", {})
@@ -24,8 +30,8 @@ def format_search_results(results: list) -> dict:
                     segments.append(
                         {"content": content, "document_name": document_name}
                     )
-            except Exception:
-                # Skip problematic records
+            except Exception as e:
+                logger.debug(f"Skipping problematic record: {e}", exc_info=True)
                 continue
 
         return {

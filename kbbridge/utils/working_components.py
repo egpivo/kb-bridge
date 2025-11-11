@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -6,6 +7,8 @@ import requests
 from kbbridge.config.constants import AssistantDefaults
 from kbbridge.core.orchestration.models import Credentials, ProcessingConfig
 from kbbridge.integrations.dify.constants import DifyRetrieverDefaults
+
+logger = logging.getLogger(__name__)
 
 
 def format_search_results(results: list) -> dict:
@@ -34,8 +37,8 @@ def format_search_results(results: list) -> dict:
                     segments.append(
                         {"content": content, "document_name": document_name}
                     )
-            except Exception:
-                # Skip problematic records
+            except Exception as e:
+                logger.debug(f"Skipping problematic record: {e}", exc_info=True)
                 continue
 
         return {

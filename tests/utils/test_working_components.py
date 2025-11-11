@@ -269,7 +269,7 @@ class TestFormatSearchResults:
         # Create a mock config
         from kbbridge.core.orchestration.models import ProcessingConfig
 
-        config = ProcessingConfig(dataset_id="test", query="test query")
+        config = ProcessingConfig(resource_id="test", query="test query")
 
         processor = WorkingDatasetProcessor(components, config, credentials)
 
@@ -290,8 +290,8 @@ class TestFormatSearchResults:
 
                 assert len(dataset_results) == 2
                 assert len(all_candidates) == 4  # 2 datasets * 2 approaches
-                assert dataset_results[0]["dataset_id"] == "dataset1"
-                assert dataset_results[1]["dataset_id"] == "dataset2"
+                assert dataset_results[0]["resource_id"] == "dataset1"
+                assert dataset_results[1]["resource_id"] == "dataset2"
 
     def test_process_direct_approach(self):
         """Test _process_direct_approach (covers lines 304-326)"""
@@ -306,7 +306,7 @@ class TestFormatSearchResults:
 
         from kbbridge.core.orchestration.models import ProcessingConfig
 
-        config = ProcessingConfig(dataset_id="test", query="test query")
+        config = ProcessingConfig(resource_id="test", query="test query")
 
         processor = WorkingDatasetProcessor(components, config, credentials)
 
@@ -336,7 +336,7 @@ class TestFormatSearchResults:
 
         from kbbridge.core.orchestration.models import ProcessingConfig
 
-        config = ProcessingConfig(dataset_id="test", query="test query")
+        config = ProcessingConfig(resource_id="test", query="test query")
 
         processor = WorkingDatasetProcessor(components, config, credentials)
 

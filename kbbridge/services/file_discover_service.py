@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 def file_discover_service(
     query: str,
-    dataset_id: str,
+    resource_id: str,
     top_k_recall: int = 100,
     top_k_return: int = 20,
     do_file_rerank: bool = True,
@@ -50,7 +50,7 @@ def file_discover_service(
 
         # Create retriever using RetrieverRouter
         retriever = RetrieverRouter.create_retriever(
-            dataset_id=dataset_id,
+            resource_id=resource_id,
             backend_type=credentials.backend_type,
             endpoint=credentials.endpoint,
             api_key=credentials.api_key,

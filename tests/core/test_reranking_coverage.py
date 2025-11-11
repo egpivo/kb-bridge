@@ -163,7 +163,7 @@ class TestFileSearchStrategyRerankingCheck:
             mock_time.side_effect = [0.0, 1.0]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset"
+                query="test query", resource_id="test-dataset"
             )
 
             # Verify discover was called with do_file_rerank=True
@@ -205,7 +205,7 @@ class TestFileSearchStrategyRerankingCheck:
             mock_time.side_effect = [0.0, 1.0]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset"
+                query="test query", resource_id="test-dataset"
             )
 
             # Verify discover was called with do_file_rerank=False
@@ -238,7 +238,7 @@ class TestFileSearchStrategyRerankingCheck:
             mock_time.side_effect = [0.0, 1.0]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset"
+                query="test query", resource_id="test-dataset"
             )
 
             # Verify discover was called with do_file_rerank=False
@@ -265,7 +265,7 @@ class TestDirectApproachProcessorNoneCredentials:
         }
 
         result = processor._retrieve_segments(
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             query="test query",
             metadata_filter={},
             score_threshold=None,
@@ -289,7 +289,7 @@ class TestDirectApproachProcessorNoneCredentials:
         )
 
         result = processor._retrieve_segments(
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             query="test query",
             metadata_filter={},
             score_threshold=None,
@@ -302,12 +302,12 @@ class TestDirectApproachProcessorNoneCredentials:
         assert call_kwargs["does_rerank"] is False
 
 
-class TestDifyAdapterMetadataFilter:
-    """Test DifyAdapter metadata filter building"""
+class TestDifyBackendAdapterMetadataFilter:
+    """Test DifyBackendAdapter metadata filter building"""
 
     def test_search_with_document_name_builds_filter(self):
         """Test search() builds metadata filter when document_name provided"""
-        from kbbridge.integrations.dify.dify_adapter import DifyAdapter
+        from kbbridge.integrations.dify import DifyBackendAdapter
         from kbbridge.integrations.dify.dify_credentials import DifyCredentials
 
         mock_retriever = Mock()
@@ -319,11 +319,11 @@ class TestDifyAdapterMetadataFilter:
         mock_retriever.group_files.return_value = []
 
         creds = DifyCredentials(endpoint="https://test.com", api_key="test-key")
-        adapter = DifyAdapter(credentials=creds)
+        adapter = DifyBackendAdapter(credentials=creds)
 
-        with patch.object(adapter, "create_retriever", return_value=mock_retriever):
+        with patch.object(adapter, "_get_retriever", return_value=mock_retriever):
             result = adapter.search(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 query="test query",
                 document_name="test.pdf",
             )
@@ -339,24 +339,27 @@ class TestDifyAdapterMetadataFilter:
 
     def test_search_without_document_name_no_filter(self):
         """Test search() doesn't build filter when document_name is empty"""
-        from kbbridge.integrations.dify.dify_adapter import DifyAdapter
+        from kbbridge.integrations.dify import DifyBackendAdapter
         from kbbridge.integrations.dify.dify_credentials import DifyCredentials
 
         mock_retriever = Mock()
+        mock_retriever.build_metadata_filter.return_value = None
         mock_retriever.call.return_value = {"records": []}
         mock_retriever.normalize_chunks.return_value = []
         mock_retriever.group_files.return_value = []
 
         creds = DifyCredentials(endpoint="https://test.com", api_key="test-key")
-        adapter = DifyAdapter(credentials=creds)
+        adapter = DifyBackendAdapter(credentials=creds)
 
-        with patch.object(adapter, "create_retriever", return_value=mock_retriever):
+        with patch.object(adapter, "_get_retriever", return_value=mock_retriever):
             result = adapter.search(
-                dataset_id="test-dataset", query="test query", document_name=""
+                resource_id="test-dataset", query="test query", document_name=""
             )
 
-            # Verify metadata filter was not built
-            mock_retriever.build_metadata_filter.assert_not_called()
+            # Verify metadata filter was built (but returns None for empty document_name)
+            mock_retriever.build_metadata_filter.assert_called_once_with(
+                document_name=""
+            )
             # Verify call() was made with metadata_filter=None
             mock_retriever.call.assert_called_once()
             call_kwargs = mock_retriever.call.call_args.kwargs

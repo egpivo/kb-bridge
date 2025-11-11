@@ -42,7 +42,7 @@ class TestDifyRetrieverFileListing:
                 api_key="test-api-key",
                 dataset_id="test-dataset",
             )
-            files = retriever.list_files(dataset_id="test-dataset")
+            files = retriever.list_files(resource_id="test-dataset")
 
             assert isinstance(files, list)
             assert len(files) == 2
@@ -62,7 +62,7 @@ class TestDifyRetrieverFileListing:
                 api_key="test-api-key",
                 dataset_id="test-dataset",
             )
-            files = retriever.list_files(dataset_id="test-dataset")
+            files = retriever.list_files(resource_id="test-dataset")
 
             assert isinstance(files, list)
 
@@ -78,7 +78,7 @@ class TestDifyRetrieverFileListing:
                 api_key="test-api-key",
                 dataset_id="test-dataset",
             )
-            files = retriever.list_files(dataset_id="test-dataset")
+            files = retriever.list_files(resource_id="test-dataset")
 
             assert isinstance(files, list)
 

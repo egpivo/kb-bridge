@@ -71,7 +71,7 @@ class SearchRequest:
     """Base search request model"""
 
     query: str
-    dataset_id: str
+    resource_id: str
     verbose: bool = False
 
 
@@ -142,7 +142,7 @@ class CoreSearchResponse(SearchResponse):
 class ProcessingConfig:
     """Configuration for KB Assistant processing"""
 
-    dataset_id: str
+    resource_id: str
     query: str
     verbose: bool = False
     score_threshold: Optional[float] = None
@@ -194,7 +194,7 @@ class CandidateAnswer:
         source: Processing source ("direct" or "advanced")
         answer: The extracted answer text
         success: Whether the extraction was successful
-        dataset_id: Knowledge base/collection/index identifier
+        resource_id: Knowledge base/collection/index identifier
         file_name: Source document name (optional)
         display_source: Human-readable source citation (optional)
         metadata: Additional backend-specific metadata (optional)
@@ -203,22 +203,25 @@ class CandidateAnswer:
     source: str  # "direct" or "advanced"
     answer: str
     success: bool
-    dataset_id: str = ""
+    resource_id: str = ""
     file_name: str = ""
     display_source: str = ""
     metadata: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for backward compatibility"""
-        return {
+        result = {
             "source": self.source,
             "answer": self.answer,
             "success": self.success,
-            "dataset_id": self.dataset_id,
+            "resource_id": self.resource_id,
             "file_name": self.file_name,
             "display_source": self.display_source,
             **(self.metadata or {}),
         }
+        # Backward compatibility: also include dataset_id for legacy code
+        result["dataset_id"] = self.resource_id
+        return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CandidateAnswer":
@@ -227,16 +230,19 @@ class CandidateAnswer:
             "source",
             "answer",
             "success",
-            "dataset_id",
+            "resource_id",
+            "dataset_id",  # Backward compatibility
             "file_name",
             "display_source",
         }
         metadata = {k: v for k, v in data.items() if k not in known_fields}
+        # Backward compatibility: prefer resource_id, fall back to dataset_id
+        resource_id = data.get("resource_id") or data.get("dataset_id", "")
         return cls(
             source=data.get("source", ""),
             answer=data.get("answer", ""),
             success=data.get("success", False),
-            dataset_id=data.get("dataset_id", ""),
+            resource_id=resource_id,
             file_name=data.get("file_name", ""),
             display_source=data.get("display_source", ""),
             metadata=metadata if metadata else None,
@@ -245,9 +251,9 @@ class CandidateAnswer:
 
 @dataclass
 class DatasetResult:
-    """Result from processing a single dataset"""
+    """Result from processing a single resource"""
 
-    dataset_id: str
+    resource_id: str
     direct_result: Dict[str, Any]
     advanced_result: Dict[str, Any]
     candidates: List[Dict[str, Any]]  # TODO: Migrate to List[CandidateAnswer]

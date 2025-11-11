@@ -38,13 +38,13 @@ class TestAnswerReranker:
                 "success": True,
                 "answer": "First answer",
                 "source": "direct",
-                "dataset_id": "dataset1",
+                "resource_id": "dataset1",
             },
             {
                 "success": True,
                 "answer": "Second answer",
                 "source": "advanced",
-                "dataset_id": "dataset2",
+                "resource_id": "dataset2",
                 "file_name": "test.pdf",
             },
         ]
@@ -138,7 +138,7 @@ class TestAnswerReranker:
                 "success": True,
                 "answer": "Simple answer",
                 "source": "direct",
-                "dataset_id": "dataset1",
+                "resource_id": "dataset1",
             }
         ]
 
@@ -163,7 +163,7 @@ class TestAnswerReranker:
                 "success": True,
                 "answer": "Advanced answer",
                 "source": "advanced",
-                "dataset_id": "dataset1",
+                "resource_id": "dataset1",
                 "file_name": "document.pdf",
             }
         ]
@@ -189,7 +189,7 @@ class TestAnswerReranker:
                 "success": True,
                 "answer": "Advanced answer",
                 "source": "advanced",
-                "dataset_id": "dataset1",
+                "resource_id": "dataset1",
             }
         ]
 
@@ -214,7 +214,7 @@ class TestAnswerReranker:
                 "success": True,
                 "answer": "Advanced answer",
                 "source": "advanced",
-                "dataset_id": "dataset1",
+                "resource_id": "dataset1",
             }
         ]
 

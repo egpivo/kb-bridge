@@ -11,7 +11,6 @@ from pydantic import BaseModel
 from kbbridge.config.config import Config
 from kbbridge.config.constants import AssistantDefaults, RetrieverDefaults
 from kbbridge.config.env_loader import get_env_int, load_env_file, print_env_status
-from kbbridge.integrations import RetrieverRouter
 from kbbridge.middleware import MCPConfigHelper, require_auth
 from kbbridge.middleware._auth_core import get_current_credentials
 from kbbridge.prompts import mcp as prompts_mcp
@@ -100,7 +99,7 @@ class SessionConfig(BaseModel):
 @mcp.tool(name="assistant")
 @require_auth
 async def assistant(
-    dataset_id: str,
+    resource_id: str,
     query: str,
     ctx: Context,
     custom_instructions: Optional[str] = None,
@@ -131,7 +130,7 @@ async def assistant(
         try:
             result = await asyncio.wait_for(
                 assistant_service(
-                    dataset_id=dataset_id,
+                    resource_id=resource_id,
                     query=query,
                     ctx=ctx,
                     custom_instructions=custom_instructions,
@@ -179,7 +178,7 @@ async def assistant(
 @require_auth
 async def file_discover(
     query: str,
-    dataset_id: str,
+    resource_id: str,
     ctx: Context,
     top_k_recall: int = 100,
     top_k_return: int = 20,
@@ -204,7 +203,7 @@ async def file_discover(
 
         result = file_discover_service(
             query=query,
-            dataset_id=dataset_id,
+            resource_id=resource_id,
             top_k_recall=top_k_recall,
             top_k_return=top_k_return,
             do_file_rerank=do_file_rerank,
@@ -226,16 +225,16 @@ async def file_discover(
 @mcp.tool()
 @require_auth
 async def file_lister(
-    dataset_id: str,
+    resource_id: str,
     ctx: Context,
     timeout: int = 30,
     limit: Optional[int] = None,
     offset: int = 0,
     backend_type: Optional[str] = None,
 ) -> str:
-    """List files in knowledge base dataset with pagination support."""
+    """List files in knowledge base resource with pagination support."""
     await ctx.info(
-        f"Executing file_lister for dataset: {dataset_id} (limit: {limit}, offset: {offset})"
+        f"Executing file_lister for resource: {resource_id} (limit: {limit}, offset: {offset})"
     )
 
     try:
@@ -245,7 +244,7 @@ async def file_lister(
             return "Error: No credentials available"
 
         result = file_lister_service(
-            dataset_id=dataset_id,
+            resource_id=resource_id,
             timeout=timeout,
             backend_type=backend_type,
             retrieval_endpoint=credentials.retrieval_endpoint,
@@ -301,7 +300,7 @@ async def keyword_generator(
 @mcp.tool()
 @require_auth
 async def retriever(
-    dataset_id: str,
+    resource_id: str,
     query: str,
     ctx: Context,
     search_method: str = RetrieverDefaults.SEARCH_METHOD.value,
@@ -330,7 +329,7 @@ async def retriever(
             )
 
         result = retriever_service(
-            dataset_id=dataset_id,
+            resource_id=resource_id,
             query=query,
             method=search_method,
             does_rerank=does_rerank,
@@ -355,9 +354,9 @@ async def retriever(
 
 @mcp.tool()
 @require_auth
-async def file_count(dataset_id: str, ctx: Context) -> str:
-    """Get file count in knowledge base dataset."""
-    await ctx.info(f"Executing file_count for dataset: {dataset_id}")
+async def file_count(resource_id: str, ctx: Context) -> str:
+    """Get file count in knowledge base resource."""
+    await ctx.info(f"Executing file_count for resource: {resource_id}")
 
     try:
         credentials = get_current_credentials()
@@ -365,14 +364,17 @@ async def file_count(dataset_id: str, ctx: Context) -> str:
             await ctx.error("No credentials available")
             return "Error: No credentials available"
 
-        # Use integrations retriever to list files and count
-        retriever = RetrieverRouter.create_retriever(
-            dataset_id,
-            endpoint=credentials.retrieval_endpoint,
-            api_key=credentials.retrieval_api_key,
+        result = file_lister_service(
+            resource_id=resource_id,
             timeout=30,
+            retrieval_endpoint=credentials.retrieval_endpoint,
+            retrieval_api_key=credentials.retrieval_api_key,
         )
-        files = retriever.list_files(dataset_id=dataset_id, timeout=30)
+
+        if "error" in result:
+            return json.dumps(result)
+
+        files = result.get("files", [])
         return json.dumps(
             {"has_files": len(files) > 0, "file_count": len(files), "files": files}
         )

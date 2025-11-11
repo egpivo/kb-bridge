@@ -70,7 +70,9 @@ class ResultFormatter:
         if candidate["source"] == "direct":
             return candidate["answer"]
         else:
-            dataset_id = candidate["dataset_id"]
+            resource_id = candidate.get("resource_id") or candidate.get(
+                "dataset_id", ""
+            )
             file_name = candidate.get("file_name", "")
             answer = candidate["answer"]
 
@@ -79,9 +81,9 @@ class ResultFormatter:
                     display_name = unquote(file_name)
                 except Exception:
                     display_name = file_name
-                return f"**{dataset_id}/{display_name}**: {answer}"
+                return f"**{resource_id}/{display_name}**: {answer}"
             else:
-                return f"**{dataset_id}**: {answer}"
+                return f"**{resource_id}**: {answer}"
 
     @staticmethod
     def format_structured_answer(

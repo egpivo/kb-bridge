@@ -38,7 +38,7 @@ async def _safe_progress(ctx: Context, current: int, total: int, message: str) -
 
 
 async def assistant_service(
-    dataset_id: str,
+    resource_id: str,
     query: str,
     ctx: Context,
     custom_instructions: Optional[str] = None,
@@ -55,17 +55,17 @@ async def assistant_service(
     errors = []
 
     await ctx.info(f"Starting assistant session {session_id} with query: '{query}'")
-    await ctx.info(f"Dataset ID: {dataset_id}")
+    await ctx.info(f"Resource ID: {resource_id}")
     await ctx.info(f"Verbose mode: {DEFAULT_CONFIG['verbose']}")
 
     await _safe_progress(ctx, 0, 10, "Initializing KB Assistant...")
 
     try:
-        # Validate dataset_id FIRST so tests get dataset errors before credential validation
-        if not dataset_id or not dataset_id.strip():
+        # Validate resource_id FIRST so tests get resource errors before credential validation
+        if not resource_id or not resource_id.strip():
             return {
-                "error": "Invalid dataset_id",
-                "details": "dataset_id is required and cannot be empty",
+                "error": "Invalid resource_id",
+                "details": "resource_id is required and cannot be empty",
             }
 
         verbose_env = os.getenv("VERBOSE", "").strip().lower() in {
@@ -74,8 +74,10 @@ async def assistant_service(
             "yes",
             "on",
         }
+        # Note: ParameterValidator still accepts dataset_id for backward compatibility
+        # but returns ProcessingConfig with resource_id
         tool_parameters = {
-            "dataset_id": dataset_id.strip(),
+            "dataset_id": resource_id.strip(),  # Backward compatibility key
             "query": query,
             "max_workers": DEFAULT_CONFIG["max_workers"],
             "verbose": verbose_env or DEFAULT_CONFIG["verbose"],
@@ -85,9 +87,10 @@ async def assistant_service(
         # Validate parameters
         config = ParameterValidator.validate_config(tool_parameters)
 
-        # Create dataset_pairs from single dataset_id
+        # Create dataset_pairs from single resource_id
+        # Note: dataset_pairs still uses "id" key (orchestration layer convention)
         await _safe_progress(ctx, 3, 10, "Preparing dataset...")
-        dataset_pairs = [{"id": config.dataset_id}]
+        dataset_pairs = [{"id": config.resource_id}]
 
         retrieval_creds = RetrievalCredentials.from_env()
         retrieval_valid, retrieval_error = retrieval_creds.validate()
@@ -179,22 +182,25 @@ async def assistant_service(
                 "error": error,
                 "details": "Please configure all required credentials",
             }
-        # Validate dataset IDs
+        # Validate resource IDs
         for pair in dataset_pairs:
-            dataset_id = pair.get("id", "")
-            if dataset_id.startswith("env.") or "DATASET_ID" in dataset_id:
+            resource_id_value = pair.get("id", "")
+            if (
+                resource_id_value.startswith("env.")
+                or "DATASET_ID" in resource_id_value
+            ):
                 await ctx.error(
-                    f"Invalid dataset ID: '{dataset_id}' - looks like an environment variable placeholder"
+                    f"Invalid resource ID: '{resource_id_value}' - looks like an environment variable placeholder"
                 )
                 return {
-                    "error": "Invalid dataset_id configuration",
-                    "details": f"Dataset ID '{dataset_id}' appears to be a placeholder (contains 'env.' or 'DATASET_ID')",
-                    "suggestion": "Replace with actual dataset ID from Dify. Example: 'a1b2c3d4-5678-90ab-cdef-1234567890ab'",
-                    "received_dataset_id": config.dataset_id,
+                    "error": "Invalid resource_id configuration",
+                    "details": f"Resource ID '{resource_id_value}' appears to be a placeholder (contains 'env.' or 'DATASET_ID')",
+                    "suggestion": "Replace with actual resource identifier. Example: 'a1b2c3d4-5678-90ab-cdef-1234567890ab'",
+                    "received_resource_id": config.resource_id,
                 }
-            if len(dataset_id) < 10:
+            if len(resource_id_value) < 10:
                 await ctx.warning(
-                    f"Dataset ID '{dataset_id}' seems too short - might be invalid"
+                    f"Resource ID '{resource_id_value}' seems too short - might be invalid"
                 )
 
         await _safe_progress(ctx, 4, 10, "Creating components...")
@@ -789,7 +795,7 @@ def _return_verbose_results(
     result = {
         "dataset_results": [
             {
-                "dataset_id": r.dataset_id,
+                "resource_id": r.resource_id,
                 "direct_result": r.direct_result,
                 "advanced_result": r.advanced_result,
                 "candidates": r.candidates,

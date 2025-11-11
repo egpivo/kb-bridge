@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class SourceInfo(BaseModel):
     """Source information for citation"""
 
-    source: str = Field(description="Source identifier (dataset_id/file_name)")
+    source: str = Field(description="Source identifier (resource_id/file_name)")
     relevance: str = Field(description="Relevance level: high, medium, or low")
 
 
@@ -335,17 +335,21 @@ class StructuredAnswerFormatter(dspy.Module):
             for c in valid_candidates:
                 if not c.get("display_source"):
                     try:
-                        ds_id = c.get("dataset_id", "")
+                        # Prefer resource_id, fall back to dataset_id for backward compatibility
+                        resource_id = c.get("resource_id") or c.get("dataset_id", "")
                         fname = c.get("file_name", "")
                         if fname:
-                            c["display_source"] = f"{ds_id}/{unquote(fname)}"
+                            c["display_source"] = f"{resource_id}/{unquote(fname)}"
                         else:
-                            c["display_source"] = ds_id
+                            c["display_source"] = resource_id
                     except Exception as e:
                         logger.debug(
                             f"Failed to unquote file_name '{fname}' for display_source: {e}"
                         )
-                        c["display_source"] = c.get("dataset_id", "")
+                        # Fall back to resource_id or dataset_id
+                        c["display_source"] = c.get("resource_id") or c.get(
+                            "dataset_id", ""
+                        )
 
             # Format candidates for the prompt (without indentation to save space)
             candidates_json = json.dumps(valid_candidates)

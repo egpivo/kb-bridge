@@ -45,13 +45,13 @@ class RetrieverRouter:
 
     @classmethod
     def create_retriever(
-        cls, dataset_id: str, backend_type: Optional[str] = None, **kwargs
+        cls, resource_id: str, backend_type: Optional[str] = None, **kwargs
     ) -> Retriever:
         """
         Create a retriever instance for the specified backend.
 
         Args:
-            dataset_id: Dataset ID
+            resource_id: Generic resource identifier
             backend_type: Backend type (if None, uses RETRIEVER_BACKEND env var)
             **kwargs: Additional configuration parameters
 
@@ -78,17 +78,19 @@ class RetrieverRouter:
         retriever_class = cls._retrievers[backend_type]
 
         # Build configuration based on backend type
-        config = cls._build_config(backend_type, dataset_id, **kwargs)
+        config = cls._build_config(backend_type, resource_id, **kwargs)
 
         # Create and return retriever instance
         return retriever_class(**config)
 
     @classmethod
     def _build_config(
-        cls, backend_type: str, dataset_id: str, **kwargs
+        cls, backend_type: str, resource_id: str, **kwargs
     ) -> Dict[str, Any]:
         """Build configuration for the specified backend type."""
-        config = {"dataset_id": dataset_id}
+        config = {
+            "dataset_id": resource_id
+        }  # Backend-specific identifier (dataset_id for Dify)
 
         if backend_type == "dify":
             # Use generic RETRIEVAL_* variables first (preferred), fallback to DIFY_* for backward compatibility
@@ -121,39 +123,40 @@ class RetrieverRouter:
                     "RETRIEVAL_API_KEY or DIFY_API_KEY environment variable is required for Dify backend"
                 )
 
-        elif backend_type == "opensearch":
-            config.update(
-                {
-                    "endpoint": kwargs.get("endpoint")
-                    or os.getenv("OPENSEARCH_ENDPOINT"),
-                    "auth": kwargs.get("auth") or os.getenv("OPENSEARCH_AUTH"),
-                    "index_name": kwargs.get("index_name")
-                    or os.getenv("OPENSEARCH_INDEX", dataset_id),
-                    "timeout": kwargs.get("timeout", 30),
-                }
-            )
-
-            # Validate required OpenSearch credentials
-            if not config["endpoint"]:
-                raise ValueError(
-                    "OPENSEARCH_ENDPOINT environment variable is required for OpenSearch backend"
-                )
-
-        elif backend_type == "n8n":
-            config.update(
-                {
-                    "webhook_url": kwargs.get("webhook_url")
-                    or os.getenv("N8N_WEBHOOK_URL"),
-                    "api_key": kwargs.get("api_key") or os.getenv("N8N_API_KEY"),
-                    "timeout": kwargs.get("timeout", 30),
-                }
-            )
-
-            # Validate required n8n credentials
-            if not config["webhook_url"]:
-                raise ValueError(
-                    "N8N_WEBHOOK_URL environment variable is required for n8n backend"
-                )
+        # TODO: Implement OpenSearch and n8n backend support
+        # elif backend_type == "opensearch":
+        #     config.update(
+        #         {
+        #             "endpoint": kwargs.get("endpoint")
+        #             or os.getenv("OPENSEARCH_ENDPOINT"),
+        #             "auth": kwargs.get("auth") or os.getenv("OPENSEARCH_AUTH"),
+        #             "index_name": kwargs.get("index_name")
+        #             or os.getenv("OPENSEARCH_INDEX", resource_id),
+        #             "timeout": kwargs.get("timeout", 30),
+        #         }
+        #     )
+        #
+        #     # Validate required OpenSearch credentials
+        #     if not config["endpoint"]:
+        #         raise ValueError(
+        #             "OPENSEARCH_ENDPOINT environment variable is required for OpenSearch backend"
+        #         )
+        #
+        # elif backend_type == "n8n":
+        #     config.update(
+        #         {
+        #             "webhook_url": kwargs.get("webhook_url")
+        #             or os.getenv("N8N_WEBHOOK_URL"),
+        #             "api_key": kwargs.get("api_key") or os.getenv("N8N_API_KEY"),
+        #             "timeout": kwargs.get("timeout", 30),
+        #         }
+        #     )
+        #
+        #     # Validate required n8n credentials
+        #     if not config["webhook_url"]:
+        #         raise ValueError(
+        #             "N8N_WEBHOOK_URL environment variable is required for n8n backend"
+        #         )
 
         else:
             # For custom backends, pass through all kwargs
@@ -195,20 +198,20 @@ def make_retriever(kind: str, **kwargs) -> Retriever:
     Returns:
         Retriever instance
     """
-    dataset_id = kwargs.pop("dataset_id", "default")
-    return RetrieverRouter.create_retriever(dataset_id, kind, **kwargs)
+    resource_id = kwargs.pop("resource_id", kwargs.pop("dataset_id", "default"))
+    return RetrieverRouter.create_retriever(resource_id, kind, **kwargs)
 
 
 # Convenience function for environment-based creation
-def create_retriever_from_env(dataset_id: str, **kwargs) -> Retriever:
+def create_retriever_from_env(resource_id: str, **kwargs) -> Retriever:
     """
     Create a retriever instance based on environment configuration.
 
     Args:
-        dataset_id: Dataset ID
+        resource_id: Generic resource identifier
         **kwargs: Additional configuration parameters
 
     Returns:
         Retriever instance
     """
-    return RetrieverRouter.create_retriever(dataset_id, **kwargs)
+    return RetrieverRouter.create_retriever(resource_id, **kwargs)

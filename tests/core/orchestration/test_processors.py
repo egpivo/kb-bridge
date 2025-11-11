@@ -43,7 +43,7 @@ class TestFileSearchStrategy:
             mock_time.side_effect = [0.0, 1.5, 0.0, 1.5]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset"
+                query="test query", resource_id="test-dataset"
             )
 
             assert result["success"] is True
@@ -64,7 +64,7 @@ class TestFileSearchStrategy:
             mock_time.side_effect = [0.0, 0.5, 0.0, 0.5]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset"
+                query="test query", resource_id="test-dataset"
             )
 
             assert result["success"] is False
@@ -301,7 +301,7 @@ class TestDatasetProcessor:
             "file_lister": Mock(),
         }
         mock_config = ProcessingConfig(
-            dataset_id="test-dataset", query="test query", verbose=True
+            resource_id="test-dataset", query="test query", verbose=True
         )
         mock_credentials = Credentials(
             retrieval_endpoint="https://test.com",
@@ -342,7 +342,7 @@ class TestDatasetProcessor:
         }
 
         mock_config = ProcessingConfig(
-            dataset_id="test-dataset", query="test query", verbose=True
+            resource_id="test-dataset", query="test query", verbose=True
         )
         mock_credentials = Credentials(
             retrieval_endpoint="https://test.com",
@@ -378,7 +378,7 @@ class TestDatasetProcessor:
 
         assert len(results) == 1
         # Check DatasetResult attributes
-        assert hasattr(results[0], "dataset_id")
+        assert hasattr(results[0], "resource_id")
         assert hasattr(results[0], "direct_result")
         assert hasattr(results[0], "advanced_result")
 
@@ -397,7 +397,7 @@ class TestDatasetProcessor:
         }
 
         mock_config = ProcessingConfig(
-            dataset_id="test-dataset", query="test query", verbose=True
+            resource_id="test-dataset", query="test query", verbose=True
         )
         mock_credentials = Credentials(
             retrieval_endpoint="https://test.com",
@@ -419,7 +419,7 @@ class TestDatasetProcessor:
         dataset_pairs = [{"id": "test-dataset"}]
 
         # This should raise ValueError because no datasets have files
-        with pytest.raises(ValueError, match="No datasets with files found"):
+        with pytest.raises(ValueError, match="No resources with files found"):
             processor.process_datasets(dataset_pairs, "test query")
 
     def test_process_datasets_exception(self):
@@ -456,7 +456,7 @@ class TestDatasetProcessor:
         }
 
         mock_config = ProcessingConfig(
-            dataset_id="test-dataset", query="test query", verbose=True
+            resource_id="test-dataset", query="test query", verbose=True
         )
         mock_credentials = Credentials(
             retrieval_endpoint="https://test.com",
@@ -523,7 +523,7 @@ class TestProcessorsIntegration:
 
             result = strategy.parallel_search(
                 query="machine learning algorithms",
-                dataset_id="ml-dataset",
+                resource_id="ml-dataset",
             )
 
             assert result["success"] is True

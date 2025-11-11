@@ -37,7 +37,7 @@ class TestKBAssistantService:
             # Use assistant_service (renamed from kb_assistant_service)
             assistant_service = _assistant
             result = await assistant_service(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 query="test query",
                 ctx=mock_ctx,
             )
@@ -46,8 +46,8 @@ class TestKBAssistantService:
             assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_kb_assistant_service_invalid_dataset_id(self, mock_credentials):
-        """Test kb_assistant with invalid dataset_id"""
+    async def test_kb_assistant_service_invalid_resource_id(self, mock_credentials):
+        """Test kb_assistant with invalid resource_id"""
         # Mock Context
         mock_ctx = Mock()
         mock_ctx.info = AsyncMock()
@@ -57,15 +57,15 @@ class TestKBAssistantService:
 
         assistant_service = _assistant
         result = await assistant_service(
-            dataset_id="",
+            resource_id="",
             query="test query",
             ctx=mock_ctx,
         )
 
         assert "error" in result
-        # Empty dataset_id should return "Invalid dataset_id" error
+        # Empty resource_id should return "Invalid resource_id" error
         assert (
-            "Invalid dataset_id" in result["error"]
+            "Invalid resource_id" in result["error"]
             or "LLM API token is required" in result["error"]
             or "KB Assistant failed" in result["error"]
         )
@@ -82,13 +82,13 @@ class TestKBAssistantService:
 
         assistant_service = _assistant
         result = await assistant_service(
-            dataset_id="",
+            resource_id="",
             query="test query",
             ctx=mock_ctx,
         )
 
         assert "error" in result
-        assert "Invalid dataset_id" in result["error"]
+        assert "Invalid resource_id" in result["error"]
 
     @pytest.mark.asyncio
     async def test_kb_assistant_service_processing_error(self, mock_credentials):
@@ -109,7 +109,7 @@ class TestKBAssistantService:
 
             assistant_service = _assistant
             result = await assistant_service(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 query="test query",
                 ctx=mock_ctx,
             )
@@ -129,14 +129,14 @@ class TestFileListerService:
         """Test successful file lister execution"""
         # Test basic parameter validation
         result = file_lister_service(
-            dataset_id="",
+            resource_id="",
             retrieval_endpoint="https://dify.ai",
             retrieval_api_key="test-api-key",
         )
 
         assert isinstance(result, dict)
         assert "error" in result
-        assert "dataset_id is required" in result["error"]
+        assert "resource_id is required" in result["error"]
 
     def test_file_lister_service_error(self, mock_credentials):
         """Test file lister with invalid credentials"""
@@ -151,7 +151,7 @@ class TestFileListerService:
 
             # Test with missing credentials (empty strings trigger from_env fallback)
             result = file_lister_service(
-                dataset_id="test-dataset",
+                resource_id="test-resource",
                 retrieval_endpoint="",
                 retrieval_api_key="",
             )
@@ -172,13 +172,86 @@ class TestFileListerService:
             mock_creds_class.return_value = mock_creds
 
             result = file_lister_service(
-                dataset_id="test-dataset",
+                resource_id="test-resource",
                 retrieval_endpoint="https://opensearch.com",
                 retrieval_api_key="opensearch-key",
             )
 
             assert "error" in result
-            assert "not supported for backend: opensearch" in result["error"]
+            assert "not yet implemented" in result["error"]
+
+    def test_file_lister_service_not_implemented_error(self, mock_credentials):
+        """Test file_lister_service handles NotImplementedError"""
+        with patch(
+            "kbbridge.services.file_lister_service.RetrievalCredentials"
+        ) as mock_creds_class:
+            with patch(
+                "kbbridge.services.file_lister_service.BackendAdapterFactory"
+            ) as mock_factory:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.backend_type = "opensearch"
+                mock_creds_class.return_value = mock_creds
+                mock_factory.create.side_effect = NotImplementedError(
+                    "Backend not implemented"
+                )
+
+                result = file_lister_service(
+                    resource_id="test-resource",
+                    retrieval_endpoint="https://test.com",
+                    retrieval_api_key="test-key",
+                    backend_type="opensearch",
+                )
+
+                assert "error" in result
+                assert "Backend not implemented" in result["error"]
+
+    def test_file_lister_service_value_error(self, mock_credentials):
+        """Test file_lister_service handles ValueError"""
+        with patch(
+            "kbbridge.services.file_lister_service.RetrievalCredentials"
+        ) as mock_creds_class:
+            with patch(
+                "kbbridge.services.file_lister_service.BackendAdapterFactory"
+            ) as mock_factory:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.backend_type = "unknown"
+                mock_creds_class.return_value = mock_creds
+                mock_factory.create.side_effect = ValueError("Unsupported backend")
+
+                result = file_lister_service(
+                    resource_id="test-resource",
+                    retrieval_endpoint="https://test.com",
+                    retrieval_api_key="test-key",
+                    backend_type="unknown",
+                )
+
+                assert "error" in result
+                assert "Unsupported backend" in result["error"]
+
+    def test_file_lister_service_general_exception(self, mock_credentials):
+        """Test file_lister_service handles general Exception"""
+        with patch(
+            "kbbridge.services.file_lister_service.RetrievalCredentials"
+        ) as mock_creds_class:
+            with patch(
+                "kbbridge.services.file_lister_service.BackendAdapterFactory"
+            ) as mock_factory:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.backend_type = "dify"
+                mock_creds_class.return_value = mock_creds
+                mock_factory.create.side_effect = Exception("Unexpected error")
+
+                result = file_lister_service(
+                    resource_id="test-resource",
+                    retrieval_endpoint="https://test.com",
+                    retrieval_api_key="test-key",
+                )
+
+                assert "error" in result
+                assert "Exception: Unexpected error" in result["error"]
 
 
 class TestKeywordGeneratorService:
@@ -221,52 +294,61 @@ class TestRetrieverService:
     def test_retriever_service_success(self, mock_credentials):
         """Test successful retriever execution"""
         with patch(
-            "kbbridge.utils.working_components.KnowledgeBaseRetriever"
-        ) as mock_retriever:
-            mock_retriever_instance = Mock()
-            mock_retriever_instance.retrieve.return_value = [
-                {"content": "Test content 1", "score": 0.9},
-                {"content": "Test content 2", "score": 0.8},
-            ]
-            mock_retriever.return_value = mock_retriever_instance
+            "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+        ) as mock_factory:
+            mock_adapter = Mock()
+            mock_adapter.search.return_value = {
+                "records": [
+                    {"segment": {"content": "Test content 1"}},
+                    {"segment": {"content": "Test content 2"}},
+                ]
+            }
+            mock_factory.create.return_value = mock_adapter
 
-            result = retriever_service(
-                query="test query",
-                dataset_id="test-dataset",
-                top_k=10,
-                score_threshold=0.5,
-                verbose=False,
-                retrieval_endpoint="https://dify.ai",
-                retrieval_api_key="test-api-key",
-            )
+            with patch(
+                "kbbridge.integrations.RetrievalCredentials"
+            ) as mock_creds_class:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.backend_type = "dify"
+                mock_creds_class.return_value = mock_creds
 
-            assert "result" in result
-            assert isinstance(result["result"], list)
+                result = retriever_service(
+                    query="test query",
+                    resource_id="test-resource",
+                    top_k=10,
+                    score_threshold=0.5,
+                    verbose=False,
+                    retrieval_endpoint="https://dify.ai",
+                    retrieval_api_key="test-api-key",
+                )
+
+                assert "result" in result
+                assert isinstance(result["result"], list)
 
     def test_retriever_service_error(self, mock_credentials):
         """Test retriever with error"""
 
         with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             with patch(
-                "kbbridge.utils.working_components.KnowledgeBaseRetriever"
-            ) as mock_retriever:
+                "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+            ) as mock_factory:
                 # Setup credentials mock
                 mock_creds = Mock()
                 mock_creds.validate.return_value = (True, None)
                 mock_creds.endpoint = "https://dify.ai"
                 mock_creds.api_key = "test-api-key"
+                mock_creds.backend_type = "dify"
                 mock_creds_class.return_value = mock_creds
 
-                # Mock the instance creation to raise an exception
-                mock_retriever_instance = Mock()
-                mock_retriever_instance.retrieve.side_effect = Exception(
-                    "Retriever error"
-                )
-                mock_retriever.return_value = mock_retriever_instance
+                # Mock adapter to raise an exception
+                mock_adapter = Mock()
+                mock_adapter.search.side_effect = Exception("Retriever error")
+                mock_factory.create.return_value = mock_adapter
 
                 result = retriever_service(
                     query="test query",
-                    dataset_id="test-dataset",
+                    resource_id="test-resource",
                     retrieval_endpoint="https://dify.ai",
                     retrieval_api_key="test-api-key",
                 )
@@ -313,7 +395,7 @@ class TestFileDiscoverService:
 
         result = file_discover_service(
             query="test query",
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             retrieval_endpoint="https://test.com",
             retrieval_api_key="test-key",
         )
@@ -333,7 +415,7 @@ class TestFileDiscoverService:
 
         result = file_discover_service(
             query="test query",
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             retrieval_endpoint="https://test.com",
             retrieval_api_key="test-key",
         )
@@ -372,7 +454,7 @@ class TestFileDiscoverService:
 
         result = file_discover_service(
             query="test query",
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             # No credentials provided, should use from_env
         )
 
@@ -399,7 +481,7 @@ class TestFileDiscoverService:
 
         result = file_discover_service(
             query="test query",
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             retrieval_endpoint="https://test.com",
             retrieval_api_key="test-key",
         )
@@ -433,7 +515,7 @@ class TestFileDiscoverService:
 
         result = file_discover_service(
             query="test query",
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             retrieval_endpoint="https://test.com",
             retrieval_api_key="test-key",
         )

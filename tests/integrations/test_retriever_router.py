@@ -64,7 +64,7 @@ class TestRetrieverRouterCreateRetriever:
 
         with patch.dict(os.environ, {}, clear=True):
             result = RetrieverRouter.create_retriever(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 backend_type="test_backend",
                 endpoint="https://test.com",
                 api_key="test-key",
@@ -83,7 +83,7 @@ class TestRetrieverRouterCreateRetriever:
 
         with patch.dict(os.environ, {"RETRIEVER_BACKEND": "dify"}, clear=True):
             result = RetrieverRouter.create_retriever(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 endpoint="https://test.com",
                 api_key="test-key",
             )
@@ -101,7 +101,7 @@ class TestRetrieverRouterCreateRetriever:
 
         with patch.dict(os.environ, {}, clear=True):
             result = RetrieverRouter.create_retriever(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 endpoint="https://test.com",
                 api_key="test-key",
             )
@@ -113,7 +113,7 @@ class TestRetrieverRouterCreateRetriever:
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(ValueError) as exc_info:
                 RetrieverRouter.create_retriever(
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     backend_type="unsupported_backend",
                 )
 
@@ -422,7 +422,7 @@ class TestIntegrationScenarios:
             },
             clear=True,
         ):
-            retriever = RetrieverRouter.create_retriever(dataset_id="test-dataset")
+            retriever = RetrieverRouter.create_retriever(resource_id="test-dataset")
 
         assert retriever == mock_instance
         call_kwargs = mock_retriever_class.call_args[1]
@@ -442,13 +442,13 @@ class TestIntegrationScenarios:
         with patch.dict(os.environ, {}, clear=True):
             # Try with different cases
             result1 = RetrieverRouter.create_retriever(
-                dataset_id="test",
+                resource_id="test",
                 backend_type="TEST_BACKEND",
                 endpoint="https://test.com",
                 api_key="key",
             )
             result2 = RetrieverRouter.create_retriever(
-                dataset_id="test",
+                resource_id="test",
                 backend_type="Test_Backend",
                 endpoint="https://test.com",
                 api_key="key",

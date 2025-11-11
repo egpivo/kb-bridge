@@ -7,13 +7,24 @@ from kbbridge.integrations.credentials import RetrievalCredentials
 class BackendAdapter(ABC):
     """Generic backend adapter interface bound to a resource identifier."""
 
-    def __init__(self, resource_id: str, credentials: RetrievalCredentials):
-        self.resource_id = resource_id
+    def __init__(
+        self, credentials: RetrievalCredentials, resource_id: Optional[str] = None
+    ):
+        """
+        Initialize backend adapter.
+
+        Args:
+            credentials: Backend credentials
+            resource_id: Optional resource identifier. If provided, adapter is resource-bound.
+        """
         self.credentials = credentials
+        self.resource_id = resource_id
 
     @property
     def _backend_id(self) -> str:
         """Backend-specific identifier (defaults to resource_id)."""
+        if self.resource_id is None:
+            raise ValueError("resource_id is required for this operation")
         return self.resource_id
 
     @abstractmethod
@@ -26,13 +37,26 @@ class BackendAdapter(ABC):
         document_name: str = "",
         score_threshold: Optional[float] = None,
         weights: Optional[Dict[str, float]] = None,
+        resource_id: Optional[str] = None,
         **options,
     ) -> Dict[str, Any]:
-        """Search without needing resource identifier."""
+        """
+        Search without needing resource identifier (if resource-bound).
+
+        Args:
+            resource_id: Optional resource identifier (required if adapter not resource-bound)
+        """
 
     @abstractmethod
-    def list_files(self, timeout: int = 30) -> List[str]:
-        """List files without needing resource identifier."""
+    def list_files(
+        self, timeout: int = 30, resource_id: Optional[str] = None
+    ) -> List[str]:
+        """
+        List files without needing resource identifier (if resource-bound).
+
+        Args:
+            resource_id: Optional resource identifier (required if adapter not resource-bound)
+        """
 
     @abstractmethod
     def build_metadata_filter(
@@ -68,7 +92,7 @@ class BackendAdapterFactory:
                 DifyBackendAdapter,
             )
 
-            return DifyBackendAdapter(resource_id, credentials)
+            return DifyBackendAdapter(credentials, resource_id)
         elif backend_type == "opensearch":
             raise NotImplementedError("OpenSearch backend adapter not yet implemented")
         elif backend_type == "n8n":

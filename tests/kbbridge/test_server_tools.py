@@ -27,7 +27,7 @@ class TestServerAssistantTool:
 
         with patch("kbbridge.server.get_current_credentials", return_value=None):
             result = await assistant_func(
-                dataset_id="test",
+                resource_id="test",
                 query="test query",
                 ctx=mock_ctx,
             )
@@ -60,7 +60,7 @@ class TestServerAssistantTool:
                 "kbbridge.server.assistant_service", return_value=mock_result
             ) as mock_service:
                 result = await assistant(
-                    dataset_id="test",
+                    resource_id="test",
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -90,7 +90,7 @@ class TestServerAssistantTool:
                 side_effect=asyncio.TimeoutError(),
             ):
                 result = await assistant(
-                    dataset_id="test",
+                    resource_id="test",
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -121,7 +121,7 @@ class TestServerAssistantTool:
                 side_effect=ValueError("Test error"),
             ):
                 result = await assistant(
-                    dataset_id="test",
+                    resource_id="test",
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -150,7 +150,7 @@ class TestServerAssistantTool:
         with patch("kbbridge.server.get_current_credentials", return_value=credentials):
             with patch("kbbridge.server.assistant_service", return_value=mock_result):
                 result = await assistant(
-                    dataset_id="test",
+                    resource_id="test",
                     query="test query",
                     ctx=mock_ctx,
                     custom_instructions="Use formal language",
@@ -183,7 +183,7 @@ class TestServerAssistantTool:
         with patch("kbbridge.server.get_current_credentials", return_value=credentials):
             with patch("kbbridge.server.assistant_service", return_value=mock_result):
                 result = await assistant(
-                    dataset_id="test",
+                    resource_id="test",
                     query="test query",
                     ctx=mock_ctx,
                     enable_query_rewriting=True,
@@ -214,7 +214,7 @@ class TestServerFileDiscoverTool:
         with patch("kbbridge.server.get_current_credentials", return_value=None):
             result = await file_discover(
                 query="test query",
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 ctx=mock_ctx,
             )
 
@@ -245,7 +245,7 @@ class TestServerFileDiscoverTool:
             ):
                 result = await file_discover(
                     query="test query",
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     ctx=mock_ctx,
                 )
 
@@ -274,7 +274,7 @@ class TestServerFileDiscoverTool:
             ):
                 result = await file_discover(
                     query="test query",
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     ctx=mock_ctx,
                 )
 
@@ -299,7 +299,7 @@ class TestServerFileListerTool:
 
         with patch("kbbridge.server.get_current_credentials", return_value=None):
             result = await file_lister(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 ctx=mock_ctx,
             )
 
@@ -325,7 +325,7 @@ class TestServerFileListerTool:
         with patch("kbbridge.server.get_current_credentials", return_value=credentials):
             with patch("kbbridge.server.file_lister_service", return_value=mock_result):
                 result = await file_lister(
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     ctx=mock_ctx,
                     limit=10,
                     offset=0,
@@ -355,7 +355,7 @@ class TestServerFileListerTool:
                 side_effect=ValueError("Test error"),
             ):
                 result = await file_lister(
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     ctx=mock_ctx,
                 )
 
@@ -468,7 +468,7 @@ class TestServerRetrieverTool:
 
         with patch("kbbridge.server.get_current_credentials", return_value=None):
             result = await retriever(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 query="test query",
                 ctx=mock_ctx,
             )
@@ -500,7 +500,7 @@ class TestServerRetrieverTool:
         with patch("kbbridge.server.get_current_credentials", return_value=credentials):
             with patch("kbbridge.server.retriever_service", return_value=mock_result):
                 result = await retriever(
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -529,7 +529,7 @@ class TestServerRetrieverTool:
                 side_effect=ValueError("Test error"),
             ):
                 result = await retriever(
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     query="test query",
                     ctx=mock_ctx,
                 )

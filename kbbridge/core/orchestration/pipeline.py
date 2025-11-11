@@ -1044,7 +1044,7 @@ class DatasetProcessor:
                 if self.retriever_factory:
                     r = self.retriever_factory(dataset_id)
                     if hasattr(r, "list_files"):
-                        files = r.list_files(dataset_id=dataset_id, timeout=30)
+                        files = r.list_files(resource_id=dataset_id, timeout=30)
                         has_files = len(files) > 0
             except Exception as e:
                 # NEW BEHAVIOR: If file lister fails, proceed assuming dataset may have files

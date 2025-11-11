@@ -61,5 +61,5 @@ class Retriever(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def list_files(self, *, dataset_id: str, timeout: int = 30) -> List[str]:
+    def list_files(self, *, resource_id: str, timeout: int = 30) -> List[str]:
         raise NotImplementedError("list_files is not implemented for this backend")

@@ -211,9 +211,11 @@ class DifyRetriever(Retriever):
 
         return {"conditions": conditions} if conditions else None
 
-    def list_files(self, *, dataset_id: str, timeout: int = 30) -> List[str]:
+    def list_files(self, *, resource_id: str = None, timeout: int = 30) -> List[str]:
         """List document names in the dataset using Dify Documents API."""
-        url = f"{self.endpoint}/v1/datasets/{self.dataset_id}/documents"
+        # Use resource_id parameter if provided, otherwise use instance dataset_id
+        dataset_id = resource_id if resource_id is not None else self.dataset_id
+        url = f"{self.endpoint}/v1/datasets/{dataset_id}/documents"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",

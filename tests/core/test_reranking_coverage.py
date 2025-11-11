@@ -302,12 +302,12 @@ class TestDirectApproachProcessorNoneCredentials:
         assert call_kwargs["does_rerank"] is False
 
 
-class TestDifyAdapterMetadataFilter:
-    """Test DifyAdapter metadata filter building"""
+class TestDifyBackendAdapterMetadataFilter:
+    """Test DifyBackendAdapter metadata filter building"""
 
     def test_search_with_document_name_builds_filter(self):
         """Test search() builds metadata filter when document_name provided"""
-        from kbbridge.integrations.dify.dify_adapter import DifyAdapter
+        from kbbridge.integrations.dify import DifyBackendAdapter
         from kbbridge.integrations.dify.dify_credentials import DifyCredentials
 
         mock_retriever = Mock()
@@ -319,7 +319,7 @@ class TestDifyAdapterMetadataFilter:
         mock_retriever.group_files.return_value = []
 
         creds = DifyCredentials(endpoint="https://test.com", api_key="test-key")
-        adapter = DifyAdapter(credentials=creds)
+        adapter = DifyBackendAdapter(credentials=creds)
 
         with patch.object(adapter, "create_retriever", return_value=mock_retriever):
             result = adapter.search(
@@ -339,7 +339,7 @@ class TestDifyAdapterMetadataFilter:
 
     def test_search_without_document_name_no_filter(self):
         """Test search() doesn't build filter when document_name is empty"""
-        from kbbridge.integrations.dify.dify_adapter import DifyAdapter
+        from kbbridge.integrations.dify import DifyBackendAdapter
         from kbbridge.integrations.dify.dify_credentials import DifyCredentials
 
         mock_retriever = Mock()
@@ -348,7 +348,7 @@ class TestDifyAdapterMetadataFilter:
         mock_retriever.group_files.return_value = []
 
         creds = DifyCredentials(endpoint="https://test.com", api_key="test-key")
-        adapter = DifyAdapter(credentials=creds)
+        adapter = DifyBackendAdapter(credentials=creds)
 
         with patch.object(adapter, "create_retriever", return_value=mock_retriever):
             result = adapter.search(

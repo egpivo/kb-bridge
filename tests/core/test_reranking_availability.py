@@ -198,7 +198,7 @@ class TestServerFileDiscoverRerankingNormalization:
 
                 await file_discover(
                     query="test",
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     ctx=mock_ctx,
                     do_file_rerank=True,  # User requests reranking
                 )
@@ -237,7 +237,7 @@ class TestServerFileDiscoverRerankingNormalization:
 
                 await file_discover(
                     query="test",
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     ctx=mock_ctx,
                     do_file_rerank=True,
                 )
@@ -272,7 +272,7 @@ class TestServerFileDiscoverRerankingNormalization:
 
                 await file_discover(
                     query="test",
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     ctx=mock_ctx,
                     do_file_rerank=False,  # User already disabled reranking
                 )
@@ -315,7 +315,7 @@ class TestServerRetrieverRerankingNormalization:
                 mock_service.return_value = {"result": []}
 
                 await retriever(
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     query="test query",
                     ctx=mock_ctx,
                     does_rerank=True,  # User requests reranking
@@ -354,7 +354,7 @@ class TestServerRetrieverRerankingNormalization:
                 mock_service.return_value = {"result": []}
 
                 await retriever(
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     query="test query",
                     ctx=mock_ctx,
                     does_rerank=True,
@@ -389,7 +389,7 @@ class TestServerRetrieverRerankingNormalization:
                 mock_service.return_value = {"result": []}
 
                 await retriever(
-                    dataset_id="test-dataset",
+                    resource_id="test-dataset",
                     query="test query",
                     ctx=mock_ctx,
                     does_rerank=False,  # User already disabled reranking

@@ -121,7 +121,7 @@ class DifyRetriever(Retriever):
                         continue
 
                     # Extract metadata
-                    doc = record.get("document") or {}
+                    doc = segment.get("document") or {}
                     if not isinstance(doc, dict):
                         doc = {}
                     doc_metadata = doc.get("doc_metadata") or {}

@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 import dspy
 
 from kbbridge.core.utils.text_processing_utils import build_file_surrogate_text
+from kbbridge.integrations.dify.constants import DifyRetrieverDefaults
 from kbbridge.integrations.retriever_base import ChunkHit, FileHit, Retriever
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,16 @@ class FileDiscover(dspy.Module):
         self.use_surrogates = use_surrogates
 
     def _retrieve(self, query: str, method: str, top_k: int, **kw) -> List[ChunkHit]:
+        # Use DifyRetrieverDefaults for reranking parameters if not provided
+        reranking_provider_name = kw.get(
+            "reranking_provider_name",
+            DifyRetrieverDefaults.RERANKING_PROVIDER_NAME.value,
+        )
+        reranking_model_name = kw.get(
+            "reranking_model_name",
+            DifyRetrieverDefaults.RERANKING_MODEL_NAME.value,
+        )
+
         resp = self.retriever.call(
             query=query,
             method=method,
@@ -43,8 +54,8 @@ class FileDiscover(dspy.Module):
             does_rerank=False,
             score_threshold_enabled=False,
             metadata_filter=kw.get("metadata_filter"),
-            reranking_provider_name=kw.get("reranking_provider_name", ""),
-            reranking_model_name=kw.get("reranking_model_name", ""),
+            reranking_provider_name=reranking_provider_name,
+            reranking_model_name=reranking_model_name,
             weights=kw.get("weights"),
             score_threshold=kw.get("score_threshold"),
         )

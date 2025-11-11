@@ -220,7 +220,6 @@ class TestDatasetParser:
 
         assert isinstance(result, list)
         assert len(result) == 2
-        # The function converts UUIDs to dictionaries with id (source_path is parsed but ignored)
         assert result[0]["id"] == "550e8400-e29b-41d4-a716-446655440000"
         assert result[1]["id"] == "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
 

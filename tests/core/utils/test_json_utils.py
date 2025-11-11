@@ -109,7 +109,6 @@ class TestParseDatasetInfo:
         assert len(result) == 2
         assert result[0]["id"] == "dataset1"
         assert result[1]["id"] == "dataset2"
-        # source_path is ignored and not included in result
         assert "source_path" not in result[0]
 
     def test_parse_with_uuids_no_structured_json(self):
@@ -203,7 +202,6 @@ class TestProcessListItems:
         result = _process_list_items(items)
         assert len(result) == 2
         assert result[0]["id"] == "dataset1"
-        # source_path is ignored and not included in result
         assert "source_path" not in result[0]
 
     def test_process_dict_items_without_source_path(self):

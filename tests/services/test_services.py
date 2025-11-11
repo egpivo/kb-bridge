@@ -140,14 +140,24 @@ class TestFileListerService:
 
     def test_file_lister_service_error(self, mock_credentials):
         """Test file lister with invalid credentials"""
-        # Test with missing credentials
-        result = file_lister_service(
-            dataset_id="test-dataset",
-            retrieval_endpoint="",
-            retrieval_api_key="",
-        )
+        with patch(
+            "kbbridge.services.file_lister_service.RetrievalCredentials"
+        ) as mock_creds_class:
+            # Mock from_env to return invalid credentials
+            mock_creds = Mock()
+            mock_creds.validate.return_value = (False, "Invalid credentials")
+            mock_creds.backend_type = "dify"
+            mock_creds_class.from_env.return_value = mock_creds
 
-        assert "error" in result
+            # Test with missing credentials (empty strings trigger from_env fallback)
+            result = file_lister_service(
+                dataset_id="test-dataset",
+                retrieval_endpoint="",
+                retrieval_api_key="",
+            )
+
+            assert "error" in result
+            assert "Invalid credentials" in result["error"]
 
 
 class TestKeywordGeneratorService:

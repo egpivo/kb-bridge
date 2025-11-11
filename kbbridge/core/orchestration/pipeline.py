@@ -1039,7 +1039,6 @@ class DatasetProcessor:
         datasets_with_files = []
         for pair in dataset_pairs:
             dataset_id = pair.get("id")
-            source_path = pair.get("source_path", "")
             try:
                 has_files = True
                 if self.retriever_factory:
@@ -1054,9 +1053,7 @@ class DatasetProcessor:
                 )
                 has_files = True
 
-            datasets_with_files.append(
-                {"id": dataset_id, "source_path": source_path, "has_files": has_files}
-            )
+            datasets_with_files.append({"id": dataset_id, "has_files": has_files})
 
         # Check if at least one dataset has files
         if not any(d.get("has_files", False) for d in datasets_with_files):
@@ -1065,7 +1062,6 @@ class DatasetProcessor:
         # Process datasets with available files
         for pair in datasets_with_files:
             dataset_id = pair["id"]
-            source_path = pair["source_path"]
             has_files = pair.get("has_files", False)
 
             if not has_files:

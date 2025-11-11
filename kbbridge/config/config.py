@@ -26,6 +26,10 @@ class Credentials:
         self.rerank_url = rerank_url
         self.rerank_model = rerank_model
 
+    def is_reranking_available(self) -> bool:
+        """Check if reranking is available based on credentials."""
+        return bool(self.rerank_url and self.rerank_model)
+
 
 class Config:
     """Configuration management class"""

@@ -196,6 +196,13 @@ async def file_discover(
             await ctx.error("No credentials available")
             return "Error: No credentials available"
 
+        # Normalize reranking flag based on credentials availability
+        if do_file_rerank and not credentials.is_reranking_available():
+            do_file_rerank = False
+            await ctx.info(
+                "File reranking disabled: RERANK_URL or RERANK_MODEL not configured"
+            )
+
         result = file_discover_service(
             query=query,
             dataset_id=dataset_id,
@@ -320,6 +327,13 @@ async def retriever(
             await ctx.error("No credentials available")
             return "Error: No credentials available"
 
+        # Normalize reranking flag based on credentials availability
+        if does_rerank and not credentials.is_reranking_available():
+            does_rerank = False
+            await ctx.info(
+                "Reranking disabled: RERANK_URL or RERANK_MODEL not configured"
+            )
+
         result = retriever_service(
             dataset_id=dataset_id,
             query=query,
@@ -418,6 +432,24 @@ async def main():
     else:
         logger.info(f"Warning: Credentials: Missing {validation['missing_required']}")
         logger.info("Configure via .env file or environment variables")
+
+    # Check reranking configuration
+    default_creds = Config.get_default_credentials()
+    if default_creds:
+        if default_creds.is_reranking_available():
+            logger.info("Reranking: ENABLED (RERANK_URL and RERANK_MODEL configured)")
+        else:
+            logger.warning(
+                "Reranking: DISABLED (RERANK_URL or RERANK_MODEL not configured)"
+            )
+            logger.warning(
+                "  Reranking will be automatically disabled in all retrieval operations"
+            )
+    else:
+        logger.warning("Reranking: DISABLED (no default credentials available)")
+        logger.warning(
+            "  Reranking will be automatically disabled in all retrieval operations"
+        )
 
     logger.info("=" * 60)
 

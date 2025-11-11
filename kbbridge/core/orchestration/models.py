@@ -169,6 +169,10 @@ class Credentials:
     rerank_url: Optional[str] = None
     rerank_model: Optional[str] = None
 
+    def is_reranking_available(self) -> bool:
+        """Check if reranking is available based on credentials."""
+        return bool(self.rerank_url and self.rerank_model)
+
 
 @dataclass
 class WorkerDistribution:

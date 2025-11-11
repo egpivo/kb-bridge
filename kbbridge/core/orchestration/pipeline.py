@@ -87,10 +87,10 @@ class FileSearchStrategy:
                         top_k_recall=AssistantDefaults.TOP_K_PER_KEYWORD.value,
                         top_k_return=AssistantDefaults.MAX_FILES.value,
                         do_chunk_rerank=False,
-                        do_file_rerank=bool(
-                            self.credentials
-                            and self.credentials.rerank_url
-                            and self.credentials.rerank_model
+                        do_file_rerank=(
+                            self.credentials.is_reranking_available()
+                            if self.credentials
+                            else False
                         ),
                         metadata_filter=metadata_filter,
                         rerank_url=self.credentials.rerank_url
@@ -211,11 +211,13 @@ class NaiveApproachProcessor:
         answer_extractor: OrganizationAnswerExtractor,
         verbose: bool = False,
         custom_instructions: Optional[str] = None,
+        credentials: Optional[Credentials] = None,
     ):
         self.retriever = retriever
         self.answer_extractor = answer_extractor
         self.verbose = verbose
         self.custom_instructions = custom_instructions
+        self.credentials = credentials
 
     def process(
         self,
@@ -278,6 +280,11 @@ class NaiveApproachProcessor:
         top_k: int,
     ) -> Dict[str, Any]:
         """Retrieve segments from knowledge base"""
+        # Check if reranking should be enabled based on credentials
+        does_rerank = (
+            self.credentials.is_reranking_available() if self.credentials else False
+        )
+
         # Support both working retriever interface (retrieve) and integrations retriever (call)
         # Reranking config is handled internally by the adapter based on backend type
         if hasattr(self.retriever, "retrieve"):
@@ -285,7 +292,7 @@ class NaiveApproachProcessor:
                 dataset_id=dataset_id,
                 query=query,
                 search_method=RetrieverSearchMethod.HYBRID_SEARCH.value,
-                does_rerank=AssistantDefaults.DOES_RERANK.value,
+                does_rerank=does_rerank,
                 top_k=top_k,
                 score_threshold_enabled=score_threshold is not None,
                 metadata_filter=metadata_filter,
@@ -298,7 +305,7 @@ class NaiveApproachProcessor:
                 query=query,
                 method=RetrieverSearchMethod.HYBRID_SEARCH.value,
                 top_k=top_k,
-                does_rerank=AssistantDefaults.DOES_RERANK.value,
+                does_rerank=does_rerank,
                 score_threshold_enabled=score_threshold is not None,
                 metadata_filter=metadata_filter,
                 score_threshold=score_threshold,
@@ -416,6 +423,7 @@ class AdvancedApproachProcessor:
         custom_instructions: Optional[str] = None,
         adaptive_top_k_enabled: bool = AssistantDefaults.ADAPTIVE_TOP_K_ENABLED.value,
         total_segment_budget: int = AssistantDefaults.TOTAL_SEGMENT_BUDGET.value,
+        credentials: Optional[Credentials] = None,
     ):
         self.retriever = retriever
         self.answer_extractor = answer_extractor
@@ -423,6 +431,7 @@ class AdvancedApproachProcessor:
         self.custom_instructions = custom_instructions
         self.adaptive_top_k_enabled = adaptive_top_k_enabled
         self.total_segment_budget = total_segment_budget
+        self.credentials = credentials
 
     def process(
         self,
@@ -1002,6 +1011,7 @@ class DatasetProcessor:
             components["answer_extractor"],
             verbose=config.verbose,
             custom_instructions=custom_instructions,
+            credentials=credentials,
         )
         self.advanced_processor = AdvancedApproachProcessor(
             components.get("retriever"),
@@ -1010,6 +1020,7 @@ class DatasetProcessor:
             custom_instructions=custom_instructions,
             adaptive_top_k_enabled=config.adaptive_top_k_enabled,
             total_segment_budget=config.total_segment_budget,
+            credentials=credentials,
         )
         self.retriever_factory = components.get("retriever_factory")
         self.profiling_data = profiling_data or {}
@@ -1077,6 +1088,7 @@ class DatasetProcessor:
                 self.components["answer_extractor"],
                 verbose=self.config.verbose,
                 custom_instructions=self.custom_instructions,
+                credentials=self.credentials,
             )
 
             advanced_processor = AdvancedApproachProcessor(
@@ -1086,6 +1098,7 @@ class DatasetProcessor:
                 custom_instructions=self.custom_instructions,
                 adaptive_top_k_enabled=self.config.adaptive_top_k_enabled,
                 total_segment_budget=self.config.total_segment_budget,
+                credentials=self.credentials,
             )
 
             # First stage: standalone file search (or pin to a specific file if requested)

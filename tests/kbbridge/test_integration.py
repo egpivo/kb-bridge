@@ -140,7 +140,7 @@ def test_dify_parameter_validation():
 
         # Test valid parameters
         tool_parameters = {
-            "dataset_info": {"dataset_id": "test-id", "dataset_name": "test"},
+            "dataset_id": "test-id",
             "query": "test query",
             "verbose": True,
             "score_threshold": 0.7,

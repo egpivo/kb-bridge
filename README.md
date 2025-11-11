@@ -123,7 +123,7 @@ from mcp import ClientSession
 async def main():
     async with ClientSession("http://localhost:5210/mcp") as session:
         result = await session.call_tool("assistant", {
-            "dataset_info": json.dumps([{"id": "dataset_id", "name": "Dataset"}]),
+            "dataset_id": "dataset_id",
             "query": "What are the safety protocols?"
         })
         print(result.content[0].text)
@@ -135,7 +135,7 @@ asyncio.run(main())
 
 ```python
 await session.call_tool("assistant", {
-    "dataset_info": json.dumps([{"id": "hr_dataset", "name": "HR Policies"}]),
+    "dataset_id": "hr_dataset",
     "query": "What is the maternity leave policy?",
     "custom_instructions": "Focus on HR compliance and legal requirements."
 })
@@ -145,7 +145,7 @@ await session.call_tool("assistant", {
 
 ```python
 await session.call_tool("assistant", {
-    "dataset_info": json.dumps([{"id": "dataset_id", "name": "Dataset"}]),
+    "dataset_id": "dataset_id",
     "query": "What are the safety protocols?",
     "reflection_mode": "standard",  # "off", "standard", or "comprehensive"
     "reflection_threshold": 0.75,

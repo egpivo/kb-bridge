@@ -301,7 +301,7 @@ class TestDatasetProcessor:
             "file_lister": Mock(),
         }
         mock_config = ProcessingConfig(
-            dataset_info="test-dataset", query="test query", verbose=True
+            dataset_id="test-dataset", query="test query", verbose=True
         )
         mock_credentials = Credentials(
             retrieval_endpoint="https://test.com",
@@ -342,7 +342,7 @@ class TestDatasetProcessor:
         }
 
         mock_config = ProcessingConfig(
-            dataset_info="test-dataset", query="test query", verbose=True
+            dataset_id="test-dataset", query="test query", verbose=True
         )
         mock_credentials = Credentials(
             retrieval_endpoint="https://test.com",
@@ -397,7 +397,7 @@ class TestDatasetProcessor:
         }
 
         mock_config = ProcessingConfig(
-            dataset_info="test-dataset", query="test query", verbose=True
+            dataset_id="test-dataset", query="test query", verbose=True
         )
         mock_credentials = Credentials(
             retrieval_endpoint="https://test.com",
@@ -456,7 +456,7 @@ class TestDatasetProcessor:
         }
 
         mock_config = ProcessingConfig(
-            dataset_info="test-dataset", query="test query", verbose=True
+            dataset_id="test-dataset", query="test query", verbose=True
         )
         mock_credentials = Credentials(
             retrieval_endpoint="https://test.com",

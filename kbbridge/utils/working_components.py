@@ -1,10 +1,14 @@
 import json
+import logging
 from typing import Any, Dict, List, Optional
 
 import requests
 
 from kbbridge.config.constants import AssistantDefaults
 from kbbridge.core.orchestration.models import Credentials, ProcessingConfig
+from kbbridge.integrations.dify.constants import DifyRetrieverDefaults
+
+logger = logging.getLogger(__name__)
 
 
 def format_search_results(results: list) -> dict:
@@ -33,8 +37,8 @@ def format_search_results(results: list) -> dict:
                     segments.append(
                         {"content": content, "document_name": document_name}
                     )
-            except Exception:
-                # Skip problematic records
+            except Exception as e:
+                logger.debug(f"Skipping problematic record: {e}", exc_info=True)
                 continue
 
         return {
@@ -94,8 +98,8 @@ class KnowledgeBaseRetriever:
         search_method: str = "hybrid_search",
         does_rerank: bool = True,
         top_k: int = 10,
-        reranking_provider_name: str = "cohere",
-        reranking_model_name: str = "rerank-multilingual-v2.0",
+        reranking_provider_name: Optional[str] = None,
+        reranking_model_name: Optional[str] = None,
         score_threshold_enabled: bool = False,
         metadata_filter: Optional[dict] = None,
         score_threshold: Optional[float] = None,
@@ -110,8 +114,8 @@ class KnowledgeBaseRetriever:
             search_method: Search method (hybrid_search, semantic_search, etc.)
             does_rerank: Whether to rerank results
             top_k: Number of results to return
-            reranking_provider_name: Reranking provider name
-            reranking_model_name: Reranking model name
+            reranking_provider_name: Reranking provider name (defaults to DifyRetrieverDefaults)
+            reranking_model_name: Reranking model name (defaults to DifyRetrieverDefaults)
             score_threshold_enabled: Whether score threshold is enabled
             metadata_filter: Optional metadata filter
             score_threshold: Optional score threshold
@@ -120,6 +124,18 @@ class KnowledgeBaseRetriever:
         Returns:
             Dictionary containing retrieval results or error information
         """
+        # Use DifyRetrieverDefaults if not provided
+        if reranking_provider_name is None:
+            reranking_provider_name = (
+                DifyRetrieverDefaults.RERANKING_PROVIDER_NAME.value
+            )
+        if reranking_model_name is None:
+            reranking_model_name = DifyRetrieverDefaults.RERANKING_MODEL_NAME.value
+
+        # Disable reranking if provider or model is missing/invalid
+        if does_rerank and (not reranking_provider_name or not reranking_model_name):
+            does_rerank = False
+
         url = f"{self.endpoint.rstrip('/')}/v1/datasets/{dataset_id}/retrieve"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -184,8 +200,12 @@ class KnowledgeBaseRetriever:
                 # Try to extract error content from response
                 try:
                     error_content = e.response.json().get("error", str(e))
-                except:
+                except Exception as json_err:
                     # If JSON parsing fails, use response text
+                    logger.debug(
+                        f"Failed to parse error response as JSON: {json_err}",
+                        exc_info=True,
+                    )
                     error_content = getattr(e.response, "text", str(e))
             elif response:
                 status_code = response.status_code
@@ -335,8 +355,11 @@ class WorkingIntentionExtractor:
                     "updated_query": query,
                 }
 
-        except Exception:
+        except Exception as e:
             # Fallback on error
+            logger.debug(
+                f"Intention extraction failed, using fallback: {e}", exc_info=True
+            )
             return {
                 "success": True,
                 "intention": f"User wants to find information about: {query}",
@@ -417,14 +440,21 @@ class WorkingDatasetProcessor:
         """Process using advanced approach (with reranking)"""
         retriever = self.components["retriever"]
 
+        # Check if reranking should be enabled based on credentials availability
+        does_rerank = (
+            self.credentials.is_reranking_available() if self.credentials else False
+        )
+
+        # Use DifyRetrieverDefaults for reranking parameters
+        # These are used for Dify's built-in reranking feature
         result = retriever.retrieve(
             dataset_id=dataset_id,
             query=query,
             search_method="hybrid_search",
-            does_rerank=True,
+            does_rerank=does_rerank,
             top_k=5,
-            reranking_provider_name="cohere",
-            reranking_model_name="rerank-multilingual-v2.0",
+            reranking_provider_name=DifyRetrieverDefaults.RERANKING_PROVIDER_NAME.value,
+            reranking_model_name=DifyRetrieverDefaults.RERANKING_MODEL_NAME.value,
         )
 
         candidates = []

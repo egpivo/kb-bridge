@@ -1,4 +1,3 @@
-import json
 import sys
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -35,31 +34,20 @@ class TestKBAssistantService:
             }
             mock_factory.create_processor.return_value = mock_processor
 
-            # Mock the dataset processor
-            with patch(
-                "kbbridge.core.orchestration.DatasetProcessor"
-            ) as mock_dataset_processor:
-                mock_dataset_processor.return_value.get_dataset_info.return_value = {
-                    "id": "test-dataset",
-                    "name": "Test Dataset",
-                }
+            # Use assistant_service (renamed from kb_assistant_service)
+            assistant_service = _assistant
+            result = await assistant_service(
+                dataset_id="test-dataset",
+                query="test query",
+                ctx=mock_ctx,
+            )
 
-                # Use assistant_service (renamed from kb_assistant_service)
-                assistant_service = _assistant
-                result = await assistant_service(
-                    dataset_info=json.dumps(
-                        [{"id": "test-dataset", "source_path": ""}]
-                    ),
-                    query="test query",
-                    ctx=mock_ctx,
-                )
-
-                assert isinstance(result, dict)
-                assert "error" in result
+            assert isinstance(result, dict)
+            assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_kb_assistant_service_invalid_dataset_info(self, mock_credentials):
-        """Test kb_assistant with invalid dataset_info"""
+    async def test_kb_assistant_service_invalid_dataset_id(self, mock_credentials):
+        """Test kb_assistant with invalid dataset_id"""
         # Mock Context
         mock_ctx = Mock()
         mock_ctx.info = AsyncMock()
@@ -69,16 +57,15 @@ class TestKBAssistantService:
 
         assistant_service = _assistant
         result = await assistant_service(
-            dataset_info="invalid json",
+            dataset_id="",
             query="test query",
             ctx=mock_ctx,
         )
 
-        # Behavior: invalid dataset_info leads to error (either no datasets or missing config)
         assert "error" in result
-        # Could be "No datasets with files found" or "LLM API token is required" depending on execution path
+        # Empty dataset_id should return "Invalid dataset_id" error
         assert (
-            "No datasets with files found" in result["error"]
+            "Invalid dataset_id" in result["error"]
             or "LLM API token is required" in result["error"]
             or "KB Assistant failed" in result["error"]
         )
@@ -95,13 +82,13 @@ class TestKBAssistantService:
 
         assistant_service = _assistant
         result = await assistant_service(
-            dataset_info=json.dumps([]),
+            dataset_id="",
             query="test query",
             ctx=mock_ctx,
         )
 
         assert "error" in result
-        assert "Invalid dataset_info format" in result["error"]
+        assert "Invalid dataset_id" in result["error"]
 
     @pytest.mark.asyncio
     async def test_kb_assistant_service_processing_error(self, mock_credentials):
@@ -122,7 +109,7 @@ class TestKBAssistantService:
 
             assistant_service = _assistant
             result = await assistant_service(
-                dataset_info=json.dumps([{"id": "test-dataset", "source_path": ""}]),
+                dataset_id="test-dataset",
                 query="test query",
                 ctx=mock_ctx,
             )
@@ -153,14 +140,45 @@ class TestFileListerService:
 
     def test_file_lister_service_error(self, mock_credentials):
         """Test file lister with invalid credentials"""
-        # Test with missing credentials
-        result = file_lister_service(
-            dataset_id="test-dataset",
-            retrieval_endpoint="",
-            retrieval_api_key="",
-        )
+        with patch(
+            "kbbridge.services.file_lister_service.RetrievalCredentials"
+        ) as mock_creds_class:
+            # Mock from_env to return invalid credentials
+            mock_creds = Mock()
+            mock_creds.validate.return_value = (False, "Invalid credentials")
+            mock_creds.backend_type = "dify"
+            mock_creds_class.from_env.return_value = mock_creds
 
-        assert "error" in result
+            # Test with missing credentials (empty strings trigger from_env fallback)
+            result = file_lister_service(
+                dataset_id="test-dataset",
+                retrieval_endpoint="",
+                retrieval_api_key="",
+            )
+
+            assert "error" in result
+            assert "Invalid credentials" in result["error"]
+
+    def test_file_lister_service_non_dify_backend(self, mock_credentials):
+        """Test file lister with non-dify backend"""
+        with patch(
+            "kbbridge.services.file_lister_service.RetrievalCredentials"
+        ) as mock_creds_class:
+            mock_creds = Mock()
+            mock_creds.validate.return_value = (True, None)
+            mock_creds.backend_type = "opensearch"
+            mock_creds.endpoint = "https://opensearch.com"
+            mock_creds.api_key = "opensearch-key"
+            mock_creds_class.return_value = mock_creds
+
+            result = file_lister_service(
+                dataset_id="test-dataset",
+                retrieval_endpoint="https://opensearch.com",
+                retrieval_api_key="opensearch-key",
+            )
+
+            assert "error" in result
+            assert "not supported for backend: opensearch" in result["error"]
 
 
 class TestKeywordGeneratorService:
@@ -388,6 +406,40 @@ class TestFileDiscoverService:
 
         assert "error" in result
         assert "Test error" in result["error"]
+
+    @patch("kbbridge.integrations.RetrieverRouter.create_retriever")
+    @patch("kbbridge.core.discovery.file_discover.FileDiscover")
+    @patch("kbbridge.services.file_discover_service.RetrievalCredentials")
+    def test_file_discover_service_no_debug_info(
+        self, mock_credentials_class, mock_file_discover_class, mock_create_retriever
+    ):
+        """Test file discover with files (no debug_info)"""
+        mock_creds = Mock()
+        mock_creds.validate.return_value = (True, None)
+        mock_creds.backend_type = "dify"
+        mock_creds.endpoint = "https://test.com"
+        mock_creds.api_key = "test-key"
+        mock_credentials_class.return_value = mock_creds
+
+        mock_retriever = Mock()
+        mock_retriever.build_metadata_filter.return_value = {"filter": "value"}
+        mock_create_retriever.return_value = mock_retriever
+
+        mock_file = Mock()
+        mock_file.file_name = "test.pdf"
+        mock_discover_instance = Mock()
+        mock_discover_instance.__call__ = Mock(return_value=[mock_file])
+        mock_file_discover_class.return_value = mock_discover_instance
+
+        result = file_discover_service(
+            query="test query",
+            dataset_id="test-dataset",
+            retrieval_endpoint="https://test.com",
+            retrieval_api_key="test-key",
+        )
+
+        assert result["success"] is True
+        assert result["debug_info"] is None  # Should be None when files exist
 
 
 if __name__ == "__main__":

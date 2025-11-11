@@ -4,7 +4,6 @@ Comprehensive tests for assistant_service
 Tests all code paths in assistant_service.py to improve coverage.
 """
 
-import json
 import os
 import sys
 from unittest.mock import AsyncMock, Mock, patch
@@ -40,7 +39,7 @@ class TestAssistantServiceCredentials:
             mock_creds_class.from_env.return_value = mock_creds
 
             result = await assistant_service(
-                dataset_info=json.dumps([{"id": "test-dataset", "source_path": ""}]),
+                dataset_id="test-dataset",
                 query="test query",
                 ctx=mock_ctx,
             )
@@ -74,9 +73,7 @@ class TestAssistantServiceCredentials:
 
             with patch.dict(os.environ, {"LLM_MODEL": "gpt-4"}, clear=True):
                 result = await assistant_service(
-                    dataset_info=json.dumps(
-                        [{"id": "test-dataset", "source_path": ""}]
-                    ),
+                    dataset_id="test-dataset",
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -112,9 +109,7 @@ class TestAssistantServiceCredentials:
                 os.environ, {"LLM_API_URL": "https://api.openai.com/v1"}, clear=True
             ):
                 result = await assistant_service(
-                    dataset_info=json.dumps(
-                        [{"id": "test-dataset", "source_path": ""}]
-                    ),
+                    dataset_id="test-dataset",
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -155,9 +150,7 @@ class TestAssistantServiceCredentials:
                 clear=True,
             ):
                 result = await assistant_service(
-                    dataset_info=json.dumps(
-                        [{"id": "test-dataset", "source_path": ""}]
-                    ),
+                    dataset_id="test-dataset",
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -199,9 +192,7 @@ class TestAssistantServiceCredentials:
                 clear=True,
             ):
                 result = await assistant_service(
-                    dataset_info=json.dumps(
-                        [{"id": "test-dataset", "source_path": ""}]
-                    ),
+                    dataset_id="test-dataset",
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -248,16 +239,14 @@ class TestAssistantServiceCredentials:
                     mock_parser.parse_credentials.return_value = (Mock(), None)
 
                     result = await assistant_service(
-                        dataset_info=json.dumps(
-                            [{"id": "env.DATASET_ID", "source_path": ""}]
-                        ),
+                        dataset_id="env.DATASET_ID",
                         query="test query",
                         ctx=mock_ctx,
                     )
 
             assert "error" in result
             assert (
-                "Invalid dataset_info" in result["error"]
+                "Invalid dataset_id" in result["error"]
                 or "placeholder" in result["error"].lower()
             )
 
@@ -303,7 +292,7 @@ class TestAssistantServiceCredentials:
                         mock_factory.create_components.return_value = {}
 
                         result = await assistant_service(
-                            dataset_info=json.dumps([{"id": "123", "source_path": ""}]),
+                            dataset_id="123",
                             query="test query",
                             ctx=mock_ctx,
                         )
@@ -375,9 +364,7 @@ class TestAssistantServiceQueryProcessing:
                                     mock_extract.return_value = ("refined query", [])
 
                                     result = await assistant_service(
-                                        dataset_info=json.dumps(
-                                            [{"id": "test-dataset", "source_path": ""}]
-                                        ),
+                                        dataset_id="test-dataset",
                                         query="test query",
                                         ctx=mock_ctx,
                                         enable_query_rewriting=True,
@@ -441,9 +428,7 @@ class TestAssistantServiceQueryProcessing:
                                 mock_extract.return_value = ("", [])
 
                                 result = await assistant_service(
-                                    dataset_info=json.dumps(
-                                        [{"id": "test-dataset", "source_path": ""}]
-                                    ),
+                                    dataset_id="test-dataset",
                                     query="test query",
                                     ctx=mock_ctx,
                                 )
@@ -512,9 +497,7 @@ class TestAssistantServiceQueryProcessing:
                                 )
 
                                 result = await assistant_service(
-                                    dataset_info=json.dumps(
-                                        [{"id": "test-dataset", "source_path": ""}]
-                                    ),
+                                    dataset_id="test-dataset",
                                     query="test query",
                                     ctx=mock_ctx,
                                 )
@@ -593,9 +576,7 @@ class TestAssistantServiceQueryProcessing:
                                     }
 
                                     result = await assistant_service(
-                                        dataset_info=json.dumps(
-                                            [{"id": "test-dataset", "source_path": ""}]
-                                        ),
+                                        dataset_id="test-dataset",
                                         query="test query",
                                         ctx=mock_ctx,
                                     )
@@ -660,9 +641,7 @@ class TestAssistantServiceQueryProcessing:
                                 mock_extract.return_value = ("refined query", [])
 
                                 result = await assistant_service(
-                                    dataset_info=json.dumps(
-                                        [{"id": "test-dataset", "source_path": ""}]
-                                    ),
+                                    dataset_id="test-dataset",
                                     query="test query",
                                     ctx=mock_ctx,
                                 )
@@ -722,7 +701,6 @@ class TestAssistantServiceResults:
                             }
                             mock_dataset_result = Mock()
                             mock_dataset_result.dataset_id = "test-dataset"
-                            mock_dataset_result.source_path = ""
                             mock_dataset_result.direct_result = {}
                             mock_dataset_result.advanced_result = {}
                             mock_dataset_result.candidates = []
@@ -747,9 +725,7 @@ class TestAssistantServiceResults:
                                     )
 
                                     result = await assistant_service(
-                                        dataset_info=json.dumps(
-                                            [{"id": "test-dataset", "source_path": ""}]
-                                        ),
+                                        dataset_id="test-dataset",
                                         query="test query",
                                         ctx=mock_ctx,
                                     )
@@ -826,9 +802,7 @@ class TestAssistantServiceResults:
                                     )
 
                                     result = await assistant_service(
-                                        dataset_info=json.dumps(
-                                            [{"id": "test-dataset", "source_path": ""}]
-                                        ),
+                                        dataset_id="test-dataset",
                                         query="test query",
                                         ctx=mock_ctx,
                                     )
@@ -1006,7 +980,7 @@ class TestAssistantServiceHelpers:
             [{"answer": "test", "score": 0.9}],
         )
 
-        dataset_pairs = [{"id": "test-dataset", "source_path": ""}]
+        dataset_pairs = [{"id": "test-dataset"}]
         sub_queries = ["query1", "query2"]
 
         all_results, all_candidates = await _execute_multi_query(
@@ -1033,7 +1007,7 @@ class TestAssistantServiceHelpers:
             Exception("Query 2 failed"),
         ]
 
-        dataset_pairs = [{"id": "test-dataset", "source_path": ""}]
+        dataset_pairs = [{"id": "test-dataset"}]
         sub_queries = ["query1", "query2"]
 
         all_results, all_candidates = await _execute_multi_query(
@@ -1088,9 +1062,7 @@ class TestAssistantServiceProgressReporting:
 
                     # Should not raise AttributeError
                     result = await assistant_service(
-                        dataset_info=json.dumps(
-                            [{"id": "test-dataset", "source_path": ""}]
-                        ),
+                        dataset_id="test-dataset",
                         query="test query",
                         ctx=mock_ctx,
                     )
@@ -1170,9 +1142,7 @@ class TestAssistantServiceCustomInstructions:
                                     }
 
                                     result = await assistant_service(
-                                        dataset_info=json.dumps(
-                                            [{"id": "test-dataset", "source_path": ""}]
-                                        ),
+                                        dataset_id="test-dataset",
                                         query="test query",
                                         ctx=mock_ctx,
                                         custom_instructions="Focus on HR compliance",
@@ -1259,9 +1229,7 @@ class TestAssistantServiceCustomInstructions:
                                 mock_extract.return_value = ("refined query", [])
 
                                 result = await assistant_service(
-                                    dataset_info=json.dumps(
-                                        [{"id": "test-dataset", "source_path": ""}]
-                                    ),
+                                    dataset_id="test-dataset",
                                     query="test query",
                                     ctx=mock_ctx,
                                     document_name="specific_doc.pdf",
@@ -1378,14 +1346,7 @@ class TestAssistantServiceReflection:
                                             mock_ref_defaults.ENABLED.value = True
 
                                             result = await assistant_service(
-                                                dataset_info=json.dumps(
-                                                    [
-                                                        {
-                                                            "id": "test-dataset",
-                                                            "source_path": "",
-                                                        }
-                                                    ]
-                                                ),
+                                                dataset_id="test-dataset",
                                                 query="test query",
                                                 ctx=mock_ctx,
                                             )
@@ -1437,9 +1398,7 @@ class TestAssistantServiceReflection:
                         mock_ref_defaults.ENABLED.value = True
 
                         result = await assistant_service(
-                            dataset_info=json.dumps(
-                                [{"id": "test-dataset", "source_path": ""}]
-                            ),
+                            dataset_id="test-dataset",
                             query="test query",
                             ctx=mock_ctx,
                         )
@@ -1492,9 +1451,7 @@ class TestAssistantServiceCredentialParser:
                     )
 
                     result = await assistant_service(
-                        dataset_info=json.dumps(
-                            [{"id": "test-dataset", "source_path": ""}]
-                        ),
+                        dataset_id="test-dataset",
                         query="test query",
                         ctx=mock_ctx,
                     )

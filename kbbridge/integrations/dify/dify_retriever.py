@@ -1,10 +1,5 @@
-"""
-Dify Retriever Implementation
-
-Concrete implementation of Retriever interface for Dify backend.
-"""
-
 import logging
+from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -17,9 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class DifyRetriever(Retriever):
-    """
-    Dify backend
-    implementation of Retriever interface.
+    """Dify backend implementation of Retriever interface.
 
     Example:
         retriever = DifyRetriever(
@@ -35,15 +28,7 @@ class DifyRetriever(Retriever):
     """
 
     def __init__(self, endpoint: str, api_key: str, dataset_id: str, timeout: int = 30):
-        """
-        Initialize Dify retriever.
-
-        Args:
-            endpoint: Dify API endpoint
-            api_key: Dify API key
-            dataset_id: Dataset ID
-            timeout: Request timeout in seconds
-        """
+        """Initialize Dify retriever."""
         self.endpoint = endpoint.rstrip("/")
         self.api_key = api_key
         self.dataset_id = dataset_id
@@ -85,6 +70,8 @@ class DifyRetriever(Retriever):
         if kw.get("weights") is not None:
             model["weights"] = kw["weights"]
         if kw.get("metadata_filter") is not None:
+            # Ensure metadata is enabled when using metadata filters
+            self.enable_metadata(timeout=self.timeout)
             model["metadata_filtering_conditions"] = kw["metadata_filter"]
 
         payload = {"query": query, "retrieval_model": model}
@@ -118,15 +105,6 @@ class DifyRetriever(Retriever):
         return response.json()
 
     def normalize_chunks(self, resp: Dict[str, Any]) -> List[ChunkHit]:
-        """
-        Normalize Dify response to ChunkHit objects.
-
-        Args:
-            resp: Dify API response
-
-        Returns:
-            List of ChunkHit objects
-        """
         chunks = []
 
         try:
@@ -134,22 +112,29 @@ class DifyRetriever(Retriever):
 
             for record in records:
                 try:
-                    segment = record.get("segment", {})
-                    content = segment.get("content", "")
+                    segment = record.get("segment") or {}
+                    if not isinstance(segment, dict):
+                        continue
 
+                    content = segment.get("content", "")
                     if not content:
                         continue
 
                     # Extract metadata
-                    doc = record.get("segment", {}).get("document", {})
-                    doc_metadata = doc.get("doc_metadata", {})
-
-                    # Get score
+                    doc = segment.get("document") or {}
+                    if not isinstance(doc, dict):
+                        doc = {}
+                    doc_metadata = doc.get("doc_metadata") or {}
+                    if not isinstance(doc_metadata, dict):
+                        doc_metadata = {}
+                    document_name = doc.get("name", "") or doc_metadata.get(
+                        "document_name", ""
+                    )
                     score = record.get("score", 1.0)
 
                     chunk = ChunkHit(
                         content=content,
-                        document_name=doc_metadata.get("document_name", ""),
+                        document_name=document_name,
                         score=float(score),
                         metadata=doc_metadata,
                     )
@@ -168,22 +153,19 @@ class DifyRetriever(Retriever):
         return chunks
 
     def group_files(self, chunks: List[ChunkHit], agg: str = "max") -> List[FileHit]:
-        """
-        Group chunks by file and aggregate scores.
-
-        Args:
-            chunks: List of ChunkHit objects
-            agg: Aggregation method ("max", "mean", "sum")
-
-        Returns:
-            List of FileHit with aggregated scores
-        """
-        from collections import defaultdict
-
-        # Group by document name
+        # Group by document name, skipping chunks with empty document_name
         by_file = defaultdict(list)
+        skipped = 0
         for chunk in chunks:
+            if not chunk.document_name or not chunk.document_name.strip():
+                skipped += 1
+                continue
             by_file[chunk.document_name].append(chunk)
+
+        if skipped > 0:
+            logger.warning(
+                f"Skipped {skipped} chunks with empty document_name out of {len(chunks)} total chunks"
+            )
 
         # Aggregate scores
         file_hits = []
@@ -230,16 +212,7 @@ class DifyRetriever(Retriever):
         return {"conditions": conditions} if conditions else None
 
     def list_files(self, *, dataset_id: str, timeout: int = 30) -> List[str]:
-        """
-        List document names in the dataset using Dify Documents API.
-
-        Args:
-            dataset_id: Dataset ID (required by interface, but already set in __init__)
-            timeout: Request timeout
-
-        Returns:
-            List of file names (strings)
-        """
+        """List document names in the dataset using Dify Documents API."""
         url = f"{self.endpoint}/v1/datasets/{self.dataset_id}/documents"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -255,17 +228,96 @@ class DifyRetriever(Retriever):
             logger.warning(f"Dify list_files failed: {e}")
             return []
 
+    def enable_metadata(self, timeout: int = 30, force: bool = False) -> bool:
+        """
+        Enable built-in metadata for the dataset.
+
+        Checks current status first and only enables if metadata is disabled.
+        Use force=True to enable even if already enabled.
+
+        Args:
+            timeout: Request timeout in seconds
+            force: If True, enable even if already enabled (default: False)
+
+        Returns:
+            True if metadata was enabled successfully or already enabled, False otherwise
+        """
+        # Check current status first
+        if not force:
+            status = self.check_metadata_status(timeout=timeout)
+            if status and status.get("enabled"):
+                logger.info(
+                    f"Metadata already enabled for dataset {self.dataset_id}, skipping enable"
+                )
+                return True
+
+        # Enable metadata
+        url = f"{self.endpoint}/v1/datasets/{self.dataset_id}/metadata/built-in/enable"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        try:
+            resp = requests.post(url, headers=headers, timeout=timeout)
+            resp.raise_for_status()
+            logger.info(f"Metadata enabled successfully for dataset {self.dataset_id}")
+            return True
+        except requests.exceptions.HTTPError as e:
+            error_detail = ""
+            try:
+                error_detail = resp.json()
+                logger.error(f"Dify enable_metadata error response: {error_detail}")
+            except:
+                error_detail = resp.text
+                logger.error(f"Dify enable_metadata error text: {error_detail}")
+            return False
+        except Exception as e:
+            logger.warning(f"Dify enable_metadata failed: {e}")
+            return False
+
+    def check_metadata_status(self, timeout: int = 30) -> Optional[Dict[str, Any]]:
+        """
+        Check metadata status for the dataset.
+
+        Args:
+            timeout: Request timeout in seconds
+
+        Returns:
+            Metadata status dict if available, None otherwise
+        """
+        url = f"{self.endpoint}/v1/datasets/{self.dataset_id}/metadata/built-in"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        try:
+            resp = requests.get(url, headers=headers, timeout=timeout)
+            resp.raise_for_status()
+            data = resp.json()
+            logger.debug(f"Metadata status for dataset {self.dataset_id}: {data}")
+            return data
+        except requests.exceptions.HTTPError as e:
+            error_detail = ""
+            try:
+                error_detail = resp.json()
+                logger.debug(
+                    f"Dify check_metadata_status error response: {error_detail}"
+                )
+            except:
+                error_detail = resp.text
+                logger.debug(f"Dify check_metadata_status error text: {error_detail}")
+            return None
+        except Exception as e:
+            logger.warning(f"Dify check_metadata_status failed: {e}")
+            return None
+
 
 def make_retriever(kind: str, **kwargs) -> Retriever:
     """
     Factory function to create a retriever instance.
 
-    Args:
-        kind: Retriever type ("dify", "opensearch", etc.)
-        **kwargs: Retriever-specific configuration
-
-    Returns:
-        Retriever instance
+    TODO:
+     - Future: Add other backends: e.g., OpenSearchRetriever (from .opensearch.opensearch_retriever)
 
     Example:
         retriever = make_retriever(
@@ -284,9 +336,5 @@ def make_retriever(kind: str, **kwargs) -> Retriever:
             dataset_id=kwargs["dataset_id"],
             timeout=kwargs.get("timeout", 30),
         )
-
-    # Future: Add other backends
-    # elif kind in ("opensearch", "opensearch_retriever"):
-    #     return OpenSearchRetriever(**kwargs)
 
     raise ValueError(f"Unknown retriever type: {kind}")

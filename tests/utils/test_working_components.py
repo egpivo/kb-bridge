@@ -269,14 +269,11 @@ class TestFormatSearchResults:
         # Create a mock config
         from kbbridge.core.orchestration.models import ProcessingConfig
 
-        config = ProcessingConfig(dataset_info=[{"id": "test"}], query="test query")
+        config = ProcessingConfig(dataset_id="test", query="test query")
 
         processor = WorkingDatasetProcessor(components, config, credentials)
 
-        dataset_pairs = [
-            {"id": "dataset1", "source_path": "path1"},
-            {"id": "dataset2", "source_path": "path2"},
-        ]
+        dataset_pairs = [{"id": "dataset1"}, {"id": "dataset2"}]
 
         with patch.object(processor, "_process_direct_approach") as mock_direct:
             with patch.object(processor, "_process_advanced_approach") as mock_advanced:
@@ -309,7 +306,7 @@ class TestFormatSearchResults:
 
         from kbbridge.core.orchestration.models import ProcessingConfig
 
-        config = ProcessingConfig(dataset_info=[{"id": "test"}], query="test query")
+        config = ProcessingConfig(dataset_id="test", query="test query")
 
         processor = WorkingDatasetProcessor(components, config, credentials)
 
@@ -339,7 +336,7 @@ class TestFormatSearchResults:
 
         from kbbridge.core.orchestration.models import ProcessingConfig
 
-        config = ProcessingConfig(dataset_info=[{"id": "test"}], query="test query")
+        config = ProcessingConfig(dataset_id="test", query="test query")
 
         processor = WorkingDatasetProcessor(components, config, credentials)
 
@@ -1009,3 +1006,21 @@ class TestFormatSearchResultsExceptions:
         assert "result" in result
         assert result["result"] == []
         assert "format_error" in result
+
+    def test_format_search_results_exception_with_error_info(self):
+        """Test formatting results exception handler returns error info (covers lines 40-42)"""
+        # Create data that will cause exception during processing
+        class BadResults:
+            def __getitem__(self, key):
+                raise ValueError("Simulated processing error")
+
+        problematic_results = BadResults()
+
+        result = format_search_results(problematic_results)
+
+        # Should return error info with format_error and raw_results
+        assert isinstance(result, dict)
+        assert "result" in result
+        assert result["result"] == []
+        assert "format_error" in result
+        assert "raw_results" in result

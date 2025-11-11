@@ -129,6 +129,10 @@ class KnowledgeBaseRetriever:
         if reranking_model_name is None:
             reranking_model_name = DifyRetrieverDefaults.RERANKING_MODEL_NAME.value
 
+        # Disable reranking if provider or model is missing/invalid
+        if does_rerank and (not reranking_provider_name or not reranking_model_name):
+            does_rerank = False
+
         url = f"{self.endpoint.rstrip('/')}/v1/datasets/{dataset_id}/retrieve"
         headers = {
             "Authorization": f"Bearer {self.api_key}",

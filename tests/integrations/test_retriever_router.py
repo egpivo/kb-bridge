@@ -339,7 +339,7 @@ class TestConvenienceFunctions:
         with patch.dict(os.environ, {}, clear=True):
             result = make_retriever(
                 "test_kind",
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 endpoint="https://test.com",
                 api_key="test-key",
             )
@@ -362,7 +362,7 @@ class TestConvenienceFunctions:
                 api_key="test-key",
             )
 
-        # Check that dataset_id was set to "default"
+        # Check that resource_id was set to "default"
         call_kwargs = mock_retriever_class.call_args[1]
         assert call_kwargs["dataset_id"] == "default"
 
@@ -376,7 +376,7 @@ class TestConvenienceFunctions:
 
         with patch.dict(os.environ, {"RETRIEVER_BACKEND": "dify"}, clear=True):
             result = create_retriever_from_env(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 endpoint="https://test.com",
                 api_key="test-key",
             )
@@ -394,7 +394,7 @@ class TestConvenienceFunctions:
 
         with patch.dict(os.environ, {}, clear=True):
             result = create_retriever_from_env(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 endpoint="https://test.com",
                 api_key="test-key",
             )

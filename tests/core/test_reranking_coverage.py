@@ -321,9 +321,9 @@ class TestDifyBackendAdapterMetadataFilter:
         creds = DifyCredentials(endpoint="https://test.com", api_key="test-key")
         adapter = DifyBackendAdapter(credentials=creds)
 
-        with patch.object(adapter, "create_retriever", return_value=mock_retriever):
+        with patch.object(adapter, "_get_retriever", return_value=mock_retriever):
             result = adapter.search(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 query="test query",
                 document_name="test.pdf",
             )
@@ -343,6 +343,7 @@ class TestDifyBackendAdapterMetadataFilter:
         from kbbridge.integrations.dify.dify_credentials import DifyCredentials
 
         mock_retriever = Mock()
+        mock_retriever.build_metadata_filter.return_value = None
         mock_retriever.call.return_value = {"records": []}
         mock_retriever.normalize_chunks.return_value = []
         mock_retriever.group_files.return_value = []
@@ -350,13 +351,15 @@ class TestDifyBackendAdapterMetadataFilter:
         creds = DifyCredentials(endpoint="https://test.com", api_key="test-key")
         adapter = DifyBackendAdapter(credentials=creds)
 
-        with patch.object(adapter, "create_retriever", return_value=mock_retriever):
+        with patch.object(adapter, "_get_retriever", return_value=mock_retriever):
             result = adapter.search(
-                dataset_id="test-dataset", query="test query", document_name=""
+                resource_id="test-dataset", query="test query", document_name=""
             )
 
-            # Verify metadata filter was not built
-            mock_retriever.build_metadata_filter.assert_not_called()
+            # Verify metadata filter was built (but returns None for empty document_name)
+            mock_retriever.build_metadata_filter.assert_called_once_with(
+                document_name=""
+            )
             # Verify call() was made with metadata_filter=None
             mock_retriever.call.assert_called_once()
             call_kwargs = mock_retriever.call.call_args.kwargs

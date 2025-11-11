@@ -37,7 +37,7 @@ class TestKBAssistantService:
             # Use assistant_service (renamed from kb_assistant_service)
             assistant_service = _assistant
             result = await assistant_service(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 query="test query",
                 ctx=mock_ctx,
             )
@@ -46,8 +46,8 @@ class TestKBAssistantService:
             assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_kb_assistant_service_invalid_dataset_id(self, mock_credentials):
-        """Test kb_assistant with invalid dataset_id"""
+    async def test_kb_assistant_service_invalid_resource_id(self, mock_credentials):
+        """Test kb_assistant with invalid resource_id"""
         # Mock Context
         mock_ctx = Mock()
         mock_ctx.info = AsyncMock()
@@ -57,15 +57,15 @@ class TestKBAssistantService:
 
         assistant_service = _assistant
         result = await assistant_service(
-            dataset_id="",
+            resource_id="",
             query="test query",
             ctx=mock_ctx,
         )
 
         assert "error" in result
-        # Empty dataset_id should return "Invalid dataset_id" error
+        # Empty resource_id should return "Invalid resource_id" error
         assert (
-            "Invalid dataset_id" in result["error"]
+            "Invalid resource_id" in result["error"]
             or "LLM API token is required" in result["error"]
             or "KB Assistant failed" in result["error"]
         )
@@ -82,7 +82,7 @@ class TestKBAssistantService:
 
         assistant_service = _assistant
         result = await assistant_service(
-            dataset_id="",
+            resource_id="",
             query="test query",
             ctx=mock_ctx,
         )
@@ -109,7 +109,7 @@ class TestKBAssistantService:
 
             assistant_service = _assistant
             result = await assistant_service(
-                dataset_id="test-dataset",
+                resource_id="test-dataset",
                 query="test query",
                 ctx=mock_ctx,
             )
@@ -322,7 +322,7 @@ class TestFileDiscoverService:
 
         result = file_discover_service(
             query="test query",
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             retrieval_endpoint="https://test.com",
             retrieval_api_key="test-key",
         )
@@ -342,7 +342,7 @@ class TestFileDiscoverService:
 
         result = file_discover_service(
             query="test query",
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             retrieval_endpoint="https://test.com",
             retrieval_api_key="test-key",
         )
@@ -381,7 +381,7 @@ class TestFileDiscoverService:
 
         result = file_discover_service(
             query="test query",
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             # No credentials provided, should use from_env
         )
 
@@ -408,7 +408,7 @@ class TestFileDiscoverService:
 
         result = file_discover_service(
             query="test query",
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             retrieval_endpoint="https://test.com",
             retrieval_api_key="test-key",
         )
@@ -442,7 +442,7 @@ class TestFileDiscoverService:
 
         result = file_discover_service(
             query="test query",
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             retrieval_endpoint="https://test.com",
             retrieval_api_key="test-key",
         )

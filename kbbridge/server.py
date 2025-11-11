@@ -130,7 +130,7 @@ async def assistant(
         try:
             result = await asyncio.wait_for(
                 assistant_service(
-                    dataset_id=resource_id,
+                    resource_id=resource_id,
                     query=query,
                     ctx=ctx,
                     custom_instructions=custom_instructions,
@@ -203,7 +203,7 @@ async def file_discover(
 
         result = file_discover_service(
             query=query,
-            dataset_id=resource_id,
+            resource_id=resource_id,
             top_k_recall=top_k_recall,
             top_k_return=top_k_return,
             do_file_rerank=do_file_rerank,

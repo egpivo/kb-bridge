@@ -157,7 +157,6 @@ class ContentClusterDefaults(Enum):
 class FileListerDefaults(Enum):
     """Default values specifically for File Lister tool"""
 
-    FOLDER_PATH = ""
     LIMIT = 100
 
     # LLM configuration for reflection

@@ -273,10 +273,7 @@ class TestFormatSearchResults:
 
         processor = WorkingDatasetProcessor(components, config, credentials)
 
-        dataset_pairs = [
-            {"id": "dataset1", "source_path": "path1"},
-            {"id": "dataset2", "source_path": "path2"},
-        ]
+        dataset_pairs = [{"id": "dataset1"}, {"id": "dataset2"}]
 
         with patch.object(processor, "_process_direct_approach") as mock_direct:
             with patch.object(processor, "_process_advanced_approach") as mock_advanced:

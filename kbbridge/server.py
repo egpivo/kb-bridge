@@ -228,7 +228,6 @@ async def file_discover(
 async def file_lister(
     dataset_id: str,
     ctx: Context,
-    folder_name: str = "",
     timeout: int = 30,
     limit: Optional[int] = None,
     offset: int = 0,
@@ -247,7 +246,6 @@ async def file_lister(
 
         result = file_lister_service(
             dataset_id=dataset_id,
-            folder_name=folder_name,
             timeout=timeout,
             backend_type=backend_type,
             retrieval_endpoint=credentials.retrieval_endpoint,
@@ -357,11 +355,7 @@ async def retriever(
 
 @mcp.tool()
 @require_auth
-async def file_count(
-    dataset_id: str,
-    ctx: Context,
-    folder_name: str = "",
-) -> str:
+async def file_count(dataset_id: str, ctx: Context) -> str:
     """Get file count in knowledge base dataset."""
     await ctx.info(f"Executing file_count for dataset: {dataset_id}")
 

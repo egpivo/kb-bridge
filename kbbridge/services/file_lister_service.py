@@ -5,21 +5,18 @@ from kbbridge.integrations import RetrievalCredentials
 
 def file_lister_service(
     dataset_id: str,
-    folder_name: Optional[str] = None,
     timeout: int = 30,
     backend_type: Optional[str] = None,
-    # Credentials (will be passed from environment or config)
     retrieval_endpoint: Optional[str] = None,
     retrieval_api_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     List files in a knowledge base dataset.
 
-    This tool lists all files in a knowledge base dataset, optionally filtered by folder name.
+    This tool lists all files in a knowledge base dataset.
 
     Args:
         dataset_id: Dataset ID of the knowledge base to list files from
-        folder_name: Optional folder name to filter results by
         timeout: Timeout in seconds for the operation (default: 30)
         backend_type: Backend type ("dify", "opensearch", etc.) - if None, uses RETRIEVAL_BACKEND env var
         retrieval_endpoint: Retrieval backend endpoint URL
@@ -55,9 +52,7 @@ def file_lister_service(
                 endpoint=credentials.endpoint, api_key=credentials.api_key
             )
             adapter = DifyAdapter(credentials=dify_creds)
-            files = adapter.list_files(
-                dataset_id=dataset_id, folder=folder_name or "", timeout=timeout
-            )
+            files = adapter.list_files(dataset_id=dataset_id, timeout=timeout)
             return {"files": files}
         else:
             return {

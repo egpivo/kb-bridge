@@ -32,7 +32,6 @@ class TestRetrieverService:
         assert "top_k" in DEFAULT_CONFIG
         assert "score_threshold" in DEFAULT_CONFIG
         assert "weights" in DEFAULT_CONFIG
-        assert "source_path" in DEFAULT_CONFIG
         assert "document_name" in DEFAULT_CONFIG
         assert "verbose" in DEFAULT_CONFIG
         # Reranking provider/model are NOT in default config - they're backend-specific

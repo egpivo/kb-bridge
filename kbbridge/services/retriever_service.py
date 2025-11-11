@@ -28,7 +28,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "top_k": RetrieverDefaults.TOP_K.value,
     "score_threshold": RetrieverDefaults.SCORE_THRESHOLD.value,
     "weights": RetrieverDefaults.WEIGHTS.value,
-    "source_path": "",
     "document_name": "",
     "verbose": False,
 }
@@ -74,7 +73,6 @@ def retriever_service(
         score_threshold: Minimum score threshold
         score_threshold_enabled: Whether to enable score threshold
         weights: Search weights for hybrid search
-        source_path: Filter by source path
         document_name: Filter by document name
         timeout: Timeout in seconds for the operation (default: 30)
         backend_type: Backend type ("dify", "opensearch", "n8n") - if None, uses RETRIEVER_BACKEND env var

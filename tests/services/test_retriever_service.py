@@ -517,3 +517,141 @@ class TestRetrieverServiceValidation:
         # Covers line 98
         assert "error" in result
         assert "query is required" in result["error"]
+
+    def test_retriever_service_opensearch_credentials(self):
+        """Test retriever_service with opensearch credentials"""
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+            with patch(
+                "kbbridge.utils.working_components.KnowledgeBaseRetriever"
+            ) as mock_retriever_class:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.endpoint = "https://opensearch.com"
+                mock_creds.api_key = "opensearch-key"
+                mock_creds_class.return_value = mock_creds
+
+                mock_retriever = Mock()
+                mock_retriever.retrieve.return_value = {"records": []}
+                mock_retriever.build_metadata_filter.return_value = None
+                mock_retriever_class.return_value = mock_retriever
+
+                result = retriever_service(
+                    dataset_id="test-dataset",
+                    query="test query",
+                    opensearch_endpoint="https://opensearch.com",
+                    opensearch_auth="opensearch-key",
+                )
+
+                assert "result" in result
+                mock_creds_class.assert_called_once()
+                call_kwargs = mock_creds_class.call_args.kwargs
+                assert call_kwargs["backend_type"] == "opensearch"
+
+    def test_retriever_service_n8n_credentials(self):
+        """Test retriever_service with n8n credentials"""
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+            with patch(
+                "kbbridge.utils.working_components.KnowledgeBaseRetriever"
+            ) as mock_retriever_class:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.endpoint = "https://n8n.com"
+                mock_creds.api_key = "n8n-key"
+                mock_creds_class.return_value = mock_creds
+
+                mock_retriever = Mock()
+                mock_retriever.retrieve.return_value = {"records": []}
+                mock_retriever.build_metadata_filter.return_value = None
+                mock_retriever_class.return_value = mock_retriever
+
+                result = retriever_service(
+                    dataset_id="test-dataset",
+                    query="test query",
+                    n8n_webhook_url="https://n8n.com",
+                    n8n_api_key="n8n-key",
+                )
+
+                assert "result" in result
+                mock_creds_class.assert_called_once()
+                call_kwargs = mock_creds_class.call_args.kwargs
+                assert call_kwargs["backend_type"] == "n8n"
+
+    def test_retriever_service_client_side_filtering_fallback(self):
+        """Test retriever_service client-side filtering fallback"""
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+            with patch(
+                "kbbridge.utils.working_components.KnowledgeBaseRetriever"
+            ) as mock_retriever_class:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.endpoint = "https://test.com"
+                mock_creds.api_key = "test-key"
+                mock_creds_class.return_value = mock_creds
+
+                mock_retriever = Mock()
+                # First call returns empty (metadata filter didn't work)
+                # Second call returns records with document names
+                mock_retriever.retrieve.side_effect = [
+                    {"records": []},  # First call with metadata filter - empty
+                    {
+                        "records": [
+                            {
+                                "segment": {
+                                    "content": "test content",
+                                    "document": {"name": "test.pdf"},
+                                }
+                            },
+                            {
+                                "segment": {
+                                    "content": "other content",
+                                    "document": {"name": "other.pdf"},
+                                }
+                            },
+                        ]
+                    },  # Second call without filter - has records
+                ]
+                mock_retriever.build_metadata_filter.return_value = {
+                    "conditions": [{"name": "document_name", "value": "test.pdf"}]
+                }
+                mock_retriever_class.return_value = mock_retriever
+
+                result = retriever_service(
+                    dataset_id="test-dataset",
+                    query="test query",
+                    retrieval_endpoint="https://test.com",
+                    retrieval_api_key="test-key",
+                    document_name="test.pdf",
+                )
+
+                # Should have called retrieve twice (fallback)
+                assert mock_retriever.retrieve.call_count == 2
+                assert "result" in result
+                # Should have filtered to only test.pdf
+                assert len(result["result"]) == 1
+
+    def test_retriever_service_resp_none(self):
+        """Test retriever_service when resp is None"""
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+            with patch(
+                "kbbridge.utils.working_components.KnowledgeBaseRetriever"
+            ) as mock_retriever_class:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.endpoint = "https://test.com"
+                mock_creds.api_key = "test-key"
+                mock_creds_class.return_value = mock_creds
+
+                mock_retriever = Mock()
+                mock_retriever.retrieve.return_value = None
+                mock_retriever.build_metadata_filter.return_value = None
+                mock_retriever_class.return_value = mock_retriever
+
+                result = retriever_service(
+                    dataset_id="test-dataset",
+                    query="test query",
+                    retrieval_endpoint="https://test.com",
+                    retrieval_api_key="test-key",
+                )
+
+                assert "result" in result
+                assert result["result"] == []

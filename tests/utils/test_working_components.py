@@ -1006,3 +1006,21 @@ class TestFormatSearchResultsExceptions:
         assert "result" in result
         assert result["result"] == []
         assert "format_error" in result
+
+    def test_format_search_results_exception_with_error_info(self):
+        """Test formatting results exception handler returns error info (covers lines 40-42)"""
+        # Create data that will cause exception during processing
+        class BadResults:
+            def __getitem__(self, key):
+                raise ValueError("Simulated processing error")
+
+        problematic_results = BadResults()
+
+        result = format_search_results(problematic_results)
+
+        # Should return error info with format_error and raw_results
+        assert isinstance(result, dict)
+        assert "result" in result
+        assert result["result"] == []
+        assert "format_error" in result
+        assert "raw_results" in result

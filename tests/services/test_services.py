@@ -159,6 +159,27 @@ class TestFileListerService:
             assert "error" in result
             assert "Invalid credentials" in result["error"]
 
+    def test_file_lister_service_non_dify_backend(self, mock_credentials):
+        """Test file lister with non-dify backend"""
+        with patch(
+            "kbbridge.services.file_lister_service.RetrievalCredentials"
+        ) as mock_creds_class:
+            mock_creds = Mock()
+            mock_creds.validate.return_value = (True, None)
+            mock_creds.backend_type = "opensearch"
+            mock_creds.endpoint = "https://opensearch.com"
+            mock_creds.api_key = "opensearch-key"
+            mock_creds_class.return_value = mock_creds
+
+            result = file_lister_service(
+                dataset_id="test-dataset",
+                retrieval_endpoint="https://opensearch.com",
+                retrieval_api_key="opensearch-key",
+            )
+
+            assert "error" in result
+            assert "not supported for backend: opensearch" in result["error"]
+
 
 class TestKeywordGeneratorService:
     """Test keyword_generator_service functionality"""
@@ -385,6 +406,40 @@ class TestFileDiscoverService:
 
         assert "error" in result
         assert "Test error" in result["error"]
+
+    @patch("kbbridge.integrations.RetrieverRouter.create_retriever")
+    @patch("kbbridge.core.discovery.file_discover.FileDiscover")
+    @patch("kbbridge.services.file_discover_service.RetrievalCredentials")
+    def test_file_discover_service_no_debug_info(
+        self, mock_credentials_class, mock_file_discover_class, mock_create_retriever
+    ):
+        """Test file discover with files (no debug_info)"""
+        mock_creds = Mock()
+        mock_creds.validate.return_value = (True, None)
+        mock_creds.backend_type = "dify"
+        mock_creds.endpoint = "https://test.com"
+        mock_creds.api_key = "test-key"
+        mock_credentials_class.return_value = mock_creds
+
+        mock_retriever = Mock()
+        mock_retriever.build_metadata_filter.return_value = {"filter": "value"}
+        mock_create_retriever.return_value = mock_retriever
+
+        mock_file = Mock()
+        mock_file.file_name = "test.pdf"
+        mock_discover_instance = Mock()
+        mock_discover_instance.__call__ = Mock(return_value=[mock_file])
+        mock_file_discover_class.return_value = mock_discover_instance
+
+        result = file_discover_service(
+            query="test query",
+            dataset_id="test-dataset",
+            retrieval_endpoint="https://test.com",
+            retrieval_api_key="test-key",
+        )
+
+        assert result["success"] is True
+        assert result["debug_info"] is None  # Should be None when files exist
 
 
 if __name__ == "__main__":

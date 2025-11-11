@@ -180,6 +180,79 @@ class TestFileListerService:
             assert "error" in result
             assert "not yet implemented" in result["error"]
 
+    def test_file_lister_service_not_implemented_error(self, mock_credentials):
+        """Test file_lister_service handles NotImplementedError"""
+        with patch(
+            "kbbridge.services.file_lister_service.RetrievalCredentials"
+        ) as mock_creds_class:
+            with patch(
+                "kbbridge.services.file_lister_service.BackendAdapterFactory"
+            ) as mock_factory:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.backend_type = "opensearch"
+                mock_creds_class.return_value = mock_creds
+                mock_factory.create.side_effect = NotImplementedError(
+                    "Backend not implemented"
+                )
+
+                result = file_lister_service(
+                    resource_id="test-resource",
+                    retrieval_endpoint="https://test.com",
+                    retrieval_api_key="test-key",
+                    backend_type="opensearch",
+                )
+
+                assert "error" in result
+                assert "Backend not implemented" in result["error"]
+
+    def test_file_lister_service_value_error(self, mock_credentials):
+        """Test file_lister_service handles ValueError"""
+        with patch(
+            "kbbridge.services.file_lister_service.RetrievalCredentials"
+        ) as mock_creds_class:
+            with patch(
+                "kbbridge.services.file_lister_service.BackendAdapterFactory"
+            ) as mock_factory:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.backend_type = "unknown"
+                mock_creds_class.return_value = mock_creds
+                mock_factory.create.side_effect = ValueError("Unsupported backend")
+
+                result = file_lister_service(
+                    resource_id="test-resource",
+                    retrieval_endpoint="https://test.com",
+                    retrieval_api_key="test-key",
+                    backend_type="unknown",
+                )
+
+                assert "error" in result
+                assert "Unsupported backend" in result["error"]
+
+    def test_file_lister_service_general_exception(self, mock_credentials):
+        """Test file_lister_service handles general Exception"""
+        with patch(
+            "kbbridge.services.file_lister_service.RetrievalCredentials"
+        ) as mock_creds_class:
+            with patch(
+                "kbbridge.services.file_lister_service.BackendAdapterFactory"
+            ) as mock_factory:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.backend_type = "dify"
+                mock_creds_class.return_value = mock_creds
+                mock_factory.create.side_effect = Exception("Unexpected error")
+
+                result = file_lister_service(
+                    resource_id="test-resource",
+                    retrieval_endpoint="https://test.com",
+                    retrieval_api_key="test-key",
+                )
+
+                assert "error" in result
+                assert "Exception: Unexpected error" in result["error"]
+
 
 class TestKeywordGeneratorService:
     """Test keyword_generator_service functionality"""

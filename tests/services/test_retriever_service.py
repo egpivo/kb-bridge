@@ -629,3 +629,73 @@ class TestRetrieverServiceValidation:
 
                 assert "result" in result
                 assert result["result"] == []
+
+    def test_retriever_service_not_implemented_error(self):
+        """Test retriever_service handles NotImplementedError"""
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+            with patch(
+                "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+            ) as mock_factory:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.backend_type = "opensearch"
+                mock_creds_class.return_value = mock_creds
+                mock_factory.create.side_effect = NotImplementedError(
+                    "Backend not implemented"
+                )
+
+                result = retriever_service(
+                    resource_id="test-resource",
+                    query="test query",
+                    retrieval_endpoint="https://test.com",
+                    retrieval_api_key="test-key",
+                    backend_type="opensearch",
+                )
+
+                assert "error" in result
+                assert "Backend not implemented" in result["error"]
+
+    def test_retriever_service_value_error(self):
+        """Test retriever_service handles ValueError"""
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+            with patch(
+                "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+            ) as mock_factory:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.backend_type = "unknown"
+                mock_creds_class.return_value = mock_creds
+                mock_factory.create.side_effect = ValueError("Unsupported backend")
+
+                result = retriever_service(
+                    resource_id="test-resource",
+                    query="test query",
+                    retrieval_endpoint="https://test.com",
+                    retrieval_api_key="test-key",
+                    backend_type="unknown",
+                )
+
+                assert "error" in result
+                assert "Unsupported backend" in result["error"]
+
+    def test_retriever_service_general_exception(self):
+        """Test retriever_service handles general Exception"""
+        with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
+            with patch(
+                "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+            ) as mock_factory:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.backend_type = "dify"
+                mock_creds_class.return_value = mock_creds
+                mock_factory.create.side_effect = Exception("Unexpected error")
+
+                result = retriever_service(
+                    resource_id="test-resource",
+                    query="test query",
+                    retrieval_endpoint="https://test.com",
+                    retrieval_api_key="test-key",
+                )
+
+                assert "error" in result
+                assert "Exception: Unexpected error" in result["error"]

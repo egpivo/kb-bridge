@@ -14,7 +14,7 @@ class AnswerReranker:
     Handles reranking of candidate answers using external reranking services.
 
     This class is backend-agnostic and works with any RAG system that produces
-    candidate answers with standard metadata (dataset_id, file_name).
+    candidate answers with standard metadata (resource_id, file_name).
     """
 
     def __init__(self, rerank_url: str, rerank_model: str):
@@ -22,8 +22,8 @@ class AnswerReranker:
         Initialize the answer reranker.
 
         Args:
-            rerank_url: URL of the reranking service (e.g., Jina Reranker API)
-            rerank_model: Model to use for reranking (e.g., jina-reranker-v2-base-multilingual)
+            rerank_url: URL of the reranking service
+            rerank_model: Model to use for reranking
         """
         self.rerank_url = rerank_url
         self.rerank_model = rerank_model

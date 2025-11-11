@@ -3,7 +3,11 @@ Test Suite for Core Models
 Tests model classes and data structures
 """
 
-from kbbridge.core.orchestration.models import Credentials, ProcessingConfig
+from kbbridge.core.orchestration.models import (
+    CandidateAnswer,
+    Credentials,
+    ProcessingConfig,
+)
 
 
 class TestCredentials:
@@ -86,6 +90,45 @@ class TestProcessingConfig:
         assert config.max_workers >= 1
         assert isinstance(config.verbose, bool)
         assert isinstance(config.use_content_booster, bool)
+
+
+class TestCandidateAnswer:
+    """Test CandidateAnswer model"""
+
+    def test_to_dict_includes_dataset_id(self):
+        """Test to_dict() includes dataset_id for backward compatibility"""
+        candidate = CandidateAnswer(
+            source="direct",
+            answer="Test answer",
+            success=True,
+            resource_id="test-resource",
+        )
+        result = candidate.to_dict()
+        assert result["resource_id"] == "test-resource"
+        assert result["dataset_id"] == "test-resource"  # Backward compatibility
+
+    def test_from_dict_prefers_resource_id(self):
+        """Test from_dict() prefers resource_id over dataset_id"""
+        data = {
+            "source": "direct",
+            "answer": "Test answer",
+            "success": True,
+            "resource_id": "test-resource",
+            "dataset_id": "old-dataset",  # Should be ignored
+        }
+        candidate = CandidateAnswer.from_dict(data)
+        assert candidate.resource_id == "test-resource"
+
+    def test_from_dict_falls_back_to_dataset_id(self):
+        """Test from_dict() falls back to dataset_id if resource_id not present"""
+        data = {
+            "source": "direct",
+            "answer": "Test answer",
+            "success": True,
+            "dataset_id": "test-dataset",  # Old format
+        }
+        candidate = CandidateAnswer.from_dict(data)
+        assert candidate.resource_id == "test-dataset"
 
 
 # Additional model tests can be added when more models are available

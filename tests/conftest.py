@@ -8,6 +8,10 @@ from unittest.mock import patch
 
 import pytest
 
+from kbbridge.config.env_loader import load_env_file
+
+load_env_file()
+
 
 def pytest_addoption(parser):
     """Add custom command line options."""
@@ -39,12 +43,6 @@ def test_server_url(test_port):
 def test_mcp_endpoint(test_server_url):
     """Get the test MCP endpoint URL."""
     return f"{test_server_url}/mcp"
-
-
-# Load .env file at the beginning of the test session
-from kbbridge.config.env_loader import load_env_file
-
-load_env_file()
 
 
 @pytest.fixture
@@ -91,16 +89,6 @@ def mock_dify_response():
 def mock_dify_error_response():
     """Mock Dify API error response"""
     return {"error": "Test error message", "details": {"field": ["Validation error"]}}
-
-
-@pytest.fixture
-def test_dataset_info():
-    """Test dataset information"""
-    return {
-        "dataset_id": "test-dataset-id",
-        "dataset_name": "Test Dataset",
-        "dataset_description": "Test dataset for unit testing",
-    }
 
 
 @pytest.fixture

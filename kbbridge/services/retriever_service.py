@@ -124,18 +124,16 @@ def retriever_service(
         endpoint = credentials.endpoint
         api_key = credentials.api_key
 
-        # Use working KnowledgeBaseRetriever (tests patch this symbol)
         # TODO: Eventually replace with RetrieverRouter when tests are updated
         # Use module attribute so tests can patch it at
         # "kbbridge.utils.working_components.KnowledgeBaseRetriever"
         kb_retriever = working_components.KnowledgeBaseRetriever(endpoint, api_key)
 
-        # Build optional metadata filter for document_name
-        metadata_filter = None
-        if document_name:
-            metadata_filter = {
-                "conditions": [{"name": "document_name", "value": document_name}]
-            }
+        # Build optional metadata filter for document_name using retriever's method
+        # This ensures correct format with comparison_operator and logical_operator
+        metadata_filter = kb_retriever.build_metadata_filter(
+            document_name=document_name
+        )
 
         # Pass reranking config via **kwargs - adapter will use its own defaults
         resp = kb_retriever.retrieve(
@@ -150,6 +148,50 @@ def retriever_service(
             weights=weights,
         )
 
+        # If metadata filter returned empty results and document_name was specified,
+        # fall back to client-side filtering (metadata might be disabled in Dify)
+        if document_name and resp and isinstance(resp, dict):
+            records = resp.get("records", [])
+            if not records and metadata_filter:
+                # Metadata filter didn't work, try client-side filtering
+                # Retrieve more results to filter from
+                retrieve_top_k = top_k * 3
+                resp = kb_retriever.retrieve(
+                    dataset_id=dataset_id,
+                    query=query,
+                    search_method=method,
+                    does_rerank=does_rerank,
+                    top_k=retrieve_top_k,
+                    score_threshold_enabled=bool(score_threshold is not None),
+                    metadata_filter=None,  # Don't use metadata filter
+                    score_threshold=score_threshold,
+                    weights=weights,
+                )
+
+                # Filter by document_name client-side
+                if resp and isinstance(resp, dict):
+                    records = resp.get("records", [])
+                    filtered_records = []
+                    for record in records:
+                        try:
+                            segment = record.get("segment", {})
+                            doc = (
+                                segment.get("document", {})
+                                if isinstance(segment, dict)
+                                else {}
+                            )
+                            # Extract document name from doc.name (where Dify stores it)
+                            doc_name = (
+                                doc.get("name", "") if isinstance(doc, dict) else ""
+                            )
+                            # Match exact document name
+                            if doc_name == document_name:
+                                filtered_records.append(record)
+                        except Exception:
+                            continue
+
+                    # Update response with filtered records
+                    resp = {**resp, "records": filtered_records[:top_k]}
         # Format using working formatter expected by tests
         formatted = (
             format_search_results([resp]) if resp is not None else {"result": []}

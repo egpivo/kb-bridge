@@ -14,7 +14,7 @@ class AnswerReranker:
     Handles reranking of candidate answers using external reranking services.
 
     This class is backend-agnostic and works with any RAG system that produces
-    candidate answers with standard metadata (dataset_id, file_name, source_path).
+    candidate answers with standard metadata (dataset_id, file_name).
     """
 
     def __init__(self, rerank_url: str, rerank_model: str):

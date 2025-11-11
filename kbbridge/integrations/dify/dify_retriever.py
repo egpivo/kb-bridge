@@ -150,7 +150,6 @@ class DifyRetriever(Retriever):
                     chunk = ChunkHit(
                         content=content,
                         document_name=doc_metadata.get("document_name", ""),
-                        source_path=doc_metadata.get("source_path", ""),
                         score=float(score),
                         metadata=doc_metadata,
                     )

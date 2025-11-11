@@ -15,13 +15,11 @@ class ChunkHit:
         self,
         content: str,
         document_name: str,
-        source_path: str = "",
         score: float = 0.0,
         metadata: Optional[Dict[str, Any]] = None,
     ):
         self.content = content
         self.document_name = document_name
-        self.source_path = source_path
         self.score = score
         self.metadata = metadata or {}
 

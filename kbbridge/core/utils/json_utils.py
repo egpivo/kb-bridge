@@ -104,7 +104,8 @@ def parse_dataset_info(raw: str) -> List[Dict[str, Any]]:
         raw: Raw string containing dataset information
 
     Returns:
-        List of dictionaries with "id" and "source_path" keys
+        List of dictionaries with "id" and "source_path" keys.
+        Note: source_path is parsed for backward compatibility but is not used for filtering.
     """
     s: Union[str, Any] = raw.strip()
 

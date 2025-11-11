@@ -702,18 +702,18 @@ class TestWorkingComponentsEdgeCases:
 class TestBuildMetadataFilter:
     """Test build_metadata_filter method"""
 
-    def test_build_metadata_filter_with_source_path(self):
-        """Test building metadata filter with source path (covers lines 86-93)"""
+    def test_build_metadata_filter_with_document_name(self):
+        """Test building metadata filter with document name"""
         retriever = KnowledgeBaseRetriever("https://test.com", "test-key")
 
-        result = retriever.build_metadata_filter(source_path="/path/to/source")
+        result = retriever.build_metadata_filter(document_name="test.pdf")
 
         assert result is not None
         assert "conditions" in result
         assert len(result["conditions"]) == 1
-        assert result["conditions"][0]["name"] == "source_path"
+        assert result["conditions"][0]["name"] == "document_name"
         assert result["conditions"][0]["comparison_operator"] == "contains"
-        assert result["conditions"][0]["value"] == "/path/to/source"
+        assert result["conditions"][0]["value"] == "test.pdf"
         assert result["logical_operator"] == "and"
 
     def test_build_metadata_filter_with_document_name(self):
@@ -730,24 +730,23 @@ class TestBuildMetadataFilter:
         assert result["conditions"][0]["value"] == "test.pdf"
         assert result["logical_operator"] == "and"
 
-    def test_build_metadata_filter_with_both(self):
-        """Test building metadata filter with both source path and document name"""
+    def test_build_metadata_filter_with_document_name_only(self):
+        """Test building metadata filter with document name only"""
         retriever = KnowledgeBaseRetriever("https://test.com", "test-key")
 
-        result = retriever.build_metadata_filter(
-            source_path="/path/to/source", document_name="test.pdf"
-        )
+        result = retriever.build_metadata_filter(document_name="test.pdf")
 
         assert result is not None
         assert "conditions" in result
-        assert len(result["conditions"]) == 2
+        assert len(result["conditions"]) == 1
+        assert result["conditions"][0]["name"] == "document_name"
         assert result["logical_operator"] == "and"
 
     def test_build_metadata_filter_empty(self):
-        """Test building metadata filter with empty values (covers lines 104-105)"""
+        """Test building metadata filter with empty values"""
         retriever = KnowledgeBaseRetriever("https://test.com", "test-key")
 
-        result = retriever.build_metadata_filter(source_path="", document_name="")
+        result = retriever.build_metadata_filter(document_name="")
 
         assert result is None
 
@@ -755,7 +754,7 @@ class TestBuildMetadataFilter:
         """Test building metadata filter with whitespace values"""
         retriever = KnowledgeBaseRetriever("https://test.com", "test-key")
 
-        result = retriever.build_metadata_filter(source_path="   ", document_name="   ")
+        result = retriever.build_metadata_filter(document_name="   ")
 
         assert result is None
 

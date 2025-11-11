@@ -43,7 +43,7 @@ class TestFileSearchStrategy:
             mock_time.side_effect = [0.0, 1.5, 0.0, 1.5]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset", source_path="test/path"
+                query="test query", dataset_id="test-dataset"
             )
 
             assert result["success"] is True
@@ -64,7 +64,7 @@ class TestFileSearchStrategy:
             mock_time.side_effect = [0.0, 0.5, 0.0, 0.5]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset", source_path="test/path"
+                query="test query", dataset_id="test-dataset"
             )
 
             assert result["success"] is False

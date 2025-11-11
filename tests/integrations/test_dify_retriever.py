@@ -512,7 +512,7 @@ class TestDifyRetrieverListFiles:
             mock_response.status_code = 200
             mock_get.return_value = mock_response
 
-            files = retriever.list_files()
+            files = retriever.list_files(dataset_id="test-dataset")
 
             assert len(files) == 2
             assert "doc1.pdf" in files
@@ -537,7 +537,7 @@ class TestDifyRetrieverListFiles:
             mock_response.status_code = 200
             mock_get.return_value = mock_response
 
-            files = retriever.list_files()
+            files = retriever.list_files(dataset_id="test-dataset")
 
             # Should return all files
             assert len(files) == 2
@@ -553,7 +553,7 @@ class TestDifyRetrieverListFiles:
         )
 
         with patch("requests.get", side_effect=Exception("Network error")):
-            files = retriever.list_files()
+            files = retriever.list_files(dataset_id="test-dataset")
 
             # Should return empty list on error
             assert files == []

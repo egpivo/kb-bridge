@@ -798,7 +798,6 @@ def _return_verbose_results(
         "dataset_results": [
             {
                 "dataset_id": r.dataset_id,
-                "source_path": r.source_path,
                 "naive_result": r.naive_result,
                 "advanced_result": r.advanced_result,
                 "candidates": r.candidates,

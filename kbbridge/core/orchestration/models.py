@@ -72,7 +72,6 @@ class SearchRequest:
 
     query: str
     dataset_id: str
-    source_path: str = ""
     verbose: bool = False
 
 
@@ -197,7 +196,6 @@ class CandidateAnswer:
         success: Whether the extraction was successful
         dataset_id: Knowledge base/collection/index identifier
         file_name: Source document name (optional)
-        source_path: Folder/path within the knowledge base (optional)
         display_source: Human-readable source citation (optional)
         metadata: Additional backend-specific metadata (optional)
     """
@@ -207,7 +205,6 @@ class CandidateAnswer:
     success: bool
     dataset_id: str = ""
     file_name: str = ""
-    source_path: str = ""
     display_source: str = ""
     metadata: Optional[Dict[str, Any]] = None
 
@@ -219,7 +216,6 @@ class CandidateAnswer:
             "success": self.success,
             "dataset_id": self.dataset_id,
             "file_name": self.file_name,
-            "source_path": self.source_path,
             "display_source": self.display_source,
             **(self.metadata or {}),
         }
@@ -233,7 +229,6 @@ class CandidateAnswer:
             "success",
             "dataset_id",
             "file_name",
-            "source_path",
             "display_source",
         }
         metadata = {k: v for k, v in data.items() if k not in known_fields}
@@ -243,7 +238,6 @@ class CandidateAnswer:
             success=data.get("success", False),
             dataset_id=data.get("dataset_id", ""),
             file_name=data.get("file_name", ""),
-            source_path=data.get("source_path", ""),
             display_source=data.get("display_source", ""),
             metadata=metadata if metadata else None,
         )
@@ -254,7 +248,6 @@ class DatasetResult:
     """Result from processing a single dataset"""
 
     dataset_id: str
-    source_path: str
     naive_result: Dict[str, Any]
     advanced_result: Dict[str, Any]
     candidates: List[Dict[str, Any]]  # TODO: Migrate to List[CandidateAnswer]

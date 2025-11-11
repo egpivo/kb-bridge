@@ -144,7 +144,5 @@ class AnswerReranker:
         dataset = candidate.dataset_id or "Unknown dataset"
         if candidate.file_name:
             return f"**{dataset}/{candidate.file_name}**: {candidate.answer}"
-        elif candidate.source_path:
-            return f"**{dataset} ({candidate.source_path})**: {candidate.answer}"
         else:
             return f"**{dataset}**: {candidate.answer}"

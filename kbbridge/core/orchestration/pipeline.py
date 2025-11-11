@@ -69,7 +69,6 @@ class FileSearchStrategy:
                     search_result = self._compat_file_searcher.search_files(
                         query=query,
                         dataset_id=dataset_id,
-                        source_path="",
                         max_keywords=AssistantDefaults.MAX_KEYWORDS.value,
                         top_k_per_keyword=AssistantDefaults.TOP_K_PER_KEYWORD.value,
                         max_workers=max_workers or AssistantDefaults.MAX_WORKERS.value,
@@ -1180,7 +1179,6 @@ class DatasetProcessor:
             # Create standardized result
             result = DatasetResult(
                 dataset_id=dataset_id,
-                source_path=source_path,
                 naive_result=naive_result,
                 advanced_result=advanced_result,
                 candidates=candidates,

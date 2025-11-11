@@ -25,6 +25,30 @@ from .services import WorkerDistributor
 logger = logging.getLogger(__name__)
 
 
+class _LegacyFileSearcherAdapter:
+    """
+    Adapter to wrap legacy FileSearcher interface.
+
+    Translates resource_id to dataset_id for backward compatibility with old interfaces.
+    This isolates backend-specific parameter naming (dataset_id) to the adapter layer.
+    """
+
+    def __init__(self, legacy_searcher):
+        """Initialize adapter with legacy FileSearcher instance."""
+        self._legacy_searcher = legacy_searcher
+
+    def search_files(self, query: str, resource_id: str, **kwargs):
+        """
+        Search files using legacy interface.
+
+        Translates resource_id to dataset_id for the underlying legacy searcher.
+        """
+        # Translate generic resource_id to backend-specific dataset_id
+        return self._legacy_searcher.search_files(
+            query=query, dataset_id=resource_id, **kwargs
+        )
+
+
 class FileSearchStrategy:
     """Handles file search operations"""
 
@@ -36,7 +60,10 @@ class FileSearchStrategy:
     ):
         # Backward-compat: support old signature with FileSearcher instance
         if hasattr(discover_factory_or_searcher, "search_files"):
-            self._compat_file_searcher = discover_factory_or_searcher
+            # Wrap old FileSearcher interface with adapter to handle resource_id -> dataset_id translation
+            self._compat_file_searcher = _LegacyFileSearcherAdapter(
+                discover_factory_or_searcher
+            )
             self.file_searcher = discover_factory_or_searcher
             self.discover_factory = None
             self.credentials = credentials or Credentials(
@@ -66,9 +93,10 @@ class FileSearchStrategy:
                 start_time = time.perf_counter()
 
                 if getattr(self, "_compat_file_searcher", None) is not None:
+                    # Adapter handles resource_id -> dataset_id translation
                     search_result = self._compat_file_searcher.search_files(
                         query=query,
-                        dataset_id=resource_id,  # Backward compatibility
+                        resource_id=resource_id,
                         max_keywords=AssistantDefaults.MAX_KEYWORDS.value,
                         top_k_per_keyword=AssistantDefaults.TOP_K_PER_KEYWORD.value,
                         max_workers=max_workers or AssistantDefaults.MAX_WORKERS.value,

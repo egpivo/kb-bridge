@@ -163,7 +163,7 @@ class TestFileSearchStrategyRerankingCheck:
             mock_time.side_effect = [0.0, 1.0]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset"
+                query="test query", resource_id="test-dataset"
             )
 
             # Verify discover was called with do_file_rerank=True
@@ -205,7 +205,7 @@ class TestFileSearchStrategyRerankingCheck:
             mock_time.side_effect = [0.0, 1.0]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset"
+                query="test query", resource_id="test-dataset"
             )
 
             # Verify discover was called with do_file_rerank=False
@@ -238,7 +238,7 @@ class TestFileSearchStrategyRerankingCheck:
             mock_time.side_effect = [0.0, 1.0]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset"
+                query="test query", resource_id="test-dataset"
             )
 
             # Verify discover was called with do_file_rerank=False
@@ -265,7 +265,7 @@ class TestDirectApproachProcessorNoneCredentials:
         }
 
         result = processor._retrieve_segments(
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             query="test query",
             metadata_filter={},
             score_threshold=None,
@@ -289,7 +289,7 @@ class TestDirectApproachProcessorNoneCredentials:
         )
 
         result = processor._retrieve_segments(
-            dataset_id="test-dataset",
+            resource_id="test-dataset",
             query="test query",
             metadata_filter={},
             score_threshold=None,

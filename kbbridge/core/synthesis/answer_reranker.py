@@ -141,7 +141,7 @@ class AnswerReranker:
             return candidate.answer
 
         # Advanced answer with citation
-        dataset = candidate.dataset_id or "Unknown dataset"
+        dataset = candidate.resource_id or "Unknown dataset"
         if candidate.file_name:
             return f"**{dataset}/{candidate.file_name}**: {candidate.answer}"
         else:

@@ -88,7 +88,7 @@ class TestKBAssistantService:
         )
 
         assert "error" in result
-        assert "Invalid dataset_id" in result["error"]
+        assert "Invalid resource_id" in result["error"]
 
     @pytest.mark.asyncio
     async def test_kb_assistant_service_processing_error(self, mock_credentials):

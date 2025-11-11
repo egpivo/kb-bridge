@@ -402,7 +402,7 @@ class WorkingDatasetProcessor:
 
             dataset_results.append(
                 {
-                    "dataset_id": dataset_id,
+                    "resource_id": dataset_id,
                     "direct_results": direct_result,
                     "advanced_results": advanced_result,
                 }

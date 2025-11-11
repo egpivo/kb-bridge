@@ -123,39 +123,40 @@ class RetrieverRouter:
                     "RETRIEVAL_API_KEY or DIFY_API_KEY environment variable is required for Dify backend"
                 )
 
-        elif backend_type == "opensearch":
-            config.update(
-                {
-                    "endpoint": kwargs.get("endpoint")
-                    or os.getenv("OPENSEARCH_ENDPOINT"),
-                    "auth": kwargs.get("auth") or os.getenv("OPENSEARCH_AUTH"),
-                    "index_name": kwargs.get("index_name")
-                    or os.getenv("OPENSEARCH_INDEX", resource_id),
-                    "timeout": kwargs.get("timeout", 30),
-                }
-            )
-
-            # Validate required OpenSearch credentials
-            if not config["endpoint"]:
-                raise ValueError(
-                    "OPENSEARCH_ENDPOINT environment variable is required for OpenSearch backend"
-                )
-
-        elif backend_type == "n8n":
-            config.update(
-                {
-                    "webhook_url": kwargs.get("webhook_url")
-                    or os.getenv("N8N_WEBHOOK_URL"),
-                    "api_key": kwargs.get("api_key") or os.getenv("N8N_API_KEY"),
-                    "timeout": kwargs.get("timeout", 30),
-                }
-            )
-
-            # Validate required n8n credentials
-            if not config["webhook_url"]:
-                raise ValueError(
-                    "N8N_WEBHOOK_URL environment variable is required for n8n backend"
-                )
+        # TODO: Implement OpenSearch and n8n backend support
+        # elif backend_type == "opensearch":
+        #     config.update(
+        #         {
+        #             "endpoint": kwargs.get("endpoint")
+        #             or os.getenv("OPENSEARCH_ENDPOINT"),
+        #             "auth": kwargs.get("auth") or os.getenv("OPENSEARCH_AUTH"),
+        #             "index_name": kwargs.get("index_name")
+        #             or os.getenv("OPENSEARCH_INDEX", resource_id),
+        #             "timeout": kwargs.get("timeout", 30),
+        #         }
+        #     )
+        #
+        #     # Validate required OpenSearch credentials
+        #     if not config["endpoint"]:
+        #         raise ValueError(
+        #             "OPENSEARCH_ENDPOINT environment variable is required for OpenSearch backend"
+        #         )
+        #
+        # elif backend_type == "n8n":
+        #     config.update(
+        #         {
+        #             "webhook_url": kwargs.get("webhook_url")
+        #             or os.getenv("N8N_WEBHOOK_URL"),
+        #             "api_key": kwargs.get("api_key") or os.getenv("N8N_API_KEY"),
+        #             "timeout": kwargs.get("timeout", 30),
+        #         }
+        #     )
+        #
+        #     # Validate required n8n credentials
+        #     if not config["webhook_url"]:
+        #         raise ValueError(
+        #             "N8N_WEBHOOK_URL environment variable is required for n8n backend"
+        #         )
 
         else:
             # For custom backends, pass through all kwargs

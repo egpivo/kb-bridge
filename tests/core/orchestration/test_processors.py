@@ -43,7 +43,7 @@ class TestFileSearchStrategy:
             mock_time.side_effect = [0.0, 1.5, 0.0, 1.5]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset"
+                query="test query", resource_id="test-dataset"
             )
 
             assert result["success"] is True
@@ -64,7 +64,7 @@ class TestFileSearchStrategy:
             mock_time.side_effect = [0.0, 0.5, 0.0, 0.5]
 
             result = strategy.parallel_search(
-                query="test query", dataset_id="test-dataset"
+                query="test query", resource_id="test-dataset"
             )
 
             assert result["success"] is False
@@ -301,7 +301,7 @@ class TestDatasetProcessor:
             "file_lister": Mock(),
         }
         mock_config = ProcessingConfig(
-            dataset_id="test-dataset", query="test query", verbose=True
+            resource_id="test-dataset", query="test query", verbose=True
         )
         mock_credentials = Credentials(
             retrieval_endpoint="https://test.com",
@@ -342,7 +342,7 @@ class TestDatasetProcessor:
         }
 
         mock_config = ProcessingConfig(
-            dataset_id="test-dataset", query="test query", verbose=True
+            resource_id="test-dataset", query="test query", verbose=True
         )
         mock_credentials = Credentials(
             retrieval_endpoint="https://test.com",
@@ -397,7 +397,7 @@ class TestDatasetProcessor:
         }
 
         mock_config = ProcessingConfig(
-            dataset_id="test-dataset", query="test query", verbose=True
+            resource_id="test-dataset", query="test query", verbose=True
         )
         mock_credentials = Credentials(
             retrieval_endpoint="https://test.com",
@@ -456,7 +456,7 @@ class TestDatasetProcessor:
         }
 
         mock_config = ProcessingConfig(
-            dataset_id="test-dataset", query="test query", verbose=True
+            resource_id="test-dataset", query="test query", verbose=True
         )
         mock_credentials = Credentials(
             retrieval_endpoint="https://test.com",
@@ -523,7 +523,7 @@ class TestProcessorsIntegration:
 
             result = strategy.parallel_search(
                 query="machine learning algorithms",
-                dataset_id="ml-dataset",
+                resource_id="ml-dataset",
             )
 
             assert result["success"] is True

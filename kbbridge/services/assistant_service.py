@@ -74,10 +74,10 @@ async def assistant_service(
             "yes",
             "on",
         }
-        # Note: ParameterValidator still uses dataset_id internally (orchestration layer)
-        # We pass resource_id as dataset_id until orchestration layer is refactored
+        # Note: ParameterValidator still accepts dataset_id for backward compatibility
+        # but returns ProcessingConfig with resource_id
         tool_parameters = {
-            "dataset_id": resource_id.strip(),
+            "dataset_id": resource_id.strip(),  # Backward compatibility key
             "query": query,
             "max_workers": DEFAULT_CONFIG["max_workers"],
             "verbose": verbose_env or DEFAULT_CONFIG["verbose"],
@@ -90,7 +90,7 @@ async def assistant_service(
         # Create dataset_pairs from single resource_id
         # Note: dataset_pairs still uses "id" key (orchestration layer convention)
         await _safe_progress(ctx, 3, 10, "Preparing dataset...")
-        dataset_pairs = [{"id": config.dataset_id}]
+        dataset_pairs = [{"id": config.resource_id}]
 
         retrieval_creds = RetrievalCredentials.from_env()
         retrieval_valid, retrieval_error = retrieval_creds.validate()
@@ -196,7 +196,7 @@ async def assistant_service(
                     "error": "Invalid resource_id configuration",
                     "details": f"Resource ID '{resource_id_value}' appears to be a placeholder (contains 'env.' or 'DATASET_ID')",
                     "suggestion": "Replace with actual resource identifier. Example: 'a1b2c3d4-5678-90ab-cdef-1234567890ab'",
-                    "received_resource_id": config.dataset_id,
+                    "received_resource_id": config.resource_id,
                 }
             if len(resource_id_value) < 10:
                 await ctx.warning(
@@ -795,7 +795,7 @@ def _return_verbose_results(
     result = {
         "dataset_results": [
             {
-                "dataset_id": r.dataset_id,
+                "resource_id": r.resource_id,
                 "direct_result": r.direct_result,
                 "advanced_result": r.advanced_result,
                 "candidates": r.candidates,

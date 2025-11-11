@@ -50,15 +50,15 @@ class FileSearchStrategy:
     def parallel_search(
         self,
         query: str,
-        dataset_id: str,
+        resource_id: str,
         max_workers: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """Execute parallel file search for a dataset"""
+        """Execute parallel file search for a resource"""
         search_profiling = {}
         debug_info = []
 
         with profile_stage(
-            f"dataset_{dataset_id}.standalone_file_search",
+            f"resource_{resource_id}.standalone_file_search",
             search_profiling,
             self.verbose,
         ):
@@ -68,14 +68,14 @@ class FileSearchStrategy:
                 if getattr(self, "_compat_file_searcher", None) is not None:
                     search_result = self._compat_file_searcher.search_files(
                         query=query,
-                        dataset_id=dataset_id,
+                        dataset_id=resource_id,  # Backward compatibility
                         max_keywords=AssistantDefaults.MAX_KEYWORDS.value,
                         top_k_per_keyword=AssistantDefaults.TOP_K_PER_KEYWORD.value,
                         max_workers=max_workers or AssistantDefaults.MAX_WORKERS.value,
                         verbose=self.verbose,
                     )
                 else:
-                    discover = self.discover_factory(dataset_id)
+                    discover = self.discover_factory(resource_id)
                     metadata_filter = discover.retriever.build_metadata_filter()
                     files = discover(
                         query=query,
@@ -218,14 +218,14 @@ class DirectApproachProcessor:
     def process(
         self,
         query: str,
-        dataset_id: str,
+        resource_id: str,
         score_threshold: Optional[float],
         top_k: int,
         document_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Execute direct approach: query -> retrieval -> answer"""
         debug_info = []
-        logger.info(f"Starting direct approach processing for dataset {dataset_id}")
+        logger.info(f"Starting direct approach processing for resource {resource_id}")
         logger.debug(
             f"Query: '{query}', top_k: {top_k}, score_threshold: {score_threshold}"
         )
@@ -240,23 +240,23 @@ class DirectApproachProcessor:
             debug_info.append(f"Metadata filter: {json.dumps(metadata_filter)}")
 
         # Retrieve segments
-        logger.info(f"Retrieving segments for dataset {dataset_id}")
+        logger.info(f"Retrieving segments for resource {resource_id}")
         retrieval_result = self._retrieve_segments(
-            dataset_id, query, metadata_filter, score_threshold, top_k
+            resource_id, query, metadata_filter, score_threshold, top_k
         )
 
         if retrieval_result.get("error"):
             logger.error(
-                f"Retrieval failed for dataset {dataset_id}: {retrieval_result.get('error')}"
+                f"Retrieval failed for resource {resource_id}: {retrieval_result.get('error')}"
             )
             return self._format_retrieval_error(retrieval_result, debug_info)
 
         # Format and extract answer
         segments = self._format_segments(retrieval_result)
-        logger.info(f"Retrieved {len(segments)} segments for dataset {dataset_id}")
+        logger.info(f"Retrieved {len(segments)} segments for resource {resource_id}")
 
         if not segments:
-            logger.warning(f"No segments found for dataset {dataset_id}")
+            logger.warning(f"No segments found for resource {resource_id}")
             return {
                 "success": True,
                 "answer": ResponseMessages.NO_ANSWER,
@@ -268,7 +268,7 @@ class DirectApproachProcessor:
 
     def _retrieve_segments(
         self,
-        dataset_id: str,
+        resource_id: str,
         query: str,
         metadata_filter: Optional[Dict],
         score_threshold: Optional[float],
@@ -284,7 +284,7 @@ class DirectApproachProcessor:
         # Reranking config is handled internally by the adapter based on backend type
         if hasattr(self.retriever, "retrieve"):
             return self.retriever.retrieve(
-                dataset_id=dataset_id,
+                dataset_id=resource_id,  # Backward compatibility
                 query=query,
                 search_method=RetrieverSearchMethod.HYBRID_SEARCH.value,
                 does_rerank=does_rerank,
@@ -431,7 +431,7 @@ class AdvancedApproachProcessor:
     def process(
         self,
         query: str,
-        dataset_id: str,
+        resource_id: str,
         top_k: int,
         file_search_result: Dict[str, Any],
         max_workers: Optional[int] = None,
@@ -475,7 +475,7 @@ class AdvancedApproachProcessor:
         file_answers = self._process_files_parallel(
             file_names,
             query,
-            dataset_id,
+            resource_id,
             top_k,
             max_workers,
             approach_profiling,
@@ -500,7 +500,7 @@ class AdvancedApproachProcessor:
         self,
         file_names: List[str],
         query: str,
-        dataset_id: str,
+        resource_id: str,
         top_k: int,
         max_workers: Optional[int],
         profiling: Dict[str, Any],
@@ -519,7 +519,7 @@ class AdvancedApproachProcessor:
         file_answers = []
 
         with profile_stage(
-            f"dataset_{dataset_id}.advanced.parallel_file_processing",
+            f"resource_{resource_id}.advanced.parallel_file_processing",
             profiling,
             self.verbose,
         ):
@@ -529,7 +529,7 @@ class AdvancedApproachProcessor:
                         self._process_single_file,
                         file_name,
                         query,
-                        dataset_id,
+                        resource_id,
                         top_k,
                         profiling,
                         use_content_booster=use_content_booster,
@@ -557,7 +557,7 @@ class AdvancedApproachProcessor:
         self,
         file_name: str,
         query: str,
-        dataset_id: str,
+        resource_id: str,
         top_k: int,
         profiling: Dict[str, Any],
         use_content_booster: bool = True,
@@ -679,7 +679,7 @@ class AdvancedApproachProcessor:
                     file_name,
                     query_text,
                     query,
-                    dataset_id,
+                    resource_id,
                     top_k,
                     all_segments,
                 )
@@ -792,7 +792,7 @@ class AdvancedApproachProcessor:
         file_name: str,
         query_for_rerank: str,
         original_query: str,
-        dataset_id: str,
+        resource_id: str,
         top_k: int,
         all_segments: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
@@ -814,7 +814,7 @@ class AdvancedApproachProcessor:
                 # Reranking config is handled internally by the adapter
                 if hasattr(self.retriever, "retrieve"):
                     retrieval_result = self.retriever.retrieve(
-                        dataset_id=dataset_id,
+                        dataset_id=resource_id,  # Backward compatibility
                         query=query_for_rerank,
                         search_method=RetrieverSearchMethod.HYBRID_SEARCH.value,
                         does_rerank=False,
@@ -1035,47 +1035,51 @@ class DatasetProcessor:
         if self.config.verbose:
             self.profiling_data["worker_distribution"] = worker_dist.__dict__
 
-        # Verify dataset contents (lightweight check)
-        datasets_with_files = []
+        # Verify resource contents (lightweight check)
+        resources_with_files = []
         for pair in dataset_pairs:
-            dataset_id = pair.get("id")
+            resource_id_value = pair.get("id")
             try:
                 has_files = True
                 if self.retriever_factory:
-                    r = self.retriever_factory(dataset_id)
+                    r = self.retriever_factory(resource_id_value)
                     if hasattr(r, "list_files"):
-                        files = r.list_files(resource_id=dataset_id, timeout=30)
+                        files = r.list_files(resource_id=resource_id_value, timeout=30)
                         has_files = len(files) > 0
             except Exception as e:
-                # NEW BEHAVIOR: If file lister fails, proceed assuming dataset may have files
+                # NEW BEHAVIOR: If file lister fails, proceed assuming resource may have files
                 logger.warning(
-                    f"File lister check failed for dataset {dataset_id}: {e}. Proceeding with processing."
+                    f"File lister check failed for resource {resource_id_value}: {e}. Proceeding with processing."
                 )
                 has_files = True
 
-            datasets_with_files.append({"id": dataset_id, "has_files": has_files})
+            resources_with_files.append(
+                {"id": resource_id_value, "has_files": has_files}
+            )
 
-        # Check if at least one dataset has files
-        if not any(d.get("has_files", False) for d in datasets_with_files):
-            raise ValueError("No datasets with files found")
+        # Check if at least one resource has files
+        if not any(d.get("has_files", False) for d in resources_with_files):
+            raise ValueError("No resources with files found")
 
-        # Process datasets with available files
-        for pair in datasets_with_files:
-            dataset_id = pair["id"]
+        # Process resources with available files
+        for pair in resources_with_files:
+            resource_id_value = pair["id"]
             has_files = pair.get("has_files", False)
 
             if not has_files:
                 continue
 
-            # Create per-dataset components using factory pattern
-            per_dataset_components = dict(self.components)
+            # Create per-resource components using factory pattern
+            per_resource_components = dict(self.components)
             retriever_factory = self.components.get("retriever_factory")
             if retriever_factory:
-                per_dataset_components["retriever"] = retriever_factory(dataset_id)
+                per_resource_components["retriever"] = retriever_factory(
+                    resource_id_value
+                )
 
-            # IMPORTANT: Use per-dataset processors so retriever is bound to the dataset
+            # IMPORTANT: Use per-resource processors so retriever is bound to the resource
             direct_processor = DirectApproachProcessor(
-                per_dataset_components.get("retriever"),
+                per_resource_components.get("retriever"),
                 self.components["answer_extractor"],
                 verbose=self.config.verbose,
                 custom_instructions=self.custom_instructions,
@@ -1083,7 +1087,7 @@ class DatasetProcessor:
             )
 
             advanced_processor = AdvancedApproachProcessor(
-                per_dataset_components.get("retriever"),
+                per_resource_components.get("retriever"),
                 self.components["answer_extractor"],
                 verbose=self.config.verbose,
                 custom_instructions=self.custom_instructions,
@@ -1101,13 +1105,13 @@ class DatasetProcessor:
                 }
             else:
                 file_search_result = self.file_search_strategy.parallel_search(
-                    query, dataset_id, worker_dist.file_workers
+                    query, resource_id_value, worker_dist.file_workers
                 )
 
             # Second stage: direct approach
             direct_result = direct_processor.process(
                 query,
-                dataset_id,
+                resource_id_value,
                 self.config.score_threshold,
                 self.config.top_k,
                 document_name=(self.focus_document_name or None),
@@ -1116,7 +1120,7 @@ class DatasetProcessor:
             # Third stage: advanced approach using file search results
             advanced_result = advanced_processor.process(
                 query,
-                dataset_id,
+                resource_id_value,
                 top_k=self.config.top_k,
                 file_search_result=file_search_result,
                 max_workers=worker_dist.file_workers,
@@ -1133,7 +1137,7 @@ class DatasetProcessor:
                 candidates.append(
                     {
                         "source": "advanced",
-                        "dataset_id": dataset_id,
+                        "resource_id": resource_id_value,
                         "file_name": answer.get("file_name", ""),
                         "answer": answer.get("answer", ""),
                         "success": answer.get("success", False),
@@ -1154,17 +1158,17 @@ class DatasetProcessor:
                     : AssistantDefaults.MAX_DISPLAY_SOURCES.value
                 ]:
                     try:
-                        display_sources.append(f"{dataset_id}/{unquote(name)}")
+                        display_sources.append(f"{resource_id_value}/{unquote(name)}")
                     except Exception:
-                        display_sources.append(f"{dataset_id}/{name}")
+                        display_sources.append(f"{resource_id_value}/{name}")
                 display_source_str = (
-                    "; ".join(display_sources) if display_sources else dataset_id
+                    "; ".join(display_sources) if display_sources else resource_id_value
                 )
                 file_name_hint = direct_sources[0] if direct_sources else ""
                 candidates.append(
                     {
                         "source": "direct",
-                        "dataset_id": dataset_id,
+                        "resource_id": resource_id_value,
                         "file_name": file_name_hint,
                         "answer": direct_answer_text,
                         "success": True,
@@ -1174,7 +1178,7 @@ class DatasetProcessor:
 
             # Create standardized result
             result = DatasetResult(
-                dataset_id=dataset_id,
+                resource_id=resource_id_value,
                 direct_result=direct_result,
                 advanced_result=advanced_result,
                 candidates=candidates,

@@ -16,7 +16,7 @@ class ComponentFactory:
 
     @staticmethod
     def create_components(
-        credentials: Credentials, dataset_id: str = ""
+        credentials: Credentials, resource_id: str = ""
     ) -> Dict[str, Any]:
         """Create all required service components"""
 
@@ -47,13 +47,13 @@ class ComponentFactory:
 
             try:
                 return RetrieverRouter.create_retriever(
-                    dataset_id=ds_id, backend_type=backend_type, **config
+                    resource_id=ds_id, backend_type=backend_type, **config
                 )
             except ValueError:
                 # Fallback to Dify if specified backend is not available
                 if backend_type != "dify":
                     return RetrieverRouter.create_retriever(
-                        dataset_id=ds_id,
+                        resource_id=ds_id,
                         backend_type="dify",
                         endpoint=credentials.retrieval_endpoint,
                         api_key=credentials.retrieval_api_key,
@@ -158,7 +158,9 @@ class ParameterValidator:
     def validate_config(tool_parameters: Dict[str, Any]) -> ProcessingConfig:
         """Validate and create processing configuration"""
         # Get required parameters
-        dataset_id = tool_parameters["dataset_id"]
+        resource_id = tool_parameters.get("resource_id") or tool_parameters.get(
+            "dataset_id"
+        )
         query = tool_parameters["query"]
         verbose = tool_parameters.get("verbose", False)
 
@@ -193,7 +195,7 @@ class ParameterValidator:
             )
 
         return ProcessingConfig(
-            dataset_id=dataset_id,
+            resource_id=resource_id,
             query=query,
             verbose=verbose,
             score_threshold=score_threshold,

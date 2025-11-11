@@ -700,7 +700,7 @@ class TestAssistantServiceResults:
                                 "intention_extractor": Mock(),
                             }
                             mock_dataset_result = Mock()
-                            mock_dataset_result.dataset_id = "test-dataset"
+                            mock_dataset_result.resource_id = "test-dataset"
                             mock_dataset_result.direct_result = {}
                             mock_dataset_result.advanced_result = {}
                             mock_dataset_result.candidates = []

@@ -716,20 +716,6 @@ class TestBuildMetadataFilter:
         assert result["conditions"][0]["value"] == "test.pdf"
         assert result["logical_operator"] == "and"
 
-    def test_build_metadata_filter_with_document_name(self):
-        """Test building metadata filter with document name (covers lines 95-102)"""
-        retriever = KnowledgeBaseRetriever("https://test.com", "test-key")
-
-        result = retriever.build_metadata_filter(document_name="test.pdf")
-
-        assert result is not None
-        assert "conditions" in result
-        assert len(result["conditions"]) == 1
-        assert result["conditions"][0]["name"] == "document_name"
-        assert result["conditions"][0]["comparison_operator"] == "contains"
-        assert result["conditions"][0]["value"] == "test.pdf"
-        assert result["logical_operator"] == "and"
-
     def test_build_metadata_filter_with_document_name_only(self):
         """Test building metadata filter with document name only"""
         retriever = KnowledgeBaseRetriever("https://test.com", "test-key")

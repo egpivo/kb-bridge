@@ -2,8 +2,13 @@ import logging
 import os
 
 
-def setup_logging():
-    """Configure logging based on environment variables."""
+def setup_logging(force: bool = False):
+    """Configure logging based on environment variables.
+
+    Args:
+        force: If True, reconfigure logging even if it was already configured.
+               Useful when environment variables change after initial setup.
+    """
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     log_level_map = {
         "DEBUG": logging.DEBUG,
@@ -27,5 +32,6 @@ def setup_logging():
                 else []
             ),
         ],
+        force=force,
     )
     return logging.getLogger(__name__)

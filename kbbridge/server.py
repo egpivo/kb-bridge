@@ -21,27 +21,19 @@ from kbbridge.services.file_lister_service import file_lister_service
 from kbbridge.services.keyword_generator_service import keyword_generator_service
 from kbbridge.services.retriever_service import retriever_service
 
-# Note: Environment variables will be loaded in main() after parsing --env-file argument
-# This allows custom env files to be specified via command line
-# Configure logging with defaults (will be reconfigured if custom env file is provided)
-logger = setup_logging()
-
+# Note: Environment variables and logging will be initialized in main()
+# This allows custom env files to be specified via --env-file argument
 # Initialize FastMCP
 mcp = FastMCP("kb-mcp-server")
 
 # Mount prompts
 mcp.mount(prompts_mcp)
 
-# Initialize credential manager and load default credentials
+# Initialize credential manager (logging will be set up in main())
 config_helper = MCPConfigHelper()
-config_helper.apply_to_environment()
 
-# Set environment variables to disable multiprocessing globally
-# Only override if not already set in .env file
-if "MAX_WORKERS" not in os.environ:
-    os.environ["MAX_WORKERS"] = "1"
-if "USE_CONTENT_BOOSTER" not in os.environ:
-    os.environ["USE_CONTENT_BOOSTER"] = "false"
+# Logger will be initialized in main() after loading env file
+logger = None
 
 
 # MCP Tools
@@ -361,36 +353,50 @@ async def main():
 
     args = parser.parse_args()
 
-    # Load environment variables - custom file takes precedence
+    # Load environment variables first (before setting up logging)
+    # This ensures logging config comes from the correct env file
+    env_loaded = False
     if args.env_file:
-        logger.info(f"Loading environment variables from: {args.env_file}")
         env_path = Path(args.env_file)
         if env_path.exists():
             load_dotenv(env_path, override=True)
-            logger.info(f"Loaded environment variables from {env_path} (override=True)")
-
-            # Re-initialize components that depend on environment variables
-            import logging
-
-            root_logger = logging.getLogger()
-            root_logger.handlers.clear()
-            global logger
-            logger = setup_logging()
-
-            # Re-initialize credential manager with new env vars
-            config_helper.apply_to_environment()
-
-            # Re-set MAX_WORKERS and USE_CONTENT_BOOSTER if not in custom env file
-            if "MAX_WORKERS" not in os.environ:
-                os.environ["MAX_WORKERS"] = "1"
-            if "USE_CONTENT_BOOSTER" not in os.environ:
-                os.environ["USE_CONTENT_BOOSTER"] = "false"
+            env_loaded = True
         else:
-            logger.warning(f"Env file not found at {env_path}, loading default")
-            load_env_file()
+            # Custom env file not found, fall back to default
+            env_loaded = load_env_file()
     else:
         # Load default .env file
-        load_env_file()
+        env_loaded = load_env_file()
+
+    # Set up logging once with the loaded environment variables
+    global logger
+    logger = setup_logging()
+
+    # Log which env file was loaded (now that logging is set up)
+    if args.env_file:
+        if env_loaded:
+            logger.info(f"Loaded environment variables from: {args.env_file}")
+        else:
+            logger.warning(
+                f"Custom env file not found at {args.env_file}, using default .env"
+            )
+    else:
+        if env_loaded:
+            logger.info("Loaded environment variables from default .env")
+        else:
+            logger.warning(
+                "No .env file found, using environment variables and defaults"
+            )
+
+    # Now initialize components that depend on environment variables
+    config_helper.apply_to_environment()
+
+    # Set environment variables to disable multiprocessing globally
+    # Only override if not already set in .env file
+    if "MAX_WORKERS" not in os.environ:
+        os.environ["MAX_WORKERS"] = "1"
+    if "USE_CONTENT_BOOSTER" not in os.environ:
+        os.environ["USE_CONTENT_BOOSTER"] = "false"
 
     print_env_status()
     validation = config_helper.validate_credentials()

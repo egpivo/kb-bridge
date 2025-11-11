@@ -366,7 +366,6 @@ class WorkingDatasetProcessor:
 
         for dataset_pair in dataset_pairs:
             dataset_id = dataset_pair["id"]
-            source_path = dataset_pair.get("source_path", "")
 
             # Use naive approach (simple search)
             naive_result = self._process_naive_approach(dataset_id, refined_query)
@@ -381,7 +380,6 @@ class WorkingDatasetProcessor:
             dataset_results.append(
                 {
                     "dataset_id": dataset_id,
-                    "source_path": source_path,
                     "naive_results": naive_result,
                     "advanced_results": advanced_result,
                 }

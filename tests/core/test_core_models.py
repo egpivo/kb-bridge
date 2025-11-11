@@ -54,7 +54,7 @@ class TestProcessingConfig:
     def test_processing_config_creation(self):
         """Test creating processing config"""
         config = ProcessingConfig(
-            dataset_info='[{"id": "test-dataset", "source_path": "/test/path"}]',
+            dataset_info='[{"id": "test-dataset"}]',
             query="test query",
             max_workers=5,
             verbose=True,
@@ -64,10 +64,7 @@ class TestProcessingConfig:
             top_k=20,
         )
 
-        assert (
-            config.dataset_info
-            == '[{"id": "test-dataset", "source_path": "/test/path"}]'
-        )
+        assert config.dataset_info == '[{"id": "test-dataset"}]'
         assert config.query == "test query"
         assert config.max_workers == 5
         assert config.verbose is True
@@ -79,15 +76,12 @@ class TestProcessingConfig:
     def test_processing_config_defaults(self):
         """Test processing config with default values"""
         config = ProcessingConfig(
-            dataset_info='[{"id": "test-dataset", "source_path": "/test/path"}]',
+            dataset_info='[{"id": "test-dataset"}]',
             query="test query",
         )
 
         # Should have reasonable defaults
-        assert (
-            config.dataset_info
-            == '[{"id": "test-dataset", "source_path": "/test/path"}]'
-        )
+        assert config.dataset_info == '[{"id": "test-dataset"}]'
         assert config.query == "test query"
         assert config.max_workers >= 1
         assert isinstance(config.verbose, bool)

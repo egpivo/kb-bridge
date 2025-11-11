@@ -188,7 +188,7 @@ class TestDatasetParser:
 
     def test_parse_dataset_info_valid(self):
         """Test parsing valid dataset info"""
-        dataset_info = '[{"id": "test-dataset", "source_path": ""}]'
+        dataset_info = '[{"id": "test-dataset"}]'
         result = parse_dataset_info(dataset_info)
 
         assert result is not None
@@ -208,7 +208,7 @@ class TestDatasetParser:
 
     def test_parse_dataset_info_missing_id(self):
         """Test parsing dataset info with missing id"""
-        dataset_info = '[{"source_path": ""}]'
+        dataset_info = '[{"other_field": "value"}]'
         result = parse_dataset_info(dataset_info)
         assert isinstance(result, list)
 
@@ -220,7 +220,7 @@ class TestDatasetParser:
 
         assert isinstance(result, list)
         assert len(result) == 2
-        # The function converts UUIDs to dictionaries with id and source_path
+        # The function converts UUIDs to dictionaries with id (source_path is parsed but ignored)
         assert result[0]["id"] == "550e8400-e29b-41d4-a716-446655440000"
         assert result[1]["id"] == "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
 

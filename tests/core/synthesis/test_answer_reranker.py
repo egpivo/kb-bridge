@@ -173,8 +173,8 @@ class TestAnswerReranker:
         assert "**dataset1/document.pdf**: Advanced answer" in result["final_result"]
 
     @patch("kbbridge.core.synthesis.answer_reranker.requests.post")
-    def test_rerank_answers_advanced_source_with_source_path(self, mock_post):
-        """Test formatting for advanced source with source path"""
+    def test_rerank_answers_advanced_source_without_filename(self, mock_post):
+        """Test formatting for advanced source without filename (dataset only)"""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -190,13 +190,13 @@ class TestAnswerReranker:
                 "answer": "Advanced answer",
                 "source": "advanced",
                 "dataset_id": "dataset1",
-                "source_path": "/path/to/file",
+                # No file_name or source_path
             }
         ]
 
         result = reranker.rerank_answers("test query", candidate_answers)
 
-        assert "**dataset1 (/path/to/file)**: Advanced answer" in result["final_result"]
+        assert "**dataset1**: Advanced answer" in result["final_result"]
 
     @patch("kbbridge.core.synthesis.answer_reranker.requests.post")
     def test_rerank_answers_advanced_source_dataset_only(self, mock_post):

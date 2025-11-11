@@ -26,7 +26,7 @@ class DummyRetriever:
             scores[c.document_name] = max(scores.get(c.document_name, 0.0), c.score)
         return [FileHit(file_name=k, score=v) for k, v in scores.items()]
 
-    def build_metadata_filter(self, *, source_path: str = "", document_name: str = ""):
+    def build_metadata_filter(self, *, document_name: str = ""):
         return None
 
 

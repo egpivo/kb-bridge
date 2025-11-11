@@ -103,11 +103,12 @@ class TestParseDatasetInfo:
     """Test parse_dataset_info function"""
 
     def test_parse_simple_dict_array(self):
-        """Test parsing simple array of dictionaries"""
+        """Test parsing simple array of dictionaries (source_path is parsed but ignored)"""
         raw = '[{"id": "dataset1", "source_path": "/path1"}, {"id": "dataset2", "source_path": "/path2"}]'
         result = parse_dataset_info(raw)
         assert len(result) == 2
         assert result[0]["id"] == "dataset1"
+        # source_path is parsed for backward compatibility but not used for filtering
         assert result[0]["source_path"] == "/path1"
 
     def test_parse_with_uuids_no_structured_json(self):
@@ -116,6 +117,7 @@ class TestParseDatasetInfo:
         result = parse_dataset_info(raw)
         assert len(result) == 1
         assert result[0]["id"] == "123e4567-e89b-12d3-a456-426614174000"
+        # source_path defaults to empty string (parsed but ignored)
         assert result[0]["source_path"] == ""
 
     def test_parse_with_uuids_and_structured_json(self):
@@ -157,9 +159,10 @@ class TestParseDatasetInfo:
         assert len(result) >= 1
 
     def test_parse_with_missing_source_path(self):
-        """Test parsing dict without source_path"""
+        """Test parsing dict without source_path (defaults to empty string, ignored)"""
         raw = '[{"id": "dataset1"}]'
         result = parse_dataset_info(raw)
+        # source_path defaults to empty string when missing (parsed but ignored)
         assert result[0]["source_path"] == ""
 
     def test_parse_with_scalar_items_in_list(self):
@@ -201,16 +204,18 @@ class TestProcessListItems:
         assert result[0]["source_path"] == "/path1"
 
     def test_process_dict_items_without_source_path(self):
-        """Test processing dict items without source_path"""
+        """Test processing dict items without source_path (defaults to empty, ignored)"""
         items = [{"id": "dataset1"}, {"id": "dataset2"}]
         result = _process_list_items(items)
         assert len(result) == 2
+        # source_path defaults to empty string when missing (parsed but ignored)
         assert result[0]["source_path"] == ""
 
     def test_process_dict_items_with_none_source_path(self):
-        """Test processing dict items with None source_path"""
+        """Test processing dict items with None source_path (converted to empty, ignored)"""
         items = [{"id": "dataset1", "source_path": None}]
         result = _process_list_items(items)
+        # None source_path is converted to empty string (parsed but ignored)
         assert result[0]["source_path"] == ""
 
     def test_process_dict_items_missing_id(self):

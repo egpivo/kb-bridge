@@ -134,7 +134,7 @@ class DifyRetriever(Retriever):
 
             for record in records:
                 try:
-                    segment = record.get("segment", {})
+                    segment = record.get("segment") or {}
                     content = segment.get("content", "")
 
                     if not content:

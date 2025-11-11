@@ -342,106 +342,82 @@ class TestRetrieverServiceFunction:
 
     def test_retriever_service_with_document_name_filter(self):
         """Test retriever_service with document_name filter"""
-        # Patch where it's imported in the function
+        # Patch BackendAdapterFactory at its source module
         with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             with patch(
-                "kbbridge.utils.working_components.KnowledgeBaseRetriever"
-            ) as mock_retriever_class:
+                "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+            ) as mock_factory:
                 # Setup mocks
                 mock_creds = Mock()
                 mock_creds.validate.return_value = (True, None)
                 mock_creds.endpoint = "https://test.com"
                 mock_creds.api_key = "test-key"
+                mock_creds.backend_type = "dify"
                 mock_creds_class.return_value = mock_creds
 
-                mock_retriever = Mock()
+                # Mock adapter
+                mock_adapter = Mock()
                 # Return non-empty results to avoid fallback logic
-                mock_retriever.retrieve.return_value = {
+                mock_adapter.search.return_value = {
                     "records": [{"segment": {"content": "test"}}]
                 }
-                # Mock build_metadata_filter to return proper filter
-                mock_retriever.build_metadata_filter.return_value = {
-                    "conditions": [{"name": "document_name", "value": "test.pdf"}]
-                }
-                mock_retriever_class.return_value = mock_retriever
+                mock_factory.create.return_value = mock_adapter
 
                 # Call with document_name filter
                 result = retriever_service(
-                    dataset_id="test-dataset",
+                    resource_id="test-resource",
                     query="test query",
                     retrieval_endpoint="https://test.com",
                     retrieval_api_key="test-key",
                     document_name="test.pdf",
                 )
 
-                # Verify retrieve was called with metadata_filter containing document_name
+                # Verify adapter.search was called with document_name
                 assert (
-                    mock_retriever.retrieve.called
-                ), "retrieve should have been called"
-                # Check the first call (not the fallback call)
-                call_args_list = mock_retriever.retrieve.call_args_list
-                assert len(call_args_list) > 0, "retrieve should have been called"
-                first_call = call_args_list[0]
-                call_kwargs = first_call.kwargs if first_call.kwargs else {}
-                assert (
-                    "metadata_filter" in call_kwargs
-                    and call_kwargs["metadata_filter"] is not None
-                )
-                assert any(
-                    cond["name"] == "document_name"
-                    for cond in call_kwargs["metadata_filter"]["conditions"]
-                )
+                    mock_adapter.search.called
+                ), "adapter.search should have been called"
+                call_kwargs = mock_adapter.search.call_args.kwargs
+                assert call_kwargs["document_name"] == "test.pdf"
+                assert "result" in result
 
     def test_retriever_service_with_document_name(self):
         """Test retriever_service with document_name filter"""
         with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             with patch(
-                "kbbridge.utils.working_components.KnowledgeBaseRetriever"
-            ) as mock_retriever_class:
+                "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+            ) as mock_factory:
                 # Setup mocks
                 mock_creds = Mock()
                 mock_creds.validate.return_value = (True, None)
                 mock_creds.endpoint = "https://test.com"
                 mock_creds.api_key = "test-key"
+                mock_creds.backend_type = "dify"
                 mock_creds_class.return_value = mock_creds
 
-                mock_retriever = Mock()
+                # Mock adapter
+                mock_adapter = Mock()
                 # Return non-empty results to avoid fallback logic
-                mock_retriever.retrieve.return_value = {
+                mock_adapter.search.return_value = {
                     "records": [{"segment": {"content": "test"}}]
                 }
-                # Mock build_metadata_filter to return proper filter
-                mock_retriever.build_metadata_filter.return_value = {
-                    "conditions": [{"name": "document_name", "value": "test.pdf"}]
-                }
-                mock_retriever_class.return_value = mock_retriever
+                mock_factory.create.return_value = mock_adapter
 
                 # Call with document_name filter
                 result = retriever_service(
-                    dataset_id="test-dataset",
+                    resource_id="test-resource",
                     query="test query",
                     retrieval_endpoint="https://test.com",
                     retrieval_api_key="test-key",
                     document_name="test.pdf",
                 )
 
-                # Verify document_name condition is in metadata_filter
+                # Verify adapter.search was called with document_name
                 assert (
-                    mock_retriever.retrieve.called
-                ), "retrieve should have been called"
-                # Check the first call (not the fallback call)
-                call_args_list = mock_retriever.retrieve.call_args_list
-                assert len(call_args_list) > 0, "retrieve should have been called"
-                first_call = call_args_list[0]
-                call_kwargs = first_call.kwargs if first_call.kwargs else {}
-                assert (
-                    "metadata_filter" in call_kwargs
-                    and call_kwargs["metadata_filter"] is not None
-                )
-                conditions = call_kwargs["metadata_filter"]["conditions"]
-                assert len(conditions) == 1
-                assert any(cond["name"] == "document_name" for cond in conditions)
-                assert any(cond["value"] == "test.pdf" for cond in conditions)
+                    mock_adapter.search.called
+                ), "adapter.search should have been called"
+                call_kwargs = mock_adapter.search.call_args.kwargs
+                assert call_kwargs["document_name"] == "test.pdf"
+                assert "result" in result
 
 
 class TestListAvailableBackends:
@@ -503,18 +479,18 @@ class TestRetrieverServiceValidation:
     """Test retriever_service validation and error paths"""
 
     def test_retriever_service_empty_dataset_id(self):
-        """Test retriever_service with empty dataset_id"""
-        result = retriever_service(dataset_id="", query="test")
+        """Test retriever_service with empty resource_id"""
+        result = retriever_service(resource_id="", query="test")
 
-        # Covers line 96
+        # Covers line 97
         assert "error" in result
-        assert "dataset_id is required" in result["error"]
+        assert "resource_id is required" in result["error"]
 
     def test_retriever_service_empty_query(self):
         """Test retriever_service with empty query"""
-        result = retriever_service(dataset_id="test-id", query="")
+        result = retriever_service(resource_id="test-id", query="")
 
-        # Covers line 98
+        # Covers line 99
         assert "error" in result
         assert "query is required" in result["error"]
 
@@ -522,76 +498,77 @@ class TestRetrieverServiceValidation:
         """Test retriever_service with opensearch credentials"""
         with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             with patch(
-                "kbbridge.utils.working_components.KnowledgeBaseRetriever"
-            ) as mock_retriever_class:
+                "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+            ) as mock_factory:
                 mock_creds = Mock()
                 mock_creds.validate.return_value = (True, None)
                 mock_creds.endpoint = "https://opensearch.com"
                 mock_creds.api_key = "opensearch-key"
+                mock_creds.backend_type = "opensearch"
                 mock_creds_class.return_value = mock_creds
 
-                mock_retriever = Mock()
-                mock_retriever.retrieve.return_value = {"records": []}
-                mock_retriever.build_metadata_filter.return_value = None
-                mock_retriever_class.return_value = mock_retriever
+                # Mock factory to raise NotImplementedError for opensearch
+                mock_factory.create.side_effect = NotImplementedError(
+                    "OpenSearch backend adapter not yet implemented"
+                )
 
                 result = retriever_service(
-                    dataset_id="test-dataset",
+                    resource_id="test-resource",
                     query="test query",
                     opensearch_endpoint="https://opensearch.com",
                     opensearch_auth="opensearch-key",
                 )
 
-                assert "result" in result
-                mock_creds_class.assert_called_once()
-                call_kwargs = mock_creds_class.call_args.kwargs
-                assert call_kwargs["backend_type"] == "opensearch"
+                assert "error" in result
+                assert (
+                    "OpenSearch backend adapter not yet implemented" in result["error"]
+                )
 
     def test_retriever_service_n8n_credentials(self):
         """Test retriever_service with n8n credentials"""
         with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             with patch(
-                "kbbridge.utils.working_components.KnowledgeBaseRetriever"
-            ) as mock_retriever_class:
+                "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+            ) as mock_factory:
                 mock_creds = Mock()
                 mock_creds.validate.return_value = (True, None)
                 mock_creds.endpoint = "https://n8n.com"
                 mock_creds.api_key = "n8n-key"
+                mock_creds.backend_type = "n8n"
                 mock_creds_class.return_value = mock_creds
 
-                mock_retriever = Mock()
-                mock_retriever.retrieve.return_value = {"records": []}
-                mock_retriever.build_metadata_filter.return_value = None
-                mock_retriever_class.return_value = mock_retriever
+                # Mock factory to raise NotImplementedError for n8n
+                mock_factory.create.side_effect = NotImplementedError(
+                    "n8n backend adapter not yet implemented"
+                )
 
                 result = retriever_service(
-                    dataset_id="test-dataset",
+                    resource_id="test-resource",
                     query="test query",
                     n8n_webhook_url="https://n8n.com",
                     n8n_api_key="n8n-key",
                 )
 
-                assert "result" in result
-                mock_creds_class.assert_called_once()
-                call_kwargs = mock_creds_class.call_args.kwargs
-                assert call_kwargs["backend_type"] == "n8n"
+                assert "error" in result
+                assert "n8n backend adapter not yet implemented" in result["error"]
 
     def test_retriever_service_client_side_filtering_fallback(self):
         """Test retriever_service client-side filtering fallback"""
         with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             with patch(
-                "kbbridge.utils.working_components.KnowledgeBaseRetriever"
-            ) as mock_retriever_class:
+                "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+            ) as mock_factory:
                 mock_creds = Mock()
                 mock_creds.validate.return_value = (True, None)
                 mock_creds.endpoint = "https://test.com"
                 mock_creds.api_key = "test-key"
+                mock_creds.backend_type = "dify"
                 mock_creds_class.return_value = mock_creds
 
-                mock_retriever = Mock()
+                mock_adapter = Mock()
                 # First call returns empty (metadata filter didn't work)
                 # Second call returns records with document names
-                mock_retriever.retrieve.side_effect = [
+                mock_adapter.search.side_effect = [
                     {"records": []},  # First call with metadata filter - empty
                     {
                         "records": [
@@ -610,21 +587,18 @@ class TestRetrieverServiceValidation:
                         ]
                     },  # Second call without filter - has records
                 ]
-                mock_retriever.build_metadata_filter.return_value = {
-                    "conditions": [{"name": "document_name", "value": "test.pdf"}]
-                }
-                mock_retriever_class.return_value = mock_retriever
+                mock_factory.create.return_value = mock_adapter
 
                 result = retriever_service(
-                    dataset_id="test-dataset",
+                    resource_id="test-resource",
                     query="test query",
                     retrieval_endpoint="https://test.com",
                     retrieval_api_key="test-key",
                     document_name="test.pdf",
                 )
 
-                # Should have called retrieve twice (fallback)
-                assert mock_retriever.retrieve.call_count == 2
+                # Should have called search twice (fallback)
+                assert mock_adapter.search.call_count == 2
                 assert "result" in result
                 # Should have filtered to only test.pdf
                 assert len(result["result"]) == 1
@@ -633,21 +607,21 @@ class TestRetrieverServiceValidation:
         """Test retriever_service when resp is None"""
         with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             with patch(
-                "kbbridge.utils.working_components.KnowledgeBaseRetriever"
-            ) as mock_retriever_class:
+                "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+            ) as mock_factory:
                 mock_creds = Mock()
                 mock_creds.validate.return_value = (True, None)
                 mock_creds.endpoint = "https://test.com"
                 mock_creds.api_key = "test-key"
+                mock_creds.backend_type = "dify"
                 mock_creds_class.return_value = mock_creds
 
-                mock_retriever = Mock()
-                mock_retriever.retrieve.return_value = None
-                mock_retriever.build_metadata_filter.return_value = None
-                mock_retriever_class.return_value = mock_retriever
+                mock_adapter = Mock()
+                mock_adapter.search.return_value = None
+                mock_factory.create.return_value = mock_adapter
 
                 result = retriever_service(
-                    dataset_id="test-dataset",
+                    resource_id="test-resource",
                     query="test query",
                     retrieval_endpoint="https://test.com",
                     retrieval_api_key="test-key",

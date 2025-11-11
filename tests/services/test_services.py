@@ -129,14 +129,14 @@ class TestFileListerService:
         """Test successful file lister execution"""
         # Test basic parameter validation
         result = file_lister_service(
-            dataset_id="",
+            resource_id="",
             retrieval_endpoint="https://dify.ai",
             retrieval_api_key="test-api-key",
         )
 
         assert isinstance(result, dict)
         assert "error" in result
-        assert "dataset_id is required" in result["error"]
+        assert "resource_id is required" in result["error"]
 
     def test_file_lister_service_error(self, mock_credentials):
         """Test file lister with invalid credentials"""
@@ -151,7 +151,7 @@ class TestFileListerService:
 
             # Test with missing credentials (empty strings trigger from_env fallback)
             result = file_lister_service(
-                dataset_id="test-dataset",
+                resource_id="test-resource",
                 retrieval_endpoint="",
                 retrieval_api_key="",
             )
@@ -172,13 +172,13 @@ class TestFileListerService:
             mock_creds_class.return_value = mock_creds
 
             result = file_lister_service(
-                dataset_id="test-dataset",
+                resource_id="test-resource",
                 retrieval_endpoint="https://opensearch.com",
                 retrieval_api_key="opensearch-key",
             )
 
             assert "error" in result
-            assert "not supported for backend: opensearch" in result["error"]
+            assert "not yet implemented" in result["error"]
 
 
 class TestKeywordGeneratorService:
@@ -221,52 +221,61 @@ class TestRetrieverService:
     def test_retriever_service_success(self, mock_credentials):
         """Test successful retriever execution"""
         with patch(
-            "kbbridge.utils.working_components.KnowledgeBaseRetriever"
-        ) as mock_retriever:
-            mock_retriever_instance = Mock()
-            mock_retriever_instance.retrieve.return_value = [
-                {"content": "Test content 1", "score": 0.9},
-                {"content": "Test content 2", "score": 0.8},
-            ]
-            mock_retriever.return_value = mock_retriever_instance
+            "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+        ) as mock_factory:
+            mock_adapter = Mock()
+            mock_adapter.search.return_value = {
+                "records": [
+                    {"segment": {"content": "Test content 1"}},
+                    {"segment": {"content": "Test content 2"}},
+                ]
+            }
+            mock_factory.create.return_value = mock_adapter
 
-            result = retriever_service(
-                query="test query",
-                dataset_id="test-dataset",
-                top_k=10,
-                score_threshold=0.5,
-                verbose=False,
-                retrieval_endpoint="https://dify.ai",
-                retrieval_api_key="test-api-key",
-            )
+            with patch(
+                "kbbridge.integrations.RetrievalCredentials"
+            ) as mock_creds_class:
+                mock_creds = Mock()
+                mock_creds.validate.return_value = (True, None)
+                mock_creds.backend_type = "dify"
+                mock_creds_class.return_value = mock_creds
 
-            assert "result" in result
-            assert isinstance(result["result"], list)
+                result = retriever_service(
+                    query="test query",
+                    resource_id="test-resource",
+                    top_k=10,
+                    score_threshold=0.5,
+                    verbose=False,
+                    retrieval_endpoint="https://dify.ai",
+                    retrieval_api_key="test-api-key",
+                )
+
+                assert "result" in result
+                assert isinstance(result["result"], list)
 
     def test_retriever_service_error(self, mock_credentials):
         """Test retriever with error"""
 
         with patch("kbbridge.integrations.RetrievalCredentials") as mock_creds_class:
             with patch(
-                "kbbridge.utils.working_components.KnowledgeBaseRetriever"
-            ) as mock_retriever:
+                "kbbridge.integrations.backend_adapter.BackendAdapterFactory"
+            ) as mock_factory:
                 # Setup credentials mock
                 mock_creds = Mock()
                 mock_creds.validate.return_value = (True, None)
                 mock_creds.endpoint = "https://dify.ai"
                 mock_creds.api_key = "test-api-key"
+                mock_creds.backend_type = "dify"
                 mock_creds_class.return_value = mock_creds
 
-                # Mock the instance creation to raise an exception
-                mock_retriever_instance = Mock()
-                mock_retriever_instance.retrieve.side_effect = Exception(
-                    "Retriever error"
-                )
-                mock_retriever.return_value = mock_retriever_instance
+                # Mock adapter to raise an exception
+                mock_adapter = Mock()
+                mock_adapter.search.side_effect = Exception("Retriever error")
+                mock_factory.create.return_value = mock_adapter
 
                 result = retriever_service(
                     query="test query",
-                    dataset_id="test-dataset",
+                    resource_id="test-resource",
                     retrieval_endpoint="https://dify.ai",
                     retrieval_api_key="test-api-key",
                 )

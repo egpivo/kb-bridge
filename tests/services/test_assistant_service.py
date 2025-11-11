@@ -701,7 +701,6 @@ class TestAssistantServiceResults:
                             }
                             mock_dataset_result = Mock()
                             mock_dataset_result.dataset_id = "test-dataset"
-                            mock_dataset_result.source_path = ""
                             mock_dataset_result.direct_result = {}
                             mock_dataset_result.advanced_result = {}
                             mock_dataset_result.candidates = []
@@ -981,7 +980,7 @@ class TestAssistantServiceHelpers:
             [{"answer": "test", "score": 0.9}],
         )
 
-        dataset_pairs = [{"id": "test-dataset", "source_path": ""}]
+        dataset_pairs = [{"id": "test-dataset"}]
         sub_queries = ["query1", "query2"]
 
         all_results, all_candidates = await _execute_multi_query(
@@ -1008,7 +1007,7 @@ class TestAssistantServiceHelpers:
             Exception("Query 2 failed"),
         ]
 
-        dataset_pairs = [{"id": "test-dataset", "source_path": ""}]
+        dataset_pairs = [{"id": "test-dataset"}]
         sub_queries = ["query1", "query2"]
 
         all_results, all_candidates = await _execute_multi_query(

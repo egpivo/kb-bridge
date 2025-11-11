@@ -316,10 +316,10 @@ class TestSalvageIdObjects:
 
     def test_salvage_empty_string(self):
         """Test salvaging empty string"""
-        result = _salvage_id_folder_pairs("")
+        result = _salvage_id_objects("")
         assert result == []
 
     def test_salvage_no_braces(self):
         """Test salvaging text without braces"""
-        result = _salvage_id_folder_pairs("plain text")
+        result = _salvage_id_objects("plain text")
         assert result == []

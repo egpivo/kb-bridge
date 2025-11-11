@@ -61,29 +61,17 @@ class KnowledgeBaseRetriever:
         self.endpoint = endpoint
         self.api_key = api_key
 
-    def build_metadata_filter(
-        self, *, source_path: str = "", document_name: str = ""
-    ) -> Optional[dict]:
+    def build_metadata_filter(self, *, document_name: str = "") -> Optional[dict]:
         """
         Build metadata filter for retrieval.
 
         Args:
-            source_path: Filter by source path
             document_name: Filter by document name
 
         Returns:
             Metadata filter dict or None
         """
         conditions = []
-
-        if source_path.strip():
-            conditions.append(
-                {
-                    "name": "source_path",
-                    "comparison_operator": "contains",
-                    "value": source_path,
-                }
-            )
 
         if document_name.strip():
             conditions.append(

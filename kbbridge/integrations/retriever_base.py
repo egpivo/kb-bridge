@@ -59,13 +59,9 @@ class Retriever(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def build_metadata_filter(
-        self, *, source_path: str = "", document_name: str = ""
-    ) -> Optional[dict]:
+    def build_metadata_filter(self, *, document_name: str = "") -> Optional[dict]:
         raise NotImplementedError
 
     @abstractmethod
-    def list_files(
-        self, *, dataset_id: str, source_path: str = "", timeout: int = 30
-    ) -> List[str]:
+    def list_files(self, *, dataset_id: str, timeout: int = 30) -> List[str]:
         raise NotImplementedError("list_files is not implemented for this backend")

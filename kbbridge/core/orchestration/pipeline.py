@@ -51,7 +51,6 @@ class FileSearchStrategy:
         self,
         query: str,
         dataset_id: str,
-        source_path: str,
         max_workers: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Execute parallel file search for a dataset"""
@@ -70,7 +69,7 @@ class FileSearchStrategy:
                     search_result = self._compat_file_searcher.search_files(
                         query=query,
                         dataset_id=dataset_id,
-                        source_path=source_path,
+                        source_path="",
                         max_keywords=AssistantDefaults.MAX_KEYWORDS.value,
                         top_k_per_keyword=AssistantDefaults.TOP_K_PER_KEYWORD.value,
                         max_workers=max_workers or AssistantDefaults.MAX_WORKERS.value,
@@ -78,9 +77,7 @@ class FileSearchStrategy:
                     )
                 else:
                     discover = self.discover_factory(dataset_id)
-                    metadata_filter = discover.retriever.build_metadata_filter(
-                        source_path=source_path or ""
-                    )
+                    metadata_filter = discover.retriever.build_metadata_filter()
                     files = discover(
                         query=query,
                         search_method=RetrieverSearchMethod.SEMANTIC_SEARCH.value,
@@ -223,7 +220,6 @@ class NaiveApproachProcessor:
         self,
         query: str,
         dataset_id: str,
-        source_path: str,
         score_threshold: Optional[float],
         top_k: int,
         document_name: Optional[str] = None,
@@ -237,7 +233,7 @@ class NaiveApproachProcessor:
 
         # Build metadata filter
         metadata_filter = self.retriever.build_metadata_filter(
-            source_path=source_path, document_name=(document_name or "")
+            document_name=(document_name or "")
         )
         logger.debug(f"Built metadata filter: {metadata_filter}")
 
@@ -811,7 +807,7 @@ class AdvancedApproachProcessor:
             ):
                 # Build metadata filter targeting this specific file
                 metadata_filter = self.retriever.build_metadata_filter(
-                    source_path="", document_name=file_name
+                    document_name=file_name
                 )
 
                 # Retrieve relevant segments
@@ -1050,7 +1046,7 @@ class DatasetProcessor:
                 if self.retriever_factory:
                     r = self.retriever_factory(dataset_id)
                     if hasattr(r, "list_files"):
-                        files = r.list_files(source_path=source_path or "")
+                        files = r.list_files(dataset_id=dataset_id, timeout=30)
                         has_files = len(files) > 0
             except Exception as e:
                 # NEW BEHAVIOR: If file lister fails, proceed assuming dataset may have files
@@ -1110,14 +1106,13 @@ class DatasetProcessor:
                 }
             else:
                 file_search_result = self.file_search_strategy.parallel_search(
-                    query, dataset_id, source_path, worker_dist.file_workers
+                    query, dataset_id, worker_dist.file_workers
                 )
 
             # Second stage: naive approach
             naive_result = naive_processor.process(
                 query,
                 dataset_id,
-                source_path,
                 self.config.score_threshold,
                 self.config.top_k,
                 document_name=(self.focus_document_name or None),

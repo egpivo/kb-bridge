@@ -15,7 +15,6 @@ from kbbridge.integrations import RetrievalCredentials, RetrieverRouter
 def file_discover_service(
     query: str,
     dataset_id: str,
-    source_path: str = "",
     top_k_recall: int = 100,
     top_k_return: int = 20,
     do_file_rerank: bool = True,
@@ -78,7 +77,7 @@ def file_discover_service(
         FileDiscover = getattr(discovery_pkg, "file_discover").FileDiscover
 
         discover = FileDiscover(retriever=retriever, file_rerank_fn=frf)
-        metadata_filter = retriever.build_metadata_filter(source_path=source_path or "")
+        metadata_filter = retriever.build_metadata_filter()
 
         # Call explicitly via __call__ so tests that patch __call__ directly work
         files = discover.__call__(

@@ -44,7 +44,6 @@ def retriever_service(
     score_threshold: Optional[float] = None,
     score_threshold_enabled: bool = False,
     weights: Optional[float] = None,
-    source_path: str = "",
     document_name: str = "",
     timeout: int = 30,
     # Backend selection
@@ -133,19 +132,12 @@ def retriever_service(
         # "kbbridge.utils.working_components.KnowledgeBaseRetriever"
         kb_retriever = working_components.KnowledgeBaseRetriever(endpoint, api_key)
 
-        # Build optional metadata filter for document/source_path
+        # Build optional metadata filter for document_name
         metadata_filter = None
-        # KnowledgeBaseRetriever.retrieve accepts "metadata_filter" but does not provide a builder
-        if source_path:
-            metadata_filter = {
-                "conditions": [{"name": "source_path", "value": source_path}]
-            }
         if document_name:
-            # Simple filter by document name when provided
-            metadata_filter = metadata_filter or {"conditions": []}
-            metadata_filter["conditions"].append(
-                {"name": "document_name", "value": document_name}
-            )
+            metadata_filter = {
+                "conditions": [{"name": "document_name", "value": document_name}]
+            }
 
         # Pass reranking config via **kwargs - adapter will use its own defaults
         resp = kb_retriever.retrieve(

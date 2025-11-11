@@ -181,7 +181,6 @@ async def file_discover(
     query: str,
     dataset_id: str,
     ctx: Context,
-    source_path: str = "",
     top_k_recall: int = 100,
     top_k_return: int = 20,
     do_file_rerank: bool = True,
@@ -206,7 +205,6 @@ async def file_discover(
         result = file_discover_service(
             query=query,
             dataset_id=dataset_id,
-            source_path=source_path,
             top_k_recall=top_k_recall,
             top_k_return=top_k_return,
             do_file_rerank=do_file_rerank,
@@ -313,7 +311,6 @@ async def retriever(
     top_k: int = RetrieverDefaults.TOP_K.value,
     score_threshold: float = RetrieverDefaults.SCORE_THRESHOLD.value,
     weights: float = RetrieverDefaults.WEIGHTS.value,
-    source_path: str = "",
     document_name: str = "",
     verbose: bool = AssistantDefaults.VERBOSE.value,
     backend_type: Optional[str] = None,
@@ -343,7 +340,6 @@ async def retriever(
             score_threshold=score_threshold,
             backend_type=backend_type,
             weights=weights,
-            source_path=source_path,
             document_name=document_name,
             verbose=verbose,
             retrieval_endpoint=credentials.retrieval_endpoint,
@@ -382,7 +378,7 @@ async def file_count(
             api_key=credentials.retrieval_api_key,
             timeout=30,
         )
-        files = retriever.list_files(source_path=folder_name or "", timeout=30)
+        files = retriever.list_files(dataset_id=dataset_id, timeout=30)
         return json.dumps(
             {"has_files": len(files) > 0, "file_count": len(files), "files": files}
         )

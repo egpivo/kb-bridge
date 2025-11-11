@@ -107,10 +107,7 @@ def test_dataset_info():
 def test_tool_parameters():
     """Test tool parameters"""
     return {
-        "dataset_info": {
-            "dataset_id": "test-dataset-id",
-            "dataset_name": "Test Dataset",
-        },
+        "dataset_id": "test-dataset-id",
         "query": "test query",
         "verbose": True,
         "score_threshold": 0.7,

@@ -34,29 +34,20 @@ class TestKBAssistantService:
             }
             mock_factory.create_processor.return_value = mock_processor
 
-            # Mock the dataset processor
-            with patch(
-                "kbbridge.core.orchestration.DatasetProcessor"
-            ) as mock_dataset_processor:
-                mock_dataset_processor.return_value.get_dataset_info.return_value = {
-                    "id": "test-dataset",
-                    "name": "Test Dataset",
-                }
+            # Use assistant_service (renamed from kb_assistant_service)
+            assistant_service = _assistant
+            result = await assistant_service(
+                dataset_id="test-dataset",
+                query="test query",
+                ctx=mock_ctx,
+            )
 
-                # Use assistant_service (renamed from kb_assistant_service)
-                assistant_service = _assistant
-                result = await assistant_service(
-                    dataset_id="test-dataset",
-                    query="test query",
-                    ctx=mock_ctx,
-                )
-
-                assert isinstance(result, dict)
-                assert "error" in result
+            assert isinstance(result, dict)
+            assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_kb_assistant_service_invalid_dataset_info(self, mock_credentials):
-        """Test kb_assistant with invalid dataset_info"""
+    async def test_kb_assistant_service_invalid_dataset_id(self, mock_credentials):
+        """Test kb_assistant with invalid dataset_id"""
         # Mock Context
         mock_ctx = Mock()
         mock_ctx.info = AsyncMock()
@@ -71,11 +62,10 @@ class TestKBAssistantService:
             ctx=mock_ctx,
         )
 
-        # Behavior: invalid dataset_info leads to error (either no datasets or missing config)
         assert "error" in result
-        # Could be "No datasets with files found" or "LLM API token is required" depending on execution path
+        # Empty dataset_id should return "Invalid dataset_id" error
         assert (
-            "No datasets with files found" in result["error"]
+            "Invalid dataset_id" in result["error"]
             or "LLM API token is required" in result["error"]
             or "KB Assistant failed" in result["error"]
         )

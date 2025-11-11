@@ -269,7 +269,7 @@ class TestFormatSearchResults:
         # Create a mock config
         from kbbridge.core.orchestration.models import ProcessingConfig
 
-        config = ProcessingConfig(dataset_info=[{"id": "test"}], query="test query")
+        config = ProcessingConfig(dataset_id="test", query="test query")
 
         processor = WorkingDatasetProcessor(components, config, credentials)
 
@@ -309,7 +309,7 @@ class TestFormatSearchResults:
 
         from kbbridge.core.orchestration.models import ProcessingConfig
 
-        config = ProcessingConfig(dataset_info=[{"id": "test"}], query="test query")
+        config = ProcessingConfig(dataset_id="test", query="test query")
 
         processor = WorkingDatasetProcessor(components, config, credentials)
 
@@ -339,7 +339,7 @@ class TestFormatSearchResults:
 
         from kbbridge.core.orchestration.models import ProcessingConfig
 
-        config = ProcessingConfig(dataset_info=[{"id": "test"}], query="test query")
+        config = ProcessingConfig(dataset_id="test", query="test query")
 
         processor = WorkingDatasetProcessor(components, config, credentials)
 

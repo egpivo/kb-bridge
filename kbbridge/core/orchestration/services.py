@@ -158,7 +158,7 @@ class ParameterValidator:
     def validate_config(tool_parameters: Dict[str, Any]) -> ProcessingConfig:
         """Validate and create processing configuration"""
         # Get required parameters
-        dataset_info_raw = tool_parameters["dataset_info"]
+        dataset_id = tool_parameters["dataset_id"]
         query = tool_parameters["query"]
         verbose = tool_parameters.get("verbose", False)
 
@@ -193,7 +193,7 @@ class ParameterValidator:
             )
 
         return ProcessingConfig(
-            dataset_info=dataset_info_raw,
+            dataset_id=dataset_id,
             query=query,
             verbose=verbose,
             score_threshold=score_threshold,

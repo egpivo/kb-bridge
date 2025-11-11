@@ -15,7 +15,6 @@ from kbbridge.core.reflection.integration import (
     ReflectionIntegration,
     parse_reflection_params,
 )
-from kbbridge.core.utils.json_utils import parse_dataset_info
 from kbbridge.integrations import RetrievalCredentials
 
 logger = logging.getLogger(__name__)
@@ -39,7 +38,7 @@ async def _safe_progress(ctx: Context, current: int, total: int, message: str) -
 
 
 async def assistant_service(
-    dataset_info: str,
+    dataset_id: str,
     query: str,
     ctx: Context,
     custom_instructions: Optional[str] = None,
@@ -56,13 +55,19 @@ async def assistant_service(
     errors = []
 
     await ctx.info(f"Starting assistant session {session_id} with query: '{query}'")
-    await ctx.info(f"Dataset info: {dataset_info}")
+    await ctx.info(f"Dataset ID: {dataset_id}")
     await ctx.info(f"Verbose mode: {DEFAULT_CONFIG['verbose']}")
 
     await _safe_progress(ctx, 0, 10, "Initializing KB Assistant...")
 
     try:
-        # Parse dataset info FIRST so tests get dataset errors before credential validation
+        # Validate dataset_id FIRST so tests get dataset errors before credential validation
+        if not dataset_id or not dataset_id.strip():
+            return {
+                "error": "Invalid dataset_id",
+                "details": "dataset_id is required and cannot be empty",
+            }
+
         verbose_env = os.getenv("VERBOSE", "").strip().lower() in {
             "1",
             "true",
@@ -70,7 +75,7 @@ async def assistant_service(
             "on",
         }
         tool_parameters = {
-            "dataset_info": dataset_info,
+            "dataset_id": dataset_id.strip(),
             "query": query,
             "max_workers": DEFAULT_CONFIG["max_workers"],
             "verbose": verbose_env or DEFAULT_CONFIG["verbose"],
@@ -80,45 +85,9 @@ async def assistant_service(
         # Validate parameters
         config = ParameterValidator.validate_config(tool_parameters)
 
-        # Parse dataset info
-        try:
-            await _safe_progress(ctx, 3, 10, "Parsing dataset information...")
-            dataset_pairs = parse_dataset_info(config.dataset_info)
-            await ctx.error("No dataset pairs found after parsing")
-            dataset_info_lower = config.dataset_info.lower()
-            if any(
-                ext in dataset_info_lower for ext in [".pdf", ".doc", ".txt", ".docx"]
-            ):
-                return {
-                    "error": "Invalid dataset_info format",
-                    "details": f"dataset_info appears to be a document name ('{config.dataset_info}') instead of a dataset ID. dataset_info must be a dataset ID in JSON format, e.g., '[{{\"id\": \"dataset-id\"}}]'. Use document_name parameter for filtering by document name.",
-                    "expected_format": '[{"id": "dataset-id"}]',
-                    "hint": "If you have a document name, you still need to provide the dataset_id in dataset_info. Use file_discover tool first to find the dataset_id, or provide it directly.",
-                }
-            return {
-                "error": "Invalid dataset_info format",
-                "details": 'Could not parse dataset_info. Expected format: \'[{"id": "dataset-id"}]\' or a dataset ID string.',
-                "expected_format": '[{"id": "dataset-id"}]',
-            }
-
-        except Exception as e:
-            # For invalid dataset_info input, provide helpful error message
-            dataset_info_lower = config.dataset_info.lower()
-            if any(
-                ext in dataset_info_lower for ext in [".pdf", ".doc", ".txt", ".docx"]
-            ):
-                return {
-                    "error": "Invalid dataset_info format",
-                    "details": f"dataset_info appears to be a document name ('{config.dataset_info}') instead of a dataset ID. dataset_info must be a dataset ID in JSON format, e.g., '[{{\"id\": \"dataset-id\"}}]'. Use document_name parameter for filtering by document name.",
-                    "expected_format": '[{"id": "dataset-id"}]',
-                    "hint": "If you have a document name, you still need to provide the dataset_id in dataset_info. Use file_discover tool first to find the dataset_id, or provide it directly.",
-                }
-            # For invalid dataset_info input, tests expect a generic 'No datasets with files found'
-            return {
-                "error": "No datasets with files found",
-                "details": f'Could not parse dataset_info: {str(e)}. Expected format: \'[{{"id": "dataset-id"}}]\'',
-                "expected_format": '[{"id": "dataset-id"}]',
-            }
+        # Create dataset_pairs from single dataset_id
+        await _safe_progress(ctx, 3, 10, "Preparing dataset...")
+        dataset_pairs = [{"id": config.dataset_id}]
 
         retrieval_creds = RetrievalCredentials.from_env()
         retrieval_valid, retrieval_error = retrieval_creds.validate()
@@ -218,10 +187,10 @@ async def assistant_service(
                     f"Invalid dataset ID: '{dataset_id}' - looks like an environment variable placeholder"
                 )
                 return {
-                    "error": "Invalid dataset_info configuration",
+                    "error": "Invalid dataset_id configuration",
                     "details": f"Dataset ID '{dataset_id}' appears to be a placeholder (contains 'env.' or 'DATASET_ID')",
                     "suggestion": "Replace with actual dataset ID from Dify. Example: 'a1b2c3d4-5678-90ab-cdef-1234567890ab'",
-                    "received_dataset_info": config.dataset_info,
+                    "received_dataset_id": config.dataset_id,
                 }
             if len(dataset_id) < 10:
                 await ctx.warning(

@@ -1,9 +1,3 @@
-"""
-File Lister Service
-
-This service provides file listing functionality for knowledge bases.
-"""
-
 from typing import Any, Dict, Optional
 
 from kbbridge.integrations import RetrievalCredentials

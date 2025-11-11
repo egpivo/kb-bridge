@@ -27,7 +27,7 @@ class TestServerAssistantTool:
 
         with patch("kbbridge.server.get_current_credentials", return_value=None):
             result = await assistant_func(
-                dataset_info='[{"id": "test", "name": "Test"}]',
+                dataset_id="test",
                 query="test query",
                 ctx=mock_ctx,
             )
@@ -60,7 +60,7 @@ class TestServerAssistantTool:
                 "kbbridge.server.assistant_service", return_value=mock_result
             ) as mock_service:
                 result = await assistant(
-                    dataset_info='[{"id": "test", "name": "Test"}]',
+                    dataset_id="test",
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -90,7 +90,7 @@ class TestServerAssistantTool:
                 side_effect=asyncio.TimeoutError(),
             ):
                 result = await assistant(
-                    dataset_info='[{"id": "test", "name": "Test"}]',
+                    dataset_id="test",
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -121,7 +121,7 @@ class TestServerAssistantTool:
                 side_effect=ValueError("Test error"),
             ):
                 result = await assistant(
-                    dataset_info='[{"id": "test", "name": "Test"}]',
+                    dataset_id="test",
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -150,7 +150,7 @@ class TestServerAssistantTool:
         with patch("kbbridge.server.get_current_credentials", return_value=credentials):
             with patch("kbbridge.server.assistant_service", return_value=mock_result):
                 result = await assistant(
-                    dataset_info='[{"id": "test", "name": "Test"}]',
+                    dataset_id="test",
                     query="test query",
                     ctx=mock_ctx,
                     custom_instructions="Use formal language",
@@ -183,7 +183,7 @@ class TestServerAssistantTool:
         with patch("kbbridge.server.get_current_credentials", return_value=credentials):
             with patch("kbbridge.server.assistant_service", return_value=mock_result):
                 result = await assistant(
-                    dataset_info='[{"id": "test", "name": "Test"}]',
+                    dataset_id="test",
                     query="test query",
                     ctx=mock_ctx,
                     enable_query_rewriting=True,

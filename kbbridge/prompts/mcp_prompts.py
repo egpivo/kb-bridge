@@ -21,7 +21,7 @@ NEVER show: reasoning, tool selection, custom instructions, processing steps
 ## Tools
 
 **assistant**: Answer questions (primary)
-- dataset_info (required): [{"id": "..."}]
+- dataset_id (required): Dataset ID string (e.g., "dataset-id-123")
 - query, custom_instructions, document_name
 - enable_reflection: true for comprehensive queries ("all/every/complete")
 
@@ -59,7 +59,7 @@ When you need to find relevant files before querying:
    → Returns: {"distinct_files": ["employee_handbook.pdf", "policies.pdf"]}
 
 2. assistant(
-     dataset_info=[{"id": "hr-docs"}],
+     dataset_id="hr-docs",
      query="What are the vacation policies?",
      document_name="employee_handbook.pdf"  # Use file from step 1
    )
@@ -90,11 +90,10 @@ def dataset_setup_guide() -> List[Dict[str, Any]]:
             "content": """# Dataset Setup Guide
 
 ## Required Format
-dataset_info: [{"id": "dataset-id"}]
+dataset_id: "dataset-id"
 
 ## Examples
-Single dataset: [{"id": "hr-docs"}]
-Multiple: [{"id": "hr"}, {"id": "finance"}]
+Single dataset: "hr-docs"
 
 ## Common Patterns
 - HR: employee, policies, benefits, handbook

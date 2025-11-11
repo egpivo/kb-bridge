@@ -100,7 +100,7 @@ class SessionConfig(BaseModel):
 @mcp.tool(name="assistant")
 @require_auth
 async def assistant(
-    dataset_info: str,
+    dataset_id: str,
     query: str,
     ctx: Context,
     custom_instructions: Optional[str] = None,
@@ -131,7 +131,7 @@ async def assistant(
         try:
             result = await asyncio.wait_for(
                 assistant_service(
-                    dataset_info=dataset_info,
+                    dataset_id=dataset_id,
                     query=query,
                     ctx=ctx,
                     custom_instructions=custom_instructions,

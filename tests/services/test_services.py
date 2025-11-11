@@ -1,4 +1,3 @@
-import json
 import sys
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -47,9 +46,7 @@ class TestKBAssistantService:
                 # Use assistant_service (renamed from kb_assistant_service)
                 assistant_service = _assistant
                 result = await assistant_service(
-                    dataset_info=json.dumps(
-                        [{"id": "test-dataset", "source_path": ""}]
-                    ),
+                    dataset_id="test-dataset",
                     query="test query",
                     ctx=mock_ctx,
                 )
@@ -69,7 +66,7 @@ class TestKBAssistantService:
 
         assistant_service = _assistant
         result = await assistant_service(
-            dataset_info="invalid json",
+            dataset_id="",
             query="test query",
             ctx=mock_ctx,
         )
@@ -95,13 +92,13 @@ class TestKBAssistantService:
 
         assistant_service = _assistant
         result = await assistant_service(
-            dataset_info=json.dumps([]),
+            dataset_id="",
             query="test query",
             ctx=mock_ctx,
         )
 
         assert "error" in result
-        assert "Invalid dataset_info format" in result["error"]
+        assert "Invalid dataset_id" in result["error"]
 
     @pytest.mark.asyncio
     async def test_kb_assistant_service_processing_error(self, mock_credentials):
@@ -122,7 +119,7 @@ class TestKBAssistantService:
 
             assistant_service = _assistant
             result = await assistant_service(
-                dataset_info=json.dumps([{"id": "test-dataset", "source_path": ""}]),
+                dataset_id="test-dataset",
                 query="test query",
                 ctx=mock_ctx,
             )

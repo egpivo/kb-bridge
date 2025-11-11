@@ -142,7 +142,7 @@ class CoreSearchResponse(SearchResponse):
 class ProcessingConfig:
     """Configuration for KB Assistant processing"""
 
-    dataset_info: str
+    dataset_id: str
     query: str
     verbose: bool = False
     score_threshold: Optional[float] = None

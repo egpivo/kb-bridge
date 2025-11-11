@@ -1,6 +1,6 @@
 [project]
 name = "kbbridge"
-version = "0.1.4"
+version = "0.2.0"
 description = "MCP server for intelligent knowledge base search and retrieval with Dify integration"
 readme = "README.md"
 requires-python = ">=3.12"

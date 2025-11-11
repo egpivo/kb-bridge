@@ -21,9 +21,9 @@ from kbbridge.services.file_lister_service import file_lister_service
 from kbbridge.services.keyword_generator_service import keyword_generator_service
 from kbbridge.services.retriever_service import retriever_service
 
-# Note: Environment variables are auto-loaded by env_loader module
-# Custom env file can be specified via --env-file argument in main()
-# Configure logging (uses env vars if available)
+# Note: Environment variables will be loaded in main() after parsing --env-file argument
+# This allows custom env files to be specified via command line
+# Configure logging with defaults (will be reconfigured if custom env file is provided)
 logger = setup_logging()
 
 # Initialize FastMCP
@@ -361,8 +361,7 @@ async def main():
 
     args = parser.parse_args()
 
-    # Load environment variables from custom .env file if provided
-    # This will override any values from the default .env file loaded at startup
+    # Load environment variables - custom file takes precedence
     if args.env_file:
         logger.info(f"Loading environment variables from: {args.env_file}")
         env_path = Path(args.env_file)
@@ -371,7 +370,6 @@ async def main():
             logger.info(f"Loaded environment variables from {env_path} (override=True)")
 
             # Re-initialize components that depend on environment variables
-            # Reconfigure logging with new env vars
             import logging
 
             root_logger = logging.getLogger()
@@ -388,9 +386,10 @@ async def main():
             if "USE_CONTENT_BOOSTER" not in os.environ:
                 os.environ["USE_CONTENT_BOOSTER"] = "false"
         else:
-            logger.warning(f"Env file not found at {env_path}, using default")
+            logger.warning(f"Env file not found at {env_path}, loading default")
+            load_env_file()
     else:
-        # Ensure default .env is loaded (may already be loaded by env_loader)
+        # Load default .env file
         load_env_file()
 
     print_env_status()

@@ -89,7 +89,3 @@ def print_env_status():
     for var in timeout_vars:
         value = os.getenv(var, "not set")
         logger.debug(f"{var}: {value}")
-
-
-# Auto-load .env file when module is imported
-load_env_file()

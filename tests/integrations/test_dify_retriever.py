@@ -688,3 +688,187 @@ class TestDifyRetrieverCallEdgeCases:
 
             with pytest.raises(requests.exceptions.HTTPError):
                 retriever.call(query="test", method="semantic_search", top_k=10)
+
+
+class TestDifyRetrieverMetadata:
+    """Test metadata enable and status check methods"""
+
+    def test_enable_metadata_success(self):
+        """Test successfully enabling metadata"""
+        retriever = DifyRetriever(
+            endpoint="https://test.com",
+            api_key="test-key",
+            dataset_id="test-dataset",
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.raise_for_status.return_value = None
+            mock_post.return_value = mock_response
+
+            result = retriever.enable_metadata()
+
+            assert result is True
+            mock_post.assert_called_once()
+            call_url = mock_post.call_args[0][0]
+            assert (
+                call_url
+                == "https://test.com/v1/datasets/test-dataset/metadata/built-in/enable"
+            )
+            headers = mock_post.call_args[1]["headers"]
+            assert headers["Authorization"] == "Bearer test-key"
+            assert headers["Content-Type"] == "application/json"
+
+    def test_enable_metadata_http_error(self):
+        """Test enable_metadata returns False on HTTP error"""
+        import requests
+
+        retriever = DifyRetriever(
+            endpoint="https://test.com",
+            api_key="test-key",
+            dataset_id="test-dataset",
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.status_code = 400
+            mock_response.json.return_value = {"error": "Bad request"}
+            mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+                "400 Bad Request"
+            )
+            mock_post.return_value = mock_response
+
+            result = retriever.enable_metadata()
+
+            assert result is False
+
+    def test_enable_metadata_http_error_text_response(self):
+        """Test enable_metadata handles text error response"""
+        import requests
+
+        retriever = DifyRetriever(
+            endpoint="https://test.com",
+            api_key="test-key",
+            dataset_id="test-dataset",
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.status_code = 500
+            mock_response.text = "Internal Server Error"
+            mock_response.json.side_effect = Exception("JSON decode error")
+            mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+                "500 Internal Server Error"
+            )
+            mock_post.return_value = mock_response
+
+            result = retriever.enable_metadata()
+
+            assert result is False
+
+    def test_enable_metadata_exception(self):
+        """Test enable_metadata returns False on general exception"""
+        retriever = DifyRetriever(
+            endpoint="https://test.com",
+            api_key="test-key",
+            dataset_id="test-dataset",
+        )
+
+        with patch("requests.post", side_effect=Exception("Network error")):
+            result = retriever.enable_metadata()
+
+            assert result is False
+
+    def test_check_metadata_status_success(self):
+        """Test successfully checking metadata status"""
+        retriever = DifyRetriever(
+            endpoint="https://test.com",
+            api_key="test-key",
+            dataset_id="test-dataset",
+        )
+
+        expected_status = {
+            "enabled": True,
+            "built_in_metadata": ["document_name", "document_id"],
+        }
+
+        with patch("requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.json.return_value = expected_status
+            mock_response.status_code = 200
+            mock_response.raise_for_status.return_value = None
+            mock_get.return_value = mock_response
+
+            result = retriever.check_metadata_status()
+
+            assert result == expected_status
+            mock_get.assert_called_once()
+            call_url = mock_get.call_args[0][0]
+            assert (
+                call_url
+                == "https://test.com/v1/datasets/test-dataset/metadata/built-in"
+            )
+            headers = mock_get.call_args[1]["headers"]
+            assert headers["Authorization"] == "Bearer test-key"
+            assert headers["Content-Type"] == "application/json"
+
+    def test_check_metadata_status_http_error(self):
+        """Test check_metadata_status returns None on HTTP error"""
+        import requests
+
+        retriever = DifyRetriever(
+            endpoint="https://test.com",
+            api_key="test-key",
+            dataset_id="test-dataset",
+        )
+
+        with patch("requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 404
+            mock_response.json.return_value = {"error": "Not found"}
+            mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+                "404 Not Found"
+            )
+            mock_get.return_value = mock_response
+
+            result = retriever.check_metadata_status()
+
+            assert result is None
+
+    def test_check_metadata_status_http_error_text_response(self):
+        """Test check_metadata_status handles text error response"""
+        import requests
+
+        retriever = DifyRetriever(
+            endpoint="https://test.com",
+            api_key="test-key",
+            dataset_id="test-dataset",
+        )
+
+        with patch("requests.get") as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 500
+            mock_response.text = "Internal Server Error"
+            mock_response.json.side_effect = Exception("JSON decode error")
+            mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+                "500 Internal Server Error"
+            )
+            mock_get.return_value = mock_response
+
+            result = retriever.check_metadata_status()
+
+            assert result is None
+
+    def test_check_metadata_status_exception(self):
+        """Test check_metadata_status returns None on general exception"""
+        retriever = DifyRetriever(
+            endpoint="https://test.com",
+            api_key="test-key",
+            dataset_id="test-dataset",
+        )
+
+        with patch("requests.get", side_effect=Exception("Network error")):
+            result = retriever.check_metadata_status()
+
+            assert result is None

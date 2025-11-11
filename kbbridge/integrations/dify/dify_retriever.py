@@ -226,6 +226,75 @@ class DifyRetriever(Retriever):
             logger.warning(f"Dify list_files failed: {e}")
             return []
 
+    def enable_metadata(self, timeout: int = 30) -> bool:
+        """
+        Enable built-in metadata for the dataset.
+
+        Args:
+            timeout: Request timeout in seconds
+
+        Returns:
+            True if metadata was enabled successfully, False otherwise
+        """
+        url = f"{self.endpoint}/v1/datasets/{self.dataset_id}/metadata/built-in/enable"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        try:
+            resp = requests.post(url, headers=headers, timeout=timeout)
+            resp.raise_for_status()
+            logger.info(f"Metadata enabled successfully for dataset {self.dataset_id}")
+            return True
+        except requests.exceptions.HTTPError as e:
+            error_detail = ""
+            try:
+                error_detail = resp.json()
+                logger.error(f"Dify enable_metadata error response: {error_detail}")
+            except:
+                error_detail = resp.text
+                logger.error(f"Dify enable_metadata error text: {error_detail}")
+            return False
+        except Exception as e:
+            logger.warning(f"Dify enable_metadata failed: {e}")
+            return False
+
+    def check_metadata_status(self, timeout: int = 30) -> Optional[Dict[str, Any]]:
+        """
+        Check metadata status for the dataset.
+
+        Args:
+            timeout: Request timeout in seconds
+
+        Returns:
+            Metadata status dict if available, None otherwise
+        """
+        url = f"{self.endpoint}/v1/datasets/{self.dataset_id}/metadata/built-in"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        try:
+            resp = requests.get(url, headers=headers, timeout=timeout)
+            resp.raise_for_status()
+            data = resp.json()
+            logger.debug(f"Metadata status for dataset {self.dataset_id}: {data}")
+            return data
+        except requests.exceptions.HTTPError as e:
+            error_detail = ""
+            try:
+                error_detail = resp.json()
+                logger.debug(
+                    f"Dify check_metadata_status error response: {error_detail}"
+                )
+            except:
+                error_detail = resp.text
+                logger.debug(f"Dify check_metadata_status error text: {error_detail}")
+            return None
+        except Exception as e:
+            logger.warning(f"Dify check_metadata_status failed: {e}")
+            return None
+
 
 def make_retriever(kind: str, **kwargs) -> Retriever:
     """

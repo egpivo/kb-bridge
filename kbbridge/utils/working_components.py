@@ -200,8 +200,12 @@ class KnowledgeBaseRetriever:
                 # Try to extract error content from response
                 try:
                     error_content = e.response.json().get("error", str(e))
-                except:
+                except Exception as json_err:
                     # If JSON parsing fails, use response text
+                    logger.debug(
+                        f"Failed to parse error response as JSON: {json_err}",
+                        exc_info=True,
+                    )
                     error_content = getattr(e.response, "text", str(e))
             elif response:
                 status_code = response.status_code
@@ -351,8 +355,11 @@ class WorkingIntentionExtractor:
                     "updated_query": query,
                 }
 
-        except Exception:
+        except Exception as e:
             # Fallback on error
+            logger.debug(
+                f"Intention extraction failed, using fallback: {e}", exc_info=True
+            )
             return {
                 "success": True,
                 "intention": f"User wants to find information about: {query}",

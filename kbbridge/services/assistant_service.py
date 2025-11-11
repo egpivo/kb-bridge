@@ -84,18 +84,41 @@ async def assistant_service(
         try:
             await _safe_progress(ctx, 3, 10, "Parsing dataset information...")
             dataset_pairs = parse_dataset_info(config.dataset_info)
-            await ctx.info(f"Parsed dataset pairs: {dataset_pairs}")
-
-            if not dataset_pairs:
-                await ctx.error("No dataset pairs found after parsing")
+            await ctx.error("No dataset pairs found after parsing")
+            dataset_info_lower = config.dataset_info.lower()
+            if any(
+                ext in dataset_info_lower for ext in [".pdf", ".doc", ".txt", ".docx"]
+            ):
                 return {
                     "error": "Invalid dataset_info format",
-                    "details": "Could not parse dataset_info",
+                    "details": f"dataset_info appears to be a document name ('{config.dataset_info}') instead of a dataset ID. dataset_info must be a dataset ID in JSON format, e.g., '[{{\"id\": \"dataset-id\"}}]'. Use document_name parameter for filtering by document name.",
+                    "expected_format": '[{"id": "dataset-id"}]',
+                    "hint": "If you have a document name, you still need to provide the dataset_id in dataset_info. Use file_discover tool first to find the dataset_id, or provide it directly.",
                 }
+            return {
+                "error": "Invalid dataset_info format",
+                "details": 'Could not parse dataset_info. Expected format: \'[{"id": "dataset-id"}]\' or a dataset ID string.',
+                "expected_format": '[{"id": "dataset-id"}]',
+            }
 
-        except Exception:
+        except Exception as e:
+            # For invalid dataset_info input, provide helpful error message
+            dataset_info_lower = config.dataset_info.lower()
+            if any(
+                ext in dataset_info_lower for ext in [".pdf", ".doc", ".txt", ".docx"]
+            ):
+                return {
+                    "error": "Invalid dataset_info format",
+                    "details": f"dataset_info appears to be a document name ('{config.dataset_info}') instead of a dataset ID. dataset_info must be a dataset ID in JSON format, e.g., '[{{\"id\": \"dataset-id\"}}]'. Use document_name parameter for filtering by document name.",
+                    "expected_format": '[{"id": "dataset-id"}]',
+                    "hint": "If you have a document name, you still need to provide the dataset_id in dataset_info. Use file_discover tool first to find the dataset_id, or provide it directly.",
+                }
             # For invalid dataset_info input, tests expect a generic 'No datasets with files found'
-            return {"error": "No datasets with files found"}
+            return {
+                "error": "No datasets with files found",
+                "details": f'Could not parse dataset_info: {str(e)}. Expected format: \'[{{"id": "dataset-id"}}]\'',
+                "expected_format": '[{"id": "dataset-id"}]',
+            }
 
         retrieval_creds = RetrievalCredentials.from_env()
         retrieval_valid, retrieval_error = retrieval_creds.validate()

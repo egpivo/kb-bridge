@@ -639,7 +639,7 @@ class AdvancedApproachProcessor:
 
                             # Always log content booster results (not just verbose mode)
                             logger.info(
-                                f"   🔮 Content booster generated {len(queries_to_process)-1} additional queries"
+                                f"   Content booster generated {len(queries_to_process)-1} additional queries"
                             )
                             logger.info(
                                 f"      - Example boosted queries: {[q for q, t in queries_to_process if t == 'boosted'][:3]}"

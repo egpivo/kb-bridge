@@ -95,8 +95,8 @@ class KnowledgeBaseRetriever:
         search_method: str = "hybrid_search",
         does_rerank: bool = True,
         top_k: int = 10,
-        reranking_provider_name: str = "cohere",
-        reranking_model_name: str = "rerank-multilingual-v2.0",
+        reranking_provider_name: Optional[str] = None,
+        reranking_model_name: Optional[str] = None,
         score_threshold_enabled: bool = False,
         metadata_filter: Optional[dict] = None,
         score_threshold: Optional[float] = None,
@@ -111,8 +111,8 @@ class KnowledgeBaseRetriever:
             search_method: Search method (hybrid_search, semantic_search, etc.)
             does_rerank: Whether to rerank results
             top_k: Number of results to return
-            reranking_provider_name: Reranking provider name
-            reranking_model_name: Reranking model name
+            reranking_provider_name: Reranking provider name (defaults to DifyRetrieverDefaults)
+            reranking_model_name: Reranking model name (defaults to DifyRetrieverDefaults)
             score_threshold_enabled: Whether score threshold is enabled
             metadata_filter: Optional metadata filter
             score_threshold: Optional score threshold
@@ -121,6 +121,14 @@ class KnowledgeBaseRetriever:
         Returns:
             Dictionary containing retrieval results or error information
         """
+        # Use DifyRetrieverDefaults if not provided
+        if reranking_provider_name is None:
+            reranking_provider_name = (
+                DifyRetrieverDefaults.RERANKING_PROVIDER_NAME.value
+            )
+        if reranking_model_name is None:
+            reranking_model_name = DifyRetrieverDefaults.RERANKING_MODEL_NAME.value
+
         url = f"{self.endpoint.rstrip('/')}/v1/datasets/{dataset_id}/retrieve"
         headers = {
             "Authorization": f"Bearer {self.api_key}",

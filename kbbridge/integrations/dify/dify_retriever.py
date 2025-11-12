@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
+from kbbridge.config.constants import RetrieverDefaults
 from kbbridge.integrations.retriever_base import ChunkHit, FileHit, Retriever
 
 from .constants import DifyRetrieverDefaults
@@ -212,7 +213,11 @@ class DifyRetriever(Retriever):
         return {"conditions": conditions} if conditions else None
 
     def list_files(self, *, resource_id: str = None, timeout: int = 30) -> List[str]:
-        """List document names in the dataset using Dify Documents API."""
+        """List document names in the dataset using Dify Documents API.
+
+        Note: Dify API may paginate results. This method fetches all pages
+        by making multiple requests if needed.
+        """
         # Use resource_id parameter if provided, otherwise use instance dataset_id
         dataset_id = resource_id if resource_id is not None else self.dataset_id
         url = f"{self.endpoint}/v1/datasets/{dataset_id}/documents"
@@ -220,15 +225,55 @@ class DifyRetriever(Retriever):
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+
+        all_files = []
+        page = 1
+        # Use configurable page size from constants (defaults to 100, configurable via FILE_LIST_PAGE_SIZE env var)
+        limit = RetrieverDefaults.FILE_LIST_PAGE_SIZE.value
+
         try:
-            resp = requests.get(url, headers=headers, timeout=timeout)
-            resp.raise_for_status()
-            data = resp.json().get("data", [])
-            files = [doc.get("name") for doc in data if doc.get("name")]
-            return files
+            while True:
+                # Add pagination parameters if API supports them
+                params = {"page": page, "limit": limit}
+                resp = requests.get(
+                    url, headers=headers, params=params, timeout=timeout
+                )
+                resp.raise_for_status()
+
+                response_data = resp.json()
+                data = response_data.get("data", [])
+
+                # Extract file names
+                page_files = [doc.get("name") for doc in data if doc.get("name")]
+                all_files.extend(page_files)
+
+                # Check if there are more pages
+                # Dify API might return pagination info in different formats
+                has_more = response_data.get("has_more", False)
+                total = response_data.get("total")
+
+                # If no more data or empty page, stop
+                if not page_files or (not has_more and total is None):
+                    break
+
+                # If we got fewer files than limit, we're done
+                if len(page_files) < limit:
+                    break
+
+                page += 1
+
+            return all_files
         except Exception as e:
             logger.warning(f"Dify list_files failed: {e}")
-            return []
+            # If pagination fails, try without pagination params (backward compatibility)
+            try:
+                resp = requests.get(url, headers=headers, timeout=timeout)
+                resp.raise_for_status()
+                data = resp.json().get("data", [])
+                files = [doc.get("name") for doc in data if doc.get("name")]
+                return files
+            except:
+                return []
 
     def enable_metadata(self, timeout: int = 30, force: bool = False) -> bool:
         """

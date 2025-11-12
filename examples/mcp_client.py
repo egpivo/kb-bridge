@@ -1,88 +1,24 @@
 """
 MCP Client Helper for HTTP-based servers.
 
-Provides a simple client for calling MCP tools over HTTP.
+Provides a simple client wrapper around FastMCP Client for calling MCP tools.
 """
 
 import json
-import httpx
 from typing import Dict, Any, Optional
 
-
-class MCPClient:
-    """Simple HTTP client for MCP servers."""
-    
-    def __init__(self, base_url: str):
-        """
-        Initialize MCP client.
-        
-        Args:
-            base_url: Base URL of MCP server (e.g., "http://localhost:5566/mcp")
-        """
-        self.base_url = base_url.rstrip('/')
-        self.client = httpx.AsyncClient(timeout=300.0)
-    
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Call an MCP tool.
-        
-        Args:
-            tool_name: Name of the tool to call
-            arguments: Tool arguments
-        
-        Returns:
-            Tool response as dict
-        """
-        # MCP protocol uses JSON-RPC format
-        payload = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {
-                "name": tool_name,
-                "arguments": arguments
-            }
-        }
-        
-        response = await self.client.post(
-            self.base_url,
-            json=payload,
-            headers={"Content-Type": "application/json"}
-        )
-        response.raise_for_status()
-        result = response.json()
-        
-        # Extract result from JSON-RPC response
-        if "result" in result:
-            # If result has content (MCP format), extract it
-            if "content" in result["result"]:
-                content_text = result["result"]["content"][0].get("text", "")
-                try:
-                    return json.loads(content_text)
-                except json.JSONDecodeError:
-                    return {"text": content_text}
-            return result["result"]
-        elif "error" in result:
-            raise Exception(f"MCP Error: {result['error']}")
-        return result
-    
-    async def close(self):
-        """Close the HTTP client."""
-        await self.client.aclose()
-    
-    async def __aenter__(self):
-        """Async context manager entry."""
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Async context manager exit."""
-        await self.close()
+try:
+    from fastmcp import Client as FastMCPClient
+except ImportError:
+    raise ImportError(
+        "FastMCP is required. Install it with: pip install fastmcp\n"
+        "FastMCP provides the best support for MCP servers."
+    )
 
 
-# Backward compatibility: ClientSession-like interface
 class ClientSession:
     """
-    ClientSession-compatible interface for HTTP MCP servers.
+    ClientSession-compatible interface for HTTP MCP servers using FastMCP.
     
     Usage:
         async with ClientSession("http://localhost:5566/mcp") as session:
@@ -95,10 +31,21 @@ class ClientSession:
         Initialize session.
         
         Args:
-            url: MCP server URL
+            url: MCP server URL (e.g., "http://localhost:5566/mcp")
         """
-        self.client = MCPClient(url)
+        self.url = url
+        self.client = FastMCPClient(url)
         self._closed = False
+    
+    async def __aenter__(self):
+        """Async context manager entry."""
+        await self.client.__aenter__()
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.client.__aexit__(exc_type, exc_val, exc_tb)
+        self._closed = True
     
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]):
         """
@@ -111,26 +58,21 @@ class ClientSession:
         Returns:
             Result object with content attribute (compatible with MCP ClientSession)
         """
+        # Use FastMCP Client directly
         result = await self.client.call_tool(tool_name, arguments)
         
         # Convert to ClientSession-like format
-        # The original MCP ClientSession returns result.content[0].text as JSON string
         class Result:
             def __init__(self, data):
                 self.data = data
-                # Create content attribute similar to MCP ClientSession
-                # content[0].text should be a JSON string
-                content_obj = type('Content', (), {'text': json.dumps(data)})()
-                self.content = [content_obj]
+                # FastMCP returns result directly, wrap it in content format
+                if isinstance(data, dict):
+                    content_obj = type('Content', (), {'text': json.dumps(data)})()
+                    self.content = [content_obj]
+                elif hasattr(data, 'content'):
+                    self.content = data.content
+                else:
+                    content_obj = type('Content', (), {'text': json.dumps(data)})()
+                    self.content = [content_obj]
         
         return Result(result)
-    
-    async def __aenter__(self):
-        """Async context manager entry."""
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Async context manager exit."""
-        if not self._closed:
-            await self.client.close()
-            self._closed = True

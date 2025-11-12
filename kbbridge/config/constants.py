@@ -12,7 +12,6 @@ class RetrieverDefaults(Enum):
     METADATA_FILTER = ""
     SCORE_THRESHOLD = None
     WEIGHTS = 0.5
-    # Pagination defaults for file listing
     FILE_LIST_PAGE_SIZE = get_env_int("FILE_LIST_PAGE_SIZE", 100)
 
 

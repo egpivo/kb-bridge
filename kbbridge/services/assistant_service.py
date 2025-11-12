@@ -15,6 +15,7 @@ from kbbridge.core.reflection.integration import (
     ReflectionIntegration,
     parse_reflection_params,
 )
+from kbbridge.core.synthesis.constants import ResponseMessages
 from kbbridge.integrations import RetrievalCredentials
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,10 @@ async def assistant_service(
     custom_instructions: Optional[str] = None,
     document_name: Optional[str] = None,
     enable_query_rewriting: bool = False,
+    enable_query_decomposition: bool = False,
+    enable_reflection: Optional[bool] = None,
+    reflection_threshold: Optional[float] = None,
+    verbose: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Search and extract answers from knowledge bases."""
     # Generate session ID and start timing
@@ -54,9 +59,19 @@ async def assistant_service(
     profiling_data = {}
     errors = []
 
+    # Determine verbose mode: use parameter if provided, otherwise check env var, then default
+    if verbose is None:
+        verbose_env = os.getenv("VERBOSE", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        verbose = verbose_env or DEFAULT_CONFIG["verbose"]
+
     await ctx.info(f"Starting assistant session {session_id} with query: '{query}'")
     await ctx.info(f"Resource ID: {resource_id}")
-    await ctx.info(f"Verbose mode: {DEFAULT_CONFIG['verbose']}")
+    await ctx.info(f"Verbose mode: {verbose}")
 
     await _safe_progress(ctx, 0, 10, "Initializing KB Assistant...")
 
@@ -68,19 +83,13 @@ async def assistant_service(
                 "details": "resource_id is required and cannot be empty",
             }
 
-        verbose_env = os.getenv("VERBOSE", "").strip().lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }
         # Note: ParameterValidator still accepts dataset_id for backward compatibility
         # but returns ProcessingConfig with resource_id
         tool_parameters = {
             "dataset_id": resource_id.strip(),  # Backward compatibility key
             "query": query,
             "max_workers": DEFAULT_CONFIG["max_workers"],
-            "verbose": verbose_env or DEFAULT_CONFIG["verbose"],
+            "verbose": verbose,  # Use the verbose parameter directly
             "use_content_booster": DEFAULT_CONFIG["use_content_booster"],
             "max_boost_keywords": DEFAULT_CONFIG["max_boost_keywords"],
         }
@@ -250,6 +259,7 @@ async def assistant_service(
             debug_info,
             profiling_data,
             ctx,
+            enable_query_decomposition=enable_query_decomposition,
         )
         await ctx.info(f"Refined query: '{refined_query}'")
 
@@ -337,9 +347,59 @@ async def assistant_service(
                 f"Dataset processing completed. Found {len(candidates)} candidates"
             )
             if candidates:
+                # Log detailed candidate analysis
+                successful = [c for c in candidates if c.get("success", False)]
+                non_empty = [
+                    c
+                    for c in candidates
+                    if c.get("answer", "").strip()
+                    and c.get("answer", "").strip().upper()
+                    != ResponseMessages.NO_ANSWER
+                ]
                 await ctx.info(
                     f"Sample candidate: {candidates[0] if candidates else 'None'}"
                 )
+                await ctx.info(
+                    f"Candidate analysis: {len(successful)} successful, {len(non_empty)} non-empty out of {len(candidates)} total"
+                )
+
+                # Log details about failed candidates
+                if len(successful) < len(candidates):
+                    failed = [c for c in candidates if not c.get("success", False)]
+                    await ctx.warning(
+                        f"{len(failed)} candidates have success=False. Sample failure: {failed[0] if failed else 'N/A'}"
+                    )
+                    # Log detailed error information from failed candidates
+                    if failed:
+                        sample_failure = failed[0]
+                        error_msg = sample_failure.get("error", "Unknown error")
+                        error_details = sample_failure.get("details", {})
+                        if isinstance(error_details, dict):
+                            error_type = error_details.get(
+                                "error", error_details.get("message", "")
+                            )
+                            if error_type:
+                                await ctx.warning(
+                                    f"Answer extraction error type: {error_type}"
+                                )
+                        elif isinstance(error_details, str):
+                            await ctx.warning(
+                                f"Answer extraction error details: {error_details[:200]}"
+                            )
+                        await ctx.info(
+                            f"💡 Tip: Check server logs (stdout/stderr) for detailed answer extractor logs including context previews"
+                        )
+                if len(non_empty) < len(successful):
+                    empty = [
+                        c
+                        for c in successful
+                        if not c.get("answer", "").strip()
+                        or c.get("answer", "").strip().upper()
+                        == ResponseMessages.NO_ANSWER
+                    ]
+                    await ctx.warning(
+                        f"{len(empty)} successful candidates have empty/N/A answers. Sample: answer='{empty[0].get('answer', '')[:100] if empty else 'N/A'}'"
+                    )
             else:
                 await ctx.warning("No candidates found during dataset processing")
 
@@ -406,6 +466,236 @@ async def assistant_service(
                 logger.info(f"Candidate {idx} [{source}]: {ans_len:,} chars")
         logger.info("=" * 80)
 
+        # Apply reflection if enabled (before formatting results)
+        reflection_metadata = None
+        reflected_answer = None
+        try:
+            await ctx.info(
+                f" Checking reflection parameters: enable_reflection={enable_reflection}, threshold={reflection_threshold}"
+            )
+            logger.info(
+                f"Reflection check: enable_reflection={enable_reflection}, reflection_threshold={reflection_threshold}"
+            )
+
+            reflection_params = parse_reflection_params(
+                enable_reflection=enable_reflection,  # Use parameter if provided
+                reflection_threshold=reflection_threshold,  # Use parameter if provided
+                max_reflection_iterations=None,
+            )
+
+            logger.info(f"Parsed reflection params: {reflection_params}")
+            await ctx.info(
+                f" Reflection params parsed: enabled={reflection_params['enable_reflection']}, threshold={reflection_params['quality_threshold']}"
+            )
+
+            if reflection_params["enable_reflection"]:
+                await ctx.info(
+                    f" Reflection enabled (threshold: {reflection_params['quality_threshold']})"
+                )
+            else:
+                await ctx.info(" Reflection disabled")
+
+            if reflection_params["enable_reflection"]:
+                logger.info("REFLECTION ENABLED - Initializing reflector")
+                await ctx.info(" Initializing reflection integration...")
+                # Initialize reflection
+                reflection_integration = ReflectionIntegration(
+                    llm_api_url=credentials.llm_api_url,
+                    llm_model=credentials.llm_model,
+                    llm_api_token=credentials.llm_api_token,
+                    enable_reflection=True,
+                    quality_threshold=reflection_params["quality_threshold"],
+                    max_iterations=reflection_params["max_iterations"],
+                )
+
+                await ctx.info(
+                    f"Reflection integration initialized: enabled={reflection_integration.enable_reflection}"
+                )
+                logger.info(
+                    f"ReflectionIntegration.enable_reflection = {reflection_integration.enable_reflection}"
+                )
+
+                # Extract answer and sources for reflection
+                # Get answer from text_summary or format_final_answer
+                if config.verbose:
+                    text_summary = ResultFormatter.format_final_answer(
+                        candidates, config.query, credentials
+                    )
+                    answer_text = text_summary
+                else:
+                    structured_result = ResultFormatter.format_structured_answer(
+                        candidates, config.query, credentials
+                    )
+                    answer_text = (
+                        structured_result.get("answer", "")
+                        if structured_result.get("success")
+                        else ResultFormatter.format_final_answer(
+                            candidates, config.query, credentials
+                        )
+                    )
+
+                await ctx.info(
+                    f"Answer for reflection: length={len(answer_text)} chars, preview={answer_text[:100]}..."
+                )
+                logger.info(f"Answer text for reflection: {len(answer_text)} chars")
+
+                # Prepare sources for reflection - include failed candidates with their segments
+                sources_for_reflection = []
+                failed_candidates_with_segments = []
+
+                for c in candidates[:10]:
+                    if c.get("answer"):
+                        # Successful candidate - use answer as source
+                        sources_for_reflection.append(
+                            {
+                                "title": c.get("file_name", ""),
+                                "content": c.get("answer", "")[:500],
+                                "score": 0.0,
+                            }
+                        )
+                    elif not c.get("success", False):
+                        # Failed candidate - check if it has segments we can re-try with
+                        if "details" in c:
+                            details = c.get("details", {})
+                            if isinstance(details, dict):
+                                segments_count = details.get("segments_count", 0)
+                                if segments_count > 0:
+                                    # This candidate has segments but extraction failed
+                                    # Store for potential re-extraction
+                                    failed_candidates_with_segments.append(
+                                        {
+                                            "file_name": c.get("file_name", ""),
+                                            "details": details,
+                                            "error": c.get("error", ""),
+                                        }
+                                    )
+
+                await ctx.info(
+                    f"Sources for reflection: {len(sources_for_reflection)} sources"
+                )
+                await ctx.info(
+                    f"Failed candidates with segments (potential re-extraction): {len(failed_candidates_with_segments)}"
+                )
+                logger.info(
+                    f"Prepared {len(sources_for_reflection)} sources for reflection"
+                )
+                logger.info(
+                    f"Found {len(failed_candidates_with_segments)} failed candidates with segments that could be re-extracted"
+                )
+
+                # Check if reflection is actually enabled after initialization
+                if not reflection_integration.enable_reflection:
+                    await ctx.warning(
+                        " Reflection was disabled during initialization (likely missing API token or initialization failure)"
+                    )
+                    logger.warning(
+                        "ReflectionIntegration.enable_reflection is False - reflection will be skipped"
+                    )
+                elif not reflection_integration.reflector:
+                    await ctx.warning(
+                        " Reflection reflector is None - reflection will be skipped"
+                    )
+                    logger.warning(
+                        " ReflectionIntegration.reflector is None - reflection will be skipped"
+                    )
+                else:
+                    await ctx.info(
+                        f" Reflection ready: reflector={type(reflection_integration.reflector).__name__}"
+                    )
+
+                # Perform reflection
+                await ctx.info(" Starting reflection on answer...")
+                logger.info("Calling reflect_on_answer...")
+                (
+                    reflected_answer,
+                    reflection_metadata,
+                ) = await reflection_integration.reflect_on_answer(
+                    query=config.query,
+                    answer=answer_text,
+                    sources=sources_for_reflection,
+                    ctx=ctx,
+                )
+
+                await ctx.info(
+                    f" Reflection completed: metadata={reflection_metadata is not None}"
+                )
+                logger.info(
+                    f"Reflection result: reflected_answer length={len(reflected_answer) if reflected_answer else 0}, metadata={reflection_metadata}"
+                )
+
+                # If reflection detected very low quality, add recommendations to metadata
+                if reflection_metadata:
+                    quality_score = reflection_metadata.get("quality_score")
+                    passed = reflection_metadata.get("passed", False)
+
+                    # Add re-extraction recommendations to metadata
+                    if quality_score is not None and not passed:
+                        if quality_score < 0.3:
+                            # Very low quality - check if we could re-extract
+                            if failed_candidates_with_segments:
+                                reflection_metadata["re_extraction_recommended"] = True
+                                reflection_metadata["re_extraction_candidates"] = len(
+                                    failed_candidates_with_segments
+                                )
+                                reflection_metadata[
+                                    "recommendation"
+                                ] = f"Low quality detected ({quality_score:.2f}). {len(failed_candidates_with_segments)} candidates have segments but extraction failed. Re-extraction with improved parameters may help."
+                                await ctx.info(
+                                    f" Reflection detected very low quality ({quality_score:.2f}). {len(failed_candidates_with_segments)} candidates have segments but extraction failed - re-extraction recommended."
+                                )
+                                logger.info(
+                                    f"Low quality ({quality_score:.2f}) with {len(failed_candidates_with_segments)} candidates that have segments - re-extraction recommended"
+                                )
+                            elif not sources_for_reflection:
+                                reflection_metadata["re_extraction_recommended"] = False
+                                reflection_metadata[
+                                    "recommendation"
+                                ] = f"Very low quality ({quality_score:.2f}) but no valid sources available. All candidates failed extraction - this indicates a fundamental issue with answer extraction that needs to be fixed."
+                                await ctx.warning(
+                                    f" Reflection detected very low quality ({quality_score:.2f}) but no valid sources available. All candidates failed extraction - this indicates a fundamental issue with answer extraction."
+                                )
+                                logger.warning(
+                                    f"Very low quality ({quality_score:.2f}) with no sources - all extractions failed"
+                                )
+                        else:
+                            # Medium quality - reflection tried but didn't improve enough
+                            reflection_metadata["re_extraction_recommended"] = False
+                            reflection_metadata[
+                                "recommendation"
+                            ] = f"Quality score {quality_score:.2f} is below threshold ({reflection_metadata.get('threshold', 0.7)}). Answer may need improvement."
+
+                    # Add confidence interpretation
+                    if quality_score is not None:
+                        if quality_score >= 0.8:
+                            reflection_metadata["confidence_level"] = "high"
+                            reflection_metadata[
+                                "confidence_interpretation"
+                            ] = "Answer quality is excellent"
+                        elif quality_score >= 0.6:
+                            reflection_metadata["confidence_level"] = "medium"
+                            reflection_metadata[
+                                "confidence_interpretation"
+                            ] = "Answer quality is acceptable"
+                        elif quality_score >= 0.4:
+                            reflection_metadata["confidence_level"] = "low"
+                            reflection_metadata[
+                                "confidence_interpretation"
+                            ] = "Answer quality is below acceptable threshold"
+                        else:
+                            reflection_metadata["confidence_level"] = "very_low"
+                            reflection_metadata[
+                                "confidence_interpretation"
+                            ] = "Answer quality is very poor - answer may be incorrect or incomplete"
+
+        except Exception as e:
+            import traceback
+
+            error_trace = traceback.format_exc()
+            await ctx.warning(f" Reflection processing failed: {e}")
+            await ctx.warning(f"Error type: {type(e).__name__}")
+            logger.error(f"Reflection processing failed: {e}")
+            logger.error(f"Reflection error traceback:\n{error_trace}")
+
         if config.verbose:
             await ctx.info("Returning verbose results")
             result = _return_verbose_results(
@@ -417,6 +707,9 @@ async def assistant_service(
                 debug_info,
                 profiling_data,
             )
+            # Add reflection metadata if available
+            if reflection_metadata:
+                result["reflection"] = reflection_metadata
         else:
             await ctx.info("Formatting structured answer...")
             logger.info(f"Final Answer Formatting: {len(candidates)} candidates")
@@ -486,58 +779,13 @@ async def assistant_service(
                 await ctx.info(f"Final answer: '{final_answer}'")
                 result = {"answer": final_answer}
 
-            # Apply reflection if enabled
-            try:
-                reflection_params = parse_reflection_params(
-                    enable_reflection=None,
-                    reflection_threshold=None,
-                    max_reflection_iterations=None,
-                )
+                # Add reflection metadata if available (from earlier reflection call)
+                if reflection_metadata:
+                    result["reflection"] = reflection_metadata
 
-                if reflection_params["enable_reflection"]:
-                    logger.info("REFLECTION ENABLED - Initializing reflector")
-                    # Initialize reflection
-                    reflection_integration = ReflectionIntegration(
-                        llm_api_url=credentials.llm_api_url,
-                        llm_model=credentials.llm_model,
-                        llm_api_token=credentials.llm_api_token,
-                        enable_reflection=True,
-                        quality_threshold=reflection_params["quality_threshold"],
-                        max_iterations=reflection_params["max_iterations"],
-                    )
-
-                    # Extract answer and sources for reflection
-                    answer_text = result.get("answer", "")
-                    sources_for_reflection = [
-                        {
-                            "title": c.get("title", ""),
-                            "content": c.get("content", "")[:500],
-                            "score": c.get("score", 0.0),
-                        }
-                        for c in candidates[:10]
-                    ]
-
-                    # Perform reflection
-                    (
-                        reflected_answer,
-                        reflection_metadata,
-                    ) = await reflection_integration.reflect_on_answer(
-                        query=config.query,
-                        answer=answer_text,
-                        sources=sources_for_reflection,
-                        ctx=ctx,
-                    )
-
-                    # Update result with reflection metadata
-                    if reflection_metadata:
-                        result["reflection"] = reflection_metadata
-
-                    # Update answer if reflection improved it
-                    if reflected_answer != answer_text:
-                        result["answer"] = reflected_answer
-
-            except Exception as e:
-                await ctx.warning(f"Reflection processing failed: {e}")
+                # Update answer if reflection improved it
+                if reflected_answer and reflected_answer != final_answer:
+                    result["answer"] = reflected_answer
 
         await _safe_progress(
             ctx, 10, 10, "KB Assistant processing completed successfully!"
@@ -638,56 +886,63 @@ async def _extract_intention(
     debug_info: List[str],
     profiling_data: Dict[str, Any],
     ctx: Context,
+    enable_query_decomposition: bool = False,
 ) -> tuple[str, List[str]]:
     """Extract user intention and refine query."""
     await ctx.info(f"Starting intention extraction for query: '{query}'")
 
-    # CRITICAL FIX: Never decompose "list ALL" type queries
-    # These queries require comprehensive results, not split sub-queries
-    query_lower = query.lower()
+    # If user explicitly enables decomposition, skip the prevention logic
+    if not enable_query_decomposition:
+        # CRITICAL FIX: Never decompose "list ALL" type queries
+        # These queries require comprehensive results, not split sub-queries
+        query_lower = query.lower()
 
-    # Check for completeness keywords
-    completeness_keywords = [
-        "all",
-        "every",
-        "complete",
-        "entire",
-        "full list",
-        "comprehensive",
-        "exhaustive",
-    ]
-    has_completeness_keyword = any(
-        keyword in query_lower for keyword in completeness_keywords
-    )
+        # Check for completeness keywords
+        completeness_keywords = [
+            "all",
+            "every",
+            "complete",
+            "entire",
+            "full list",
+            "comprehensive",
+            "exhaustive",
+        ]
+        has_completeness_keyword = any(
+            keyword in query_lower for keyword in completeness_keywords
+        )
 
-    # Check for terms/definitions queries (these should return ALL terms, not be decomposed)
-    is_terms_query = (
-        "term" in query_lower and "definition" in query_lower
-    ) or query_lower.startswith("terms and definitions")
-    is_list_query = "list" in query_lower or "extract" in query_lower
-    is_procedures_query = "procedure" in query_lower and (
-        "list" in query_lower or "all" in query_lower or "reference" in query_lower
-    )
+        # Check for terms/definitions queries (these should return ALL terms, not be decomposed)
+        is_terms_query = (
+            "term" in query_lower and "definition" in query_lower
+        ) or query_lower.startswith("terms and definitions")
+        is_list_query = "list" in query_lower or "extract" in query_lower
+        is_procedures_query = "procedure" in query_lower and (
+            "list" in query_lower or "all" in query_lower or "reference" in query_lower
+        )
 
-    # Bypass decomposition for these query types
-    if (
-        has_completeness_keyword
-        or is_terms_query
-        or is_procedures_query
-        or (
-            is_list_query
-            and (
-                "term" in query_lower
-                or "definition" in query_lower
-                or "procedure" in query_lower
+        # Bypass decomposition for these query types
+        if (
+            has_completeness_keyword
+            or is_terms_query
+            or is_procedures_query
+            or (
+                is_list_query
+                and (
+                    "term" in query_lower
+                    or "definition" in query_lower
+                    or "procedure" in query_lower
+                )
             )
-        )
-    ):
+        ):
+            await ctx.info(
+                f"Detected completeness-critical query - bypassing decomposition"
+            )
+            # Return original query without decomposition
+            return query, []
+    else:
         await ctx.info(
-            f"Detected completeness-critical query - bypassing decomposition"
+            f"Query decomposition enabled by user - allowing decomposition even for completeness-critical queries"
         )
-        # Return original query without decomposition
-        return query, []
 
     with profile_stage("intention_extraction", profiling_data, verbose):
         try:

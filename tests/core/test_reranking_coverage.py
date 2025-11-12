@@ -37,10 +37,14 @@ class TestServerMainRerankingCheck:
             rerank_model="test-model",
         )
 
+        mock_logger = Mock()
+        mock_logger.info = Mock()
+        mock_logger.warning = Mock()
+
         with patch(
             "kbbridge.server.Config.get_default_credentials", return_value=creds
         ):
-            with patch("kbbridge.server.logger") as mock_logger:
+            with patch("kbbridge.server.setup_logging", return_value=mock_logger):
                 with patch("kbbridge.server.mcp.run_http_async") as mock_run:
                     with patch(
                         "sys.argv", ["server.py", "--host", "0.0.0.0", "--port", "5210"]
@@ -74,10 +78,14 @@ class TestServerMainRerankingCheck:
             rerank_model=None,
         )
 
+        mock_logger = Mock()
+        mock_logger.info = Mock()
+        mock_logger.warning = Mock()
+
         with patch(
             "kbbridge.server.Config.get_default_credentials", return_value=creds
         ):
-            with patch("kbbridge.server.logger") as mock_logger:
+            with patch("kbbridge.server.setup_logging", return_value=mock_logger):
                 with patch("kbbridge.server.mcp.run_http_async") as mock_run:
                     with patch(
                         "sys.argv", ["server.py", "--host", "0.0.0.0", "--port", "5210"]
@@ -102,8 +110,12 @@ class TestServerMainRerankingCheck:
         """Test main() logs reranking disabled when no default credentials"""
         import kbbridge.server as server_module
 
+        mock_logger = Mock()
+        mock_logger.info = Mock()
+        mock_logger.warning = Mock()
+
         with patch("kbbridge.server.Config.get_default_credentials", return_value=None):
-            with patch("kbbridge.server.logger") as mock_logger:
+            with patch("kbbridge.server.setup_logging", return_value=mock_logger):
                 with patch("kbbridge.server.mcp.run_http_async") as mock_run:
                     with patch(
                         "sys.argv", ["server.py", "--host", "0.0.0.0", "--port", "5210"]

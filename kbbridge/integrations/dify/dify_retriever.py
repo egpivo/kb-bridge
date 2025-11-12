@@ -228,7 +228,6 @@ class DifyRetriever(Retriever):
 
         all_files = []
         page = 1
-        # Use configurable page size from constants (defaults to 100, configurable via FILE_LIST_PAGE_SIZE env var)
         limit = RetrieverDefaults.FILE_LIST_PAGE_SIZE.value
 
         try:
@@ -256,7 +255,6 @@ class DifyRetriever(Retriever):
                 if not page_files or (not has_more and total is None):
                     break
 
-                # If we got fewer files than limit, we're done
                 if len(page_files) < limit:
                     break
 

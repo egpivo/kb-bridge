@@ -46,6 +46,10 @@ async def assistant(
     custom_instructions: Optional[str] = None,
     document_name: str = "",
     enable_query_rewriting: bool = False,
+    enable_query_decomposition: bool = False,
+    enable_reflection: Optional[bool] = None,
+    reflection_threshold: Optional[float] = None,
+    verbose: Optional[bool] = None,
 ) -> str:
     """Search and extract answers from knowledge bases."""
     await ctx.info(f"Executing assistant for query: {query}")
@@ -63,7 +67,6 @@ async def assistant(
             return "Error: No credentials available"
 
         # Note: dify_endpoint is a backward-compat property → retrieval_endpoint
-        await ctx.info(f"Using retrieval endpoint: {credentials.retrieval_endpoint}")
         await ctx.info(f"Request timeout set to: {timeout_seconds} seconds")
 
         await ctx.info("Calling assistant_service...")
@@ -77,6 +80,10 @@ async def assistant(
                     custom_instructions=custom_instructions,
                     document_name=document_name,
                     enable_query_rewriting=enable_query_rewriting,
+                    enable_query_decomposition=enable_query_decomposition,
+                    enable_reflection=enable_reflection,
+                    reflection_threshold=reflection_threshold,
+                    verbose=verbose,  # Pass verbose parameter directly
                 ),
                 timeout=timeout_seconds,
             )
@@ -187,6 +194,8 @@ async def file_lister(
         result = file_lister_service(
             resource_id=resource_id,
             timeout=timeout,
+            limit=limit,
+            offset=offset,
             backend_type=backend_type,
             retrieval_endpoint=credentials.retrieval_endpoint,
             retrieval_api_key=credentials.retrieval_api_key,
@@ -217,16 +226,12 @@ async def keyword_generator(
             await ctx.error("No credentials available")
             return "Error: No credentials available"
 
-        result = keyword_generator_service.fn(
+        result = keyword_generator_service(
             query=query,
             max_sets=max_sets,
-            retrieval_endpoint=credentials.retrieval_endpoint,
-            retrieval_api_key=credentials.retrieval_api_key,
             llm_api_url=credentials.llm_api_url,
             llm_model=credentials.llm_model,
             llm_api_token=credentials.llm_api_token,
-            rerank_url=credentials.rerank_url,
-            rerank_model=credentials.rerank_model,
         )
 
         return json.dumps(result)

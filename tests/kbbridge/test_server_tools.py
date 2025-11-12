@@ -408,11 +408,10 @@ class TestServerKeywordGeneratorTool:
 
         mock_result = {"keywords": [["keyword1", "keyword2"]]}
 
-        mock_service = MagicMock()
-        mock_service.fn = MagicMock(return_value=mock_result)
-
         with patch("kbbridge.server.get_current_credentials", return_value=credentials):
-            with patch("kbbridge.server.keyword_generator_service", mock_service):
+            with patch(
+                "kbbridge.server.keyword_generator_service", return_value=mock_result
+            ):
                 result = await keyword_generator(
                     query="test query",
                     ctx=mock_ctx,
@@ -437,11 +436,11 @@ class TestServerKeywordGeneratorTool:
             retrieval_api_key="test-key",
         )
 
-        mock_service = MagicMock()
-        mock_service.fn = MagicMock(side_effect=ValueError("Test error"))
-
         with patch("kbbridge.server.get_current_credentials", return_value=credentials):
-            with patch("kbbridge.server.keyword_generator_service", mock_service):
+            with patch(
+                "kbbridge.server.keyword_generator_service",
+                side_effect=ValueError("Test error"),
+            ):
                 result = await keyword_generator(
                     query="test query",
                     ctx=mock_ctx,

@@ -2,8 +2,9 @@ import subprocess
 import sys
 import time
 import threading
+import re
 from collections import deque
-from typing import Optional
+from typing import Optional, List, Dict
 
 # Global state
 server_process: Optional[subprocess.Popen] = None
@@ -210,3 +211,127 @@ def get_logs():
     """Get all logs as list of (type, line) tuples."""
     with log_lock:
         return list(server_logs)
+
+
+def ensure_server_running(port=5566):
+    """
+    Start server if not running.
+    
+    Args:
+        port: Server port (default: 5566)
+    
+    Returns:
+        True if server is running, False otherwise
+    """
+    if not check_server_status():
+        start_server(port=port, kill_existing=True)
+        return True
+    else:
+        print("Server already running")
+        return True
+
+
+class LogFormatter:
+    """Format server logs for readable blog display"""
+    
+    # Keywords that indicate important log entries
+    IMPORTANT_KEYWORDS = [
+        'executing', 'starting', 'completed', 'error', 'failed', 
+        'retrieval', 'query', 'intention', 'dataset', 'components',
+        'timeout', 'credentials', 'backend'
+    ]
+    
+    # Keywords to filter out (too verbose)
+    VERBOSE_KEYWORDS = [
+        'request timeout', 'verbose mode', 'status:', 'all required',
+        'creating components', 'components created'
+    ]
+    
+    @staticmethod
+    def parse_log_line(line: str) -> Optional[Dict]:
+        """Parse a log line into structured data"""
+        # Format: [timestamp] LEVEL     Message
+        pattern = r'\[(.*?)\] (INFO|ERROR|WARNING|DEBUG)\s+(.*)'
+        match = re.match(pattern, line)
+        if match:
+            return {
+                'timestamp': match.group(1),
+                'level': match.group(2),
+                'message': match.group(3).strip()
+            }
+        return None
+    
+    @staticmethod
+    def is_important(log_entry: Dict) -> bool:
+        """Check if log entry is important enough to show"""
+        message_lower = log_entry['message'].lower()
+        
+        # Filter out verbose entries
+        if any(keyword in message_lower for keyword in LogFormatter.VERBOSE_KEYWORDS):
+            return False
+        
+        # Include important entries
+        if any(keyword in message_lower for keyword in LogFormatter.IMPORTANT_KEYWORDS):
+            return True
+        
+        # Include errors and warnings
+        if log_entry['level'] in ['ERROR', 'WARNING']:
+            return True
+        
+        return False
+    
+    @staticmethod
+    def format_logs(log_lines: List[str], max_lines: int = 10, show_all: bool = False) -> str:
+        """Format logs for display"""
+        parsed_logs = []
+        for line in log_lines:
+            entry = LogFormatter.parse_log_line(line)
+            if entry:
+                if show_all or LogFormatter.is_important(entry):
+                    parsed_logs.append(entry)
+        
+        if not parsed_logs:
+            return "📝 No relevant logs captured"
+        
+        # Limit number of logs shown
+        if len(parsed_logs) > max_lines and not show_all:
+            parsed_logs = parsed_logs[-max_lines:]
+            header = f"📋 Showing last {max_lines} relevant log entries:\n\n"
+        else:
+            header = f"📋 Server Logs ({len(parsed_logs)} entries):\n\n"
+        
+        output = [header]
+        for entry in parsed_logs:
+            level_emoji = {
+                'INFO': 'ℹ️',
+                'ERROR': '❌',
+                'WARNING': '⚠️',
+                'DEBUG': '🔍'
+            }.get(entry['level'], '📝')
+            
+            # Simplify message (remove redundant prefixes)
+            message = entry['message']
+            message = re.sub(r'^Server log:\s*', '', message)
+            
+            output.append(f"{level_emoji} **{entry['level']}**: {message}")
+        
+        return "\n".join(output)
+    
+    @staticmethod
+    def get_recent_logs(count: int = 20) -> str:
+        """Get recent logs from server and format them"""
+        logs_tuples = get_logs()
+        if not logs_tuples:
+            return "📝 No logs available"
+        
+        # Extract just the log lines (second element of tuple)
+        log_lines = [line for _, line in logs_tuples]
+        
+        # Get recent logs
+        recent = log_lines[-count:] if len(log_lines) > count else log_lines
+        
+        return LogFormatter.format_logs(recent, max_lines=count)
+
+
+# Create a default formatter instance for convenience
+log_formatter = LogFormatter()

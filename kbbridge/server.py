@@ -40,7 +40,7 @@ logger = None
 @mcp.tool(name="assistant")
 @require_auth
 async def assistant(
-    resource_id: str,
+    resource_globalid: str,
     query: str,
     ctx: Context,
     custom_instructions: Optional[str] = None,
@@ -334,6 +334,8 @@ def create_server() -> FastMCP:
 
 async def main():
     """Main entry point for the MCP server."""
+    global logger
+
     parser = argparse.ArgumentParser(
         description="Knowledge Base MCP Server - Working Version"
     )
@@ -367,9 +369,6 @@ async def main():
     else:
         # Load default .env file
         env_loaded = load_env_file()
-
-    # Set up logging once with the loaded environment variables
-    global logger
     logger = setup_logging()
 
     # Log which env file was loaded (now that logging is set up)

@@ -26,13 +26,13 @@ def read_logs(pipe, log_type='stdout'):
         pipe.close()
 
 
-def start_server(host='0.0.0.0', port=5566, kill_existing=True):
+def start_server(host='0.0.0.0', port=5210, kill_existing=True):
     """
     Start server in background.
     
     Args:
         host: Host (default: '0.0.0.0')
-        port: Port (default: 5566)
+        port: Port (default: 5210)
         kill_existing: Kill existing server on same port (default: True)
     
     Returns:
@@ -147,12 +147,12 @@ def clear_logs():
     print("Logs cleared")
 
 
-def stop_server(port=5566):
+def stop_server(port=5210):
     """
     Stop server.
     
     Args:
-        port: Server port (default: 5566)
+        port: Server port (default: 5210)
     """
     global server_process
     if server_process is not None and server_process.poll() is None:

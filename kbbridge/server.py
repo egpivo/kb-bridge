@@ -40,7 +40,7 @@ logger = None
 @mcp.tool(name="assistant")
 @require_auth
 async def assistant(
-    resource_globalid: str,
+    resource_id: str,
     query: str,
     ctx: Context,
     custom_instructions: Optional[str] = None,

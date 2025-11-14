@@ -917,6 +917,13 @@ class AdvancedApproachProcessor:
                     document_name=file_name
                 )
 
+                # Check if reranking should be enabled based on credentials
+                does_rerank = (
+                    self.credentials.is_reranking_available()
+                    if self.credentials
+                    else False
+                )
+
                 # Retrieve relevant segments
                 # Support both working retriever interface (retrieve) and integrations retriever (call)
                 # Reranking config is handled internally by the adapter
@@ -925,7 +932,7 @@ class AdvancedApproachProcessor:
                         dataset_id=resource_id,  # Backward compatibility
                         query=query_for_rerank,
                         search_method=RetrieverSearchMethod.HYBRID_SEARCH.value,
-                        does_rerank=False,
+                        does_rerank=does_rerank,
                         top_k=min(
                             top_k, AssistantDefaults.MAX_TOP_K_PER_FILE_QUERY.value
                         )
@@ -944,7 +951,7 @@ class AdvancedApproachProcessor:
                         )
                         if self.adaptive_top_k_enabled
                         else top_k,
-                        does_rerank=False,
+                        does_rerank=does_rerank,
                         score_threshold_enabled=False,
                         metadata_filter=metadata_filter,
                         weights=RetrieverDefaults.WEIGHTS.value,
@@ -964,13 +971,13 @@ class AdvancedApproachProcessor:
                 # Build context and extract answer
                 context = build_context_from_segments(segments, self.verbose)
 
-                # Log extraction details at debug level
-                logger.debug(f"Extracting answer for file '{file_name}':")
-                logger.debug(f"  Query: '{original_query}'")
-                logger.debug(f"  Segments: {len(segments)}")
-                logger.debug(f"  Context length: {len(context)} chars")
+                # Log before extraction
+                logger.info(f"Extracting answer for file '{file_name}':")
+                logger.info(f"  Query: '{original_query}'")
+                logger.info(f"  Segments: {len(segments)}")
+                logger.info(f"  Context length: {len(context)} chars")
                 if segments:
-                    logger.debug(
+                    logger.info(
                         f"  First segment preview: {segments[0].get('content', '')[:200]}..."
                     )
 
@@ -983,23 +990,19 @@ class AdvancedApproachProcessor:
                     error_message = extraction_result.get("message", "")
                     error_details = extraction_result.get("details", {})
 
-                    # Log concise error message at error level
-                    logger.error(
-                        f"Answer extraction failed for file '{file_name}': {error_msg}"
-                    )
-                    # Log detailed debugging info at debug level
-                    logger.debug(f"  Full extraction_result: {extraction_result}")
-                    logger.debug(f"  Error field: {error_msg}")
-                    logger.debug(f"  Message field: {error_message}")
-                    logger.debug(f"  Details field: {error_details}")
-                    logger.debug(f"  Query: '{original_query}'")
-                    logger.debug(f"  Segments: {len(segments)}")
-                    logger.debug(f"  Context length: {len(context)} chars")
+                    logger.error(f"  Answer extraction failed for file '{file_name}':")
+                    logger.error(f"  Full extraction_result: {extraction_result}")
+                    logger.error(f"  Error field: {error_msg}")
+                    logger.error(f"  Message field: {error_message}")
+                    logger.error(f"  Details field: {error_details}")
+                    logger.error(f"  Query: '{original_query}'")
+                    logger.error(f"  Segments: {len(segments)}")
+                    logger.error(f"  Context length: {len(context)} chars")
                     if segments:
-                        logger.debug(
+                        logger.error(
                             f"  First segment content preview: {segments[0].get('content', '')[:300]}..."
                         )
-                    logger.debug(
+                    logger.error(
                         f"  Context preview (first 500 chars): {context[:500]}..."
                     )
 
@@ -1028,13 +1031,18 @@ class AdvancedApproachProcessor:
                 # Log successful extraction
                 answer = extraction_result.get("answer", "")
                 if answer and answer.strip().upper() != ResponseMessages.NO_ANSWER:
-                    logger.debug(
-                        f"Answer extracted successfully for file '{file_name}' ({len(answer)} chars)"
+                    logger.info(
+                        f"Answer extracted successfully for file '{file_name}':"
                     )
-                    logger.debug(f"  Answer preview: {answer[:200]}...")
+                    logger.info(f"  Answer length: {len(answer)} chars")
+                    logger.info(f"  Answer preview: {answer[:200]}...")
                 else:
-                    logger.debug(
-                        f"Answer extraction returned empty/N/A for file '{file_name}'"
+                    logger.warning(
+                        f"Answer extraction returned empty/N/A for file '{file_name}':"
+                    )
+                    logger.warning(f"  Answer: '{answer}'")
+                    logger.warning(
+                        f"  This may indicate the context doesn't contain relevant information"
                     )
                 if self.verbose:
                     query_profiling["answer_length"] = len(answer)
@@ -1087,6 +1095,13 @@ class AdvancedApproachProcessor:
                     seen_lines.add(normalized)
 
         return "\n".join(combined_lines)
+
+    def _format_segments(
+        self, retrieval_result: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Format retrieval results into segments"""
+        formatted_results = format_search_results([retrieval_result])
+        return formatted_results.get("result", [])
 
     def _format_no_segments(
         self, file_name: str, profiling: Dict[str, Any]

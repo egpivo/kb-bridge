@@ -234,6 +234,32 @@ class FileSearchStrategy:
 class DirectApproachProcessor:
     """Processes queries using the direct approach"""
 
+    @staticmethod
+    def _validate_retriever(retriever, context_name: str) -> Optional[Dict[str, Any]]:
+        """Validate retriever is available and has required methods."""
+        if not retriever:
+            logger.error(f"Retriever is None for {context_name}")
+            return {
+                "success": False,
+                "error": "Retriever not initialized",
+                "details": "The retriever was not properly initialized",
+            }
+
+        if not hasattr(retriever, "build_metadata_filter"):
+            logger.error(
+                f"Retriever missing build_metadata_filter method for {context_name}"
+            )
+            logger.debug(f"Retriever type: {type(retriever)}")
+            logger.debug(
+                f"Retriever methods: {[m for m in dir(retriever) if not m.startswith('_')]}"
+            )
+            return {
+                "success": False,
+                "error": "Retriever missing required method",
+                "details": f"Retriever type {type(retriever)} does not have build_metadata_filter method",
+            }
+        return None
+
     def __init__(
         self,
         retriever: Retriever,
@@ -262,6 +288,14 @@ class DirectApproachProcessor:
         logger.debug(
             f"Query: '{query}', top_k: {top_k}, score_threshold: {score_threshold}"
         )
+
+        # Validate retriever
+        validation_error = self._validate_retriever(
+            self.retriever, f"resource {resource_id}"
+        )
+        if validation_error:
+            validation_error["debug_info"] = debug_info if self.verbose else []
+            return validation_error
 
         # Build metadata filter
         metadata_filter = self.retriever.build_metadata_filter(
@@ -912,6 +946,13 @@ class AdvancedApproachProcessor:
                 query_profiling,
                 self.verbose,
             ):
+                # Validate retriever
+                validation_error = DirectApproachProcessor._validate_retriever(
+                    self.retriever, f"file '{file_name}'"
+                )
+                if validation_error:
+                    return validation_error
+
                 # Build metadata filter targeting this specific file
                 metadata_filter = self.retriever.build_metadata_filter(
                     document_name=file_name
@@ -963,10 +1004,71 @@ class AdvancedApproachProcessor:
                     query_profiling["segments_count"] = len(segments)
 
                 if not segments:
-                    logger.debug(
-                        f"No segments found for file '{file_name}' with query type '{'boosted' if query_for_rerank != original_query else 'original'}'"
+                    # Log warning and collect diagnostic info
+                    query_type = (
+                        "boosted" if query_for_rerank != original_query else "original"
                     )
-                    return {"success": False, "error": "No segments found"}
+                    logger.warning(
+                        f"No segments found for file '{file_name}' with {query_type} query"
+                    )
+
+                    # Collect essential diagnostic info
+                    effective_top_k = (
+                        min(top_k, AssistantDefaults.MAX_TOP_K_PER_FILE_QUERY.value)
+                        if self.adaptive_top_k_enabled
+                        else top_k
+                    )
+                    diagnostic_info = {
+                        "query": query_for_rerank[:200],
+                        "metadata_filter": metadata_filter,
+                        "top_k": top_k,
+                        "effective_top_k": effective_top_k,
+                        "reranking_enabled": does_rerank,
+                    }
+
+                    # Add API response details if available
+                    if isinstance(retrieval_result, dict):
+                        records_count = len(retrieval_result.get("records", []))
+                        diagnostic_info["raw_records_count"] = records_count
+                        logger.debug(
+                            f"API returned {records_count} records for file '{file_name}'"
+                        )
+
+                        if records_count > 0:
+                            # Check if file name matches any returned documents
+                            sample_records = retrieval_result.get("records", [])[:3]
+                            doc_names = [
+                                rec.get("segment", {})
+                                .get("document", {})
+                                .get("name", "")
+                                or rec.get("segment", {})
+                                .get("document", {})
+                                .get("doc_metadata", {})
+                                .get("document_name", "")
+                                for rec in sample_records
+                            ]
+                            doc_names = [name for name in doc_names if name]
+                            if doc_names:
+                                file_match = file_name in doc_names or any(
+                                    file_name in name or name in file_name
+                                    for name in doc_names
+                                )
+                                diagnostic_info["sample_document_names"] = doc_names
+                                diagnostic_info["target_file_name"] = file_name
+                                diagnostic_info["file_name_match"] = file_match
+                                logger.debug(
+                                    f"File name match: {file_match} (target: '{file_name}', found: {doc_names})"
+                                )
+                        else:
+                            diagnostic_info[
+                                "diagnosis"
+                            ] = "API returned 0 records - query may not match any segments"
+
+                    return {
+                        "success": False,
+                        "error": "No segments found",
+                        "details": diagnostic_info,
+                    }
 
                 # Build context and extract answer
                 context = build_context_from_segments(segments, self.verbose)
@@ -1211,15 +1313,28 @@ class DatasetProcessor:
             self.credentials,
             verbose=config.verbose,
         )
+        # Log retriever type for debugging
+        retriever = components.get("retriever")
+        if retriever:
+            logger.debug(f"Initial retriever type: {type(retriever)}")
+            logger.debug(
+                f"Retriever methods: build_metadata_filter={hasattr(retriever, 'build_metadata_filter')}, "
+                f"call={hasattr(retriever, 'call')}, retrieve={hasattr(retriever, 'retrieve')}"
+            )
+        else:
+            logger.debug(
+                "No retriever in components - will use retriever_factory per resource"
+            )
+
         self.direct_processor = DirectApproachProcessor(
-            components.get("retriever"),
+            retriever,
             components["answer_extractor"],
             verbose=config.verbose,
             custom_instructions=custom_instructions,
             credentials=credentials,
         )
         self.advanced_processor = AdvancedApproachProcessor(
-            components.get("retriever"),
+            retriever,
             components["answer_extractor"],
             verbose=config.verbose,
             custom_instructions=custom_instructions,
@@ -1283,9 +1398,27 @@ class DatasetProcessor:
             per_resource_components = dict(self.components)
             retriever_factory = self.components.get("retriever_factory")
             if retriever_factory:
-                per_resource_components["retriever"] = retriever_factory(
-                    resource_id_value
-                )
+                per_resource_retriever = retriever_factory(resource_id_value)
+                if per_resource_retriever:
+                    logger.info(
+                        f"Created per-resource retriever for {resource_id_value}: {type(per_resource_retriever)}"
+                    )
+                    logger.info(
+                        f"  Has build_metadata_filter: {hasattr(per_resource_retriever, 'build_metadata_filter')}"
+                    )
+                    logger.info(
+                        f"  Has call: {hasattr(per_resource_retriever, 'call')}"
+                    )
+                    logger.info(
+                        f"  Has retrieve: {hasattr(per_resource_retriever, 'retrieve')}"
+                    )
+                    per_resource_components["retriever"] = per_resource_retriever
+                else:
+                    logger.error(
+                        f"Retriever factory returned None for resource {resource_id_value}"
+                    )
+            else:
+                logger.error("No retriever_factory in components")
 
             # IMPORTANT: Use per-resource processors so retriever is bound to the resource
             direct_processor = DirectApproachProcessor(

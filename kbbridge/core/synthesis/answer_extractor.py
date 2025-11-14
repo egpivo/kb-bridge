@@ -14,7 +14,14 @@ class AnswerExtractionSignature(dspy.Signature):
     - Comprehensive List: For "all/every/complete" queries, extract ALL items exhaustively
     - Standard Q&A: Answer based on context
 
-    For comprehensive queries: Scan ALL context, extract EVERY item, verify completeness."""
+    For comprehensive queries: Scan ALL context, extract EVERY item, verify completeness.
+
+    CRITICAL: For queries about obligations, survival clauses, or time periods:
+    - Extract ALL time periods mentioned (e.g., "5 years", "indefinitely")
+    - Extract ALL exceptions and special conditions (e.g., "unless Institution retains one archived copy")
+    - Extract ALL geographic/institutional specifics (e.g., "University of Michigan medical facilities")
+    - Extract ALL specific obligations, even if they seem similar or overlapping
+    - Preserve the exact wording for legal/contractual language"""
 
     context: str = dspy.InputField(
         desc="The contextual information (documents, policies, etc.)"

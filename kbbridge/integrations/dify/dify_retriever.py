@@ -72,8 +72,14 @@ class DifyRetriever(Retriever):
             model["weights"] = kw["weights"]
         if kw.get("metadata_filter") is not None:
             # Ensure metadata is enabled when using metadata filters
-            self.enable_metadata(timeout=self.timeout)
+            metadata_enabled = self.enable_metadata(timeout=self.timeout)
+            logger.warning(
+                f"🔍 [DIFY DEBUG] Metadata filter provided: {kw['metadata_filter']}"
+            )
+            logger.warning(f"   Metadata enabled: {metadata_enabled}")
             model["metadata_filtering_conditions"] = kw["metadata_filter"]
+        else:
+            logger.warning(f"🔍 [DIFY DEBUG] No metadata filter provided")
 
         payload = {"query": query, "retrieval_model": model}
         url = f"{self.endpoint}/v1/datasets/{self.dataset_id}/retrieve"
@@ -82,7 +88,11 @@ class DifyRetriever(Retriever):
             "Content-Type": "application/json",
         }
 
-        logger.info(f"Calling Dify API: {method}, top_k={top_k}")
+        logger.warning(f"🔍 [DIFY DEBUG] Calling Dify API: {method}, top_k={top_k}")
+        logger.warning(f"   URL: {url}")
+        logger.warning(
+            f"   Payload (metadata_filtering_conditions): {model.get('metadata_filtering_conditions', 'None')}"
+        )
         logger.debug(f"Dify API URL: {url}")
         logger.debug(f"Dify API Payload: {payload}")
 
@@ -97,13 +107,27 @@ class DifyRetriever(Retriever):
             error_detail = ""
             try:
                 error_detail = response.json()
-                logger.error(f"Dify API error response: {error_detail}")
+                logger.error(f"❌ [DIFY DEBUG] Dify API error response: {error_detail}")
             except:
                 error_detail = response.text
-                logger.error(f"Dify API error text: {error_detail}")
+                logger.error(f"❌ [DIFY DEBUG] Dify API error text: {error_detail}")
             raise
 
-        return response.json()
+        result = response.json()
+        records_count = len(result.get("records", []))
+        logger.warning(
+            f"🔍 [DIFY DEBUG] Dify API response: {records_count} records returned"
+        )
+        if records_count == 0 and kw.get("metadata_filter"):
+            logger.warning(
+                f"   ⚠️  WARNING: 0 records with metadata filter - filter may be too strict!"
+            )
+            # Log first few document names from a search WITHOUT filter for comparison
+            logger.warning(
+                f"   💡 Suggestion: Check if file name matches document_name format in Dify"
+            )
+
+        return result
 
     def normalize_chunks(self, resp: Dict[str, Any]) -> List[ChunkHit]:
         chunks = []

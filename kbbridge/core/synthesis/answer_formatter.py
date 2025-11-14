@@ -32,6 +32,7 @@ class StructuredAnswerSignature(dspy.Signature):
     2. PRESERVES ALL UNIQUE ITEMS - include every distinct entity/term from all candidates
     3. MERGES similar definitions - combine different wordings of the same concept
     4. FORMATS consistently - use clear structure with inline citations
+    5. PRESERVES ALL SPECIFIC DETAILS - especially time periods, exceptions, and special conditions mentioned in any candidate
 
     ## CRITICAL DEDUPLICATION RULES
 
@@ -54,10 +55,17 @@ class StructuredAnswerSignature(dspy.Signature):
     - When in doubt, treat as DIFFERENT and keep both
     - Goal: PRESERVATION over SUMMARIZATION
 
+    ## Critical Detail Preservation
+    - **Time periods**: Preserve ALL time periods mentioned (e.g., "5 years", "indefinitely")
+    - **Exceptions**: Preserve ALL exceptions and special conditions (e.g., "unless Institution retains one archived copy", "for studies conducted at University of Michigan medical facilities")
+    - **Specific obligations**: Preserve ALL specific obligations mentioned, even if they seem similar
+    - **Geographic/Institutional specifics**: Preserve ALL location-specific or institution-specific details (e.g., "University of Michigan medical facilities")
+    - If one candidate mentions "5 years" and another mentions "indefinitely", BOTH must be included with their specific contexts
+
     ## Success Criteria
     - Input has N unique entities → Output should have N entities
     - Only deduplication = removing exact repeats
-    - Completeness = preserve all unique items
+    - Completeness = preserve all unique items AND all specific details (time periods, exceptions, conditions)
     """
 
     query: str = dspy.InputField(desc="The original user query")

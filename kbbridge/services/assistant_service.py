@@ -374,6 +374,32 @@ async def assistant_service(
                         sample_failure = failed[0]
                         error_msg = sample_failure.get("error", "Unknown error")
                         error_details = sample_failure.get("details", {})
+
+                        # Log diagnostic info if available (for "No segments found" errors)
+                        if (
+                            isinstance(error_details, dict)
+                            and error_msg == "No segments found"
+                        ):
+                            await ctx.info(
+                                "Diagnostic info for 'No segments found' error:"
+                            )
+                            await ctx.info(
+                                f"   Query: {error_details.get('query', 'N/A')[:100]}..., "
+                                f"Top_k: {error_details.get('top_k', 'N/A')} "
+                                f"(effective: {error_details.get('effective_top_k', 'N/A')}), "
+                                f"Records: {error_details.get('raw_records_count', 'N/A')}"
+                            )
+                            if error_details.get("sample_document_names"):
+                                await ctx.info(
+                                    f"   File match: {error_details.get('file_name_match', 'N/A')} "
+                                    f"(target: {error_details.get('target_file_name', 'N/A')}, "
+                                    f"found: {error_details.get('sample_document_names', [])})"
+                                )
+                            if error_details.get("diagnosis"):
+                                await ctx.info(
+                                    f"   Diagnosis: {error_details.get('diagnosis')}"
+                                )
+
                         if isinstance(error_details, dict):
                             error_type = error_details.get(
                                 "error", error_details.get("message", "")
@@ -841,7 +867,7 @@ async def assistant_service(
 
 async def _rewrite_query(
     query: str,
-    credentials: Dict[str, str],
+    credentials: Any,  # Can be Dict[str, str] or Credentials object
     debug_info: List[str],
     profiling_data: Dict[str, Any],
     ctx: Context,
@@ -851,10 +877,21 @@ async def _rewrite_query(
 
     try:
         with profile_stage("query_rewriting", profiling_data, verbose=True):
+            # Handle both dict and Credentials object
+            if isinstance(credentials, dict):
+                llm_api_url = credentials.get("llm_api_url")
+                llm_model = credentials.get("llm_model")
+                llm_api_token = credentials.get("llm_api_token")
+            else:
+                # Credentials object (Pydantic model or dataclass)
+                llm_api_url = getattr(credentials, "llm_api_url", None)
+                llm_model = getattr(credentials, "llm_model", None)
+                llm_api_token = getattr(credentials, "llm_api_token", None)
+
             rewriter = LLMQueryRewriter(
-                llm_api_url=credentials.get("llm_api_url"),
-                llm_model=credentials.get("llm_model"),
-                llm_api_token=credentials.get("llm_api_token"),
+                llm_api_url=llm_api_url,
+                llm_model=llm_model,
+                llm_api_token=llm_api_token,
                 llm_temperature=0.3,
                 llm_timeout=30,
                 max_tokens=1000,

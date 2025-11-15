@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
+from kbbridge.config.constants import RetrieverDefaults
 from kbbridge.integrations.retriever_base import ChunkHit, FileHit, Retriever
 
 from .constants import DifyRetrieverDefaults
@@ -71,8 +72,14 @@ class DifyRetriever(Retriever):
             model["weights"] = kw["weights"]
         if kw.get("metadata_filter") is not None:
             # Ensure metadata is enabled when using metadata filters
-            self.enable_metadata(timeout=self.timeout)
+            metadata_enabled = self.enable_metadata(timeout=self.timeout)
+            logger.debug(
+                f"[DIFY DEBUG] Metadata filter provided: {kw['metadata_filter']}"
+            )
+            logger.debug(f"Metadata enabled: {metadata_enabled}")
             model["metadata_filtering_conditions"] = kw["metadata_filter"]
+        else:
+            logger.debug(f"[DIFY DEBUG] No metadata filter provided")
 
         payload = {"query": query, "retrieval_model": model}
         url = f"{self.endpoint}/v1/datasets/{self.dataset_id}/retrieve"
@@ -81,9 +88,11 @@ class DifyRetriever(Retriever):
             "Content-Type": "application/json",
         }
 
-        logger.info(f"Calling Dify API: {method}, top_k={top_k}")
-        logger.debug(f"Dify API URL: {url}")
-        logger.debug(f"Dify API Payload: {payload}")
+        logger.debug(f"[DIFY DEBUG] Calling Dify API: {method}, top_k={top_k}")
+        logger.debug(f"URL: {url}")
+        logger.debug(
+            f"Payload (metadata_filtering_conditions): {model.get('metadata_filtering_conditions', 'None')}"
+        )
 
         response = requests.post(
             url, headers=headers, json=payload, timeout=self.timeout
@@ -96,13 +105,27 @@ class DifyRetriever(Retriever):
             error_detail = ""
             try:
                 error_detail = response.json()
-                logger.error(f"Dify API error response: {error_detail}")
-            except:
+                logger.error(f"[DIFY DEBUG] Dify API error response: {error_detail}")
+            except Exception:
                 error_detail = response.text
-                logger.error(f"Dify API error text: {error_detail}")
+                logger.error(f"[DIFY DEBUG] Dify API error text: {error_detail}")
             raise
 
-        return response.json()
+        result = response.json()
+        records_count = len(result.get("records", []))
+        logger.debug(
+            f"[DIFY DEBUG] Dify API response: {records_count} records returned"
+        )
+        if records_count == 0 and kw.get("metadata_filter"):
+            logger.warning(
+                f"WARNING: 0 records with metadata filter - filter may be too strict!"
+            )
+            # Log first few document names from a search WITHOUT filter for comparison
+            logger.warning(
+                f"Suggestion: Check if file name matches document_name format in Dify"
+            )
+
+        return result
 
     def normalize_chunks(self, resp: Dict[str, Any]) -> List[ChunkHit]:
         chunks = []
@@ -212,7 +235,11 @@ class DifyRetriever(Retriever):
         return {"conditions": conditions} if conditions else None
 
     def list_files(self, *, resource_id: str = None, timeout: int = 30) -> List[str]:
-        """List document names in the dataset using Dify Documents API."""
+        """List document names in the dataset using Dify Documents API.
+
+        Note: Dify API may paginate results. This method fetches all pages
+        by making multiple requests if needed.
+        """
         # Use resource_id parameter if provided, otherwise use instance dataset_id
         dataset_id = resource_id if resource_id is not None else self.dataset_id
         url = f"{self.endpoint}/v1/datasets/{dataset_id}/documents"
@@ -220,15 +247,53 @@ class DifyRetriever(Retriever):
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+
+        all_files = []
+        page = 1
+        limit = RetrieverDefaults.FILE_LIST_PAGE_SIZE.value
+
         try:
-            resp = requests.get(url, headers=headers, timeout=timeout)
-            resp.raise_for_status()
-            data = resp.json().get("data", [])
-            files = [doc.get("name") for doc in data if doc.get("name")]
-            return files
+            while True:
+                # Add pagination parameters if API supports them
+                params = {"page": page, "limit": limit}
+                resp = requests.get(
+                    url, headers=headers, params=params, timeout=timeout
+                )
+                resp.raise_for_status()
+
+                response_data = resp.json()
+                data = response_data.get("data", [])
+
+                # Extract file names
+                page_files = [doc.get("name") for doc in data if doc.get("name")]
+                all_files.extend(page_files)
+
+                # Check if there are more pages
+                # Dify API might return pagination info in different formats
+                has_more = response_data.get("has_more", False)
+                total = response_data.get("total")
+
+                # If no more data or empty page, stop
+                if not page_files or (not has_more and total is None):
+                    break
+
+                if len(page_files) < limit:
+                    break
+
+                page += 1
+
+            return all_files
         except Exception as e:
             logger.warning(f"Dify list_files failed: {e}")
-            return []
+            # If pagination fails, try without pagination params (backward compatibility)
+            try:
+                resp = requests.get(url, headers=headers, timeout=timeout)
+                resp.raise_for_status()
+                data = resp.json().get("data", [])
+                files = [doc.get("name") for doc in data if doc.get("name")]
+                return files
+            except Exception:
+                return []
 
     def enable_metadata(self, timeout: int = 30, force: bool = False) -> bool:
         """
@@ -269,7 +334,7 @@ class DifyRetriever(Retriever):
             try:
                 error_detail = resp.json()
                 logger.error(f"Dify enable_metadata error response: {error_detail}")
-            except:
+            except Exception:
                 error_detail = resp.text
                 logger.error(f"Dify enable_metadata error text: {error_detail}")
             return False
@@ -305,7 +370,7 @@ class DifyRetriever(Retriever):
                 logger.debug(
                     f"Dify check_metadata_status error response: {error_detail}"
                 )
-            except:
+            except Exception:
                 error_detail = resp.text
                 logger.debug(f"Dify check_metadata_status error text: {error_detail}")
             return None

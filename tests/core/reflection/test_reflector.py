@@ -553,7 +553,7 @@ class TestReflector:
 
         report = reflector.create_report(reflections)
         assert "improvement" in report
-        assert report["improvement"] == 0.3
+        assert report["improvement"] == pytest.approx(0.3)
 
     def test_create_report_history_format(self):
         """Test create_report history format (lines 97-105)"""

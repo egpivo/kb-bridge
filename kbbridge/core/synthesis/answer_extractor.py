@@ -14,7 +14,14 @@ class AnswerExtractionSignature(dspy.Signature):
     - Comprehensive List: For "all/every/complete" queries, extract ALL items exhaustively
     - Standard Q&A: Answer based on context
 
-    For comprehensive queries: Scan ALL context, extract EVERY item, verify completeness."""
+    For comprehensive queries: Scan ALL context, extract EVERY item, verify completeness.
+
+    CRITICAL: For queries about obligations, survival clauses, or time periods:
+    - Extract ALL time periods mentioned (e.g., "5 years", "indefinitely")
+    - Extract ALL exceptions and special conditions (e.g., "unless Institution retains one archived copy")
+    - Extract ALL geographic/institutional specifics (e.g., "University of Michigan medical facilities")
+    - Extract ALL specific obligations, even if they seem similar or overlapping
+    - Preserve the exact wording for legal/contractual language"""
 
     context: str = dspy.InputField(
         desc="The contextual information (documents, policies, etc.)"
@@ -127,17 +134,95 @@ class OrganizationAnswerExtractor(dspy.Module):
         Returns:
             Dict containing the result or error information
         """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         try:
+            # Validate inputs
+            if not context or not context.strip():
+                logger.error(f"  Empty context provided to answer extractor!")
+                logger.error(f"  Query: '{user_query}'")
+                logger.error(f"  Context length: {len(context)} chars")
+                return {
+                    "success": False,
+                    "error": "empty_context",
+                    "message": "Context is empty - cannot extract answer",
+                    "user_query": user_query,
+                    "context_length": len(context),
+                }
+
+            if not user_query or not user_query.strip():
+                logger.error(f" Empty query provided to answer extractor!")
+                return {
+                    "success": False,
+                    "error": "empty_query",
+                    "message": "Query is empty - cannot extract answer",
+                    "user_query": user_query,
+                    "context_length": len(context),
+                }
+
+            # Log input details for debugging
+            logger.info(f"Answer extractor called:")
+            logger.info(f"  Query: '{user_query}'")
+            logger.info(f"  Context length: {len(context)} chars")
+            logger.info(f"  Context preview (first 300 chars): {context[:300]}...")
+
             # Call DSPy forward method
-            result = self.forward(context=context, user_query=user_query)
+            logger.info("Calling DSPy forward method...")
+            try:
+                result = self.forward(context=context, user_query=user_query)
+                logger.info(f"DSPy forward completed successfully")
+                logger.info(f"  Result type: {type(result)}")
+                logger.info(f"  Result attributes: {dir(result)}")
+            except Exception as forward_error:
+                logger.error(
+                    f"DSPy forward method raised exception: {type(forward_error).__name__}: {forward_error}"
+                )
+                import traceback
+
+                logger.error(f"Forward exception traceback:\n{traceback.format_exc()}")
+                raise  # Re-raise to be caught by outer exception handler
 
             # Extract answer from DSPy result
             answer = result.answer if hasattr(result, "answer") else ""
+
+            if not hasattr(result, "answer"):
+                logger.warning(f" DSPy result does not have 'answer' attribute")
+                logger.warning(
+                    f"  Available attributes: {[attr for attr in dir(result) if not attr.startswith('_')]}"
+                )
+
+            # Log extraction result
+            logger.info(f"Answer extraction result:")
+            logger.info(f"  Answer length: {len(answer)} chars")
+            logger.info(f"  Answer preview: {answer[:200]}...")
+            if not answer or answer.strip().upper() == ResponseMessages.NO_ANSWER:
+                logger.warning(f"  Answer is empty or N/A - extraction may have failed")
+                logger.warning(
+                    f"  This will still return success=True, but answer will be empty"
+                )
 
             # Return successful response
             return self._build_success_response(answer, user_query, context)
 
         except Exception as e:
+            import traceback
+
+            error_trace = traceback.format_exc()
+            logger.error(f"  Answer extraction exception: {type(e).__name__}: {e}")
+            logger.error(f"  Query: '{user_query}'")
+            logger.error(f"  Context length: {len(context)} chars")
+            logger.error(f"  Context preview: {context[:500]}...")
+            logger.error(f"  Full traceback:\n{error_trace}")
+            # Also log to stderr for immediate visibility
+            import sys
+
+            print(
+                f"ERROR: Answer extraction failed: {type(e).__name__}: {e}",
+                file=sys.stderr,
+            )
+            print(f"Traceback:\n{error_trace}", file=sys.stderr)
             return self._build_exception_response(e, user_query, context)
 
     def _build_base_response(self, user_query: str, context: str) -> Dict[str, Any]:

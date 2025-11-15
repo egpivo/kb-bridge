@@ -95,14 +95,18 @@ For production deployments, use container orchestration platforms like Kubernete
 
 ```python
 import asyncio
-from mcp import ClientSession
+from fastmcp import Client
+
 
 async def main():
-    async with ClientSession("http://localhost:5210/mcp") as session:
-        result = await session.call_tool("assistant", {
-            "resource_id": "resource-id",
-            "query": "What are the safety protocols?"
-        })
+    async with Client("http://localhost:5210/mcp") as client:
+        result = await client.call_tool(
+            "assistant",
+            {
+                "resource_id": "resource-id",
+                "query": "What are the safety protocols?",
+            },
+        )
         print(result.content[0].text)
 
 asyncio.run(main())
@@ -111,37 +115,46 @@ asyncio.run(main())
 ### With Custom Instructions
 
 ```python
-await session.call_tool("assistant", {
+await client.call_tool("assistant", {
     "resource_id": "hr_dataset",
     "query": "What is the maternity leave policy?",
     "custom_instructions": "Focus on HR compliance and legal requirements."
 })
 ```
 
-### With Quality Reflection
+### With Query Rewriting
 
 ```python
-await session.call_tool("assistant", {
+await client.call_tool("assistant", {
     "resource_id": "resource-id",
     "query": "What are the safety protocols?",
-    "reflection_mode": "standard",  # "off", "standard", or "comprehensive"
-    "reflection_threshold": 0.75,
-    "max_reflection_iterations": 2
+    "enable_query_rewriting": True  # Enables LLM-based query expansion/relaxation
 })
 ```
 
-## Reflection Modes
+### With Document Filtering
 
-- **`off`**: No reflection (fastest)
-- **`standard`** (default): Answer quality evaluation only
-- **`comprehensive`**: Search coverage + answer quality evaluation
+```python
+await client.call_tool("assistant", {
+    "resource_id": "resource-id",
+    "query": "What are the safety protocols?",
+    "document_name": "safety_manual.pdf"  # Limit search to specific document
+})
+```
 
-Reflection evaluates answers on:
-- **Completeness** (30%): Does the answer fully address the query?
-- **Accuracy** (30%): Are sources relevant and correctly cited?
-- **Relevance** (20%): Does the answer stay on topic?
-- **Clarity** (10%): Is the answer clear and well-structured?
-- **Confidence** (10%): Quality of supporting sources?
+## Integration with Dify
+
+You can plug KB-Bridge into a Dify Agent Workflow instead of calling MCP tools directly:
+
+1. **Configure MCP Connection**
+   - MCP server URL: `http://localhost:5210/mcp`
+   - Add auth headers: `X-RETRIEVAL-ENDPOINT`, `X-RETRIEVAL-API-KEY`, `X-LLM-API-URL`, `X-LLM-MODEL`
+2. **Create an Agent Workflow**
+   - Add an “MCP Tool” node
+   - Select tool: `assistant`
+   - Map workflow variables to `resource_id`, `query`, and other tool parameters
+3. **Run Queries**
+   - User input → Agent → MCP `assistant` tool → Structured answer with citations
 
 ## Development
 

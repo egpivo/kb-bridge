@@ -10,7 +10,13 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from kbbridge.services.assistant_service import assistant_service
+from kbbridge.services.assistant_service import (
+    _execute_multi_query,
+    _extract_intention,
+    _return_verbose_results,
+    _rewrite_query,
+    assistant_service,
+)
 
 
 class TestAssistantServiceCredentials:
@@ -299,6 +305,155 @@ class TestAssistantServiceCredentials:
 
             # Should show warning but continue (or return error)
             mock_ctx.warning.assert_called()
+
+
+class TestAssistantServiceHelpers:
+    """Test internal helper utilities for assistant_service."""
+
+    @pytest.mark.asyncio
+    async def test_extract_intention_bypasses_completeness(self):
+        ctx = Mock()
+        ctx.info = AsyncMock()
+        ctx.warning = AsyncMock()
+        ctx.error = AsyncMock()
+
+        intention_extractor = Mock()
+        debug_info: list[str] = []
+
+        refined_query, sub_queries = await _extract_intention(
+            "List all clauses",
+            intention_extractor,
+            verbose=False,
+            debug_info=debug_info,
+            profiling_data={},
+            ctx=ctx,
+        )
+
+        assert refined_query == "List all clauses"
+        assert sub_queries == []
+        intention_extractor.extract_intention.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_extract_intention_with_decomposition(self):
+        from contextlib import nullcontext
+
+        ctx = Mock()
+        ctx.info = AsyncMock()
+        ctx.warning = AsyncMock()
+        ctx.error = AsyncMock()
+
+        intention_extractor = Mock()
+        intention_extractor.extract_intention.return_value = {
+            "success": True,
+            "should_decompose": True,
+            "sub_queries": ["sub1", "sub2"],
+        }
+
+        with patch(
+            "kbbridge.services.assistant_service.profile_stage",
+            return_value=nullcontext(),
+        ):
+            refined_query, sub_queries = await _extract_intention(
+                "Summarize obligations",
+                intention_extractor,
+                verbose=True,
+                debug_info=[],
+                profiling_data={},
+                ctx=Mock(
+                    info=AsyncMock(),
+                    warning=AsyncMock(),
+                    error=AsyncMock(),
+                ),
+                enable_query_decomposition=True,
+            )
+
+        assert refined_query == "Summarize obligations"
+        assert sub_queries == ["sub1", "sub2"]
+
+    @pytest.mark.asyncio
+    async def test_execute_multi_query_handles_failures(self):
+        ctx = Mock()
+        ctx.info = AsyncMock()
+        ctx.warning = AsyncMock()
+
+        processor = Mock()
+        processor.process_datasets.side_effect = [
+            (["r1"], [{"id": 1}]),
+            Exception("boom"),
+        ]
+
+        dataset_pairs = [{"id": "res"}]
+        results, candidates = await _execute_multi_query(
+            processor, dataset_pairs, ["q1", "q2"], ctx
+        )
+
+        assert results == ["r1"]
+        assert candidates == [{"id": 1}]
+        assert processor.process_datasets.call_count == 2
+        ctx.warning.assert_called_once()
+
+    def test_return_verbose_results_packages_payload(self):
+        dataset_result = Mock(
+            resource_id="res-1",
+            direct_result={"answer": "A"},
+            advanced_result={"answer": "B"},
+            candidates=[{"id": 1}],
+        )
+
+        with patch(
+            "kbbridge.services.assistant_service.ResultFormatter.format_final_answer",
+            return_value="summary",
+        ):
+            response = _return_verbose_results(
+                dataset_results=[dataset_result],
+                candidates=[{"id": 1}],
+                config=Mock(query="original"),
+                credentials=Mock(),
+                refined_query="refined",
+                debug_info=["d1"],
+                profiling_data={"stage": 1},
+            )
+
+        assert response["query"] == "original"
+        assert response["refined_query"] == "refined"
+        assert response["debug_info"] == ["d1"]
+        assert response["text_summary"] == "summary"
+        assert response["dataset_results"][0]["resource_id"] == "res-1"
+
+    @pytest.mark.asyncio
+    async def test_rewrite_query_failure_returns_original(self):
+        from contextlib import nullcontext
+
+        ctx = Mock()
+        ctx.info = AsyncMock()
+        ctx.warning = AsyncMock()
+
+        debug_info: list[str] = []
+
+        with patch(
+            "kbbridge.services.assistant_service._rew.LLMQueryRewriter"
+        ) as mock_rewriter, patch(
+            "kbbridge.services.assistant_service.profile_stage",
+            return_value=nullcontext(),
+        ):
+            instance = mock_rewriter.return_value
+            instance.rewrite_query.side_effect = Exception("nope")
+
+            result = await _rewrite_query(
+                "short query",
+                {
+                    "llm_api_url": "https://api",
+                    "llm_model": "gpt",
+                    "llm_api_token": "tok",
+                },
+                debug_info,
+                {},
+                ctx,
+            )
+
+        assert result == "short query"
+        assert any("failed" in msg for msg in debug_info)
+        ctx.warning.assert_called_once()
 
 
 class TestAssistantServiceQueryProcessing:

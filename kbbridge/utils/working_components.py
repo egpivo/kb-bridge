@@ -174,19 +174,19 @@ class KnowledgeBaseRetriever:
 
         response = None
         try:
-            print(f"DEBUG: Calling Dify API: {url}")
-            print(f"DEBUG: Payload: {json.dumps(payload, indent=2)}")
+            logger.debug(f"Calling Dify API: {url}")
+            logger.debug(f"Payload: {json.dumps(payload, indent=2)}")
 
             response = requests.post(
                 url,
                 headers=headers,
                 json=payload,
-                timeout=AssistantDefaults.DIFY_API_TIMEOUT.value,
+                timeout=AssistantDefaults.RETRIEVAL_API_TIMEOUT.value,
             )
             response.raise_for_status()
 
             data = response.json()
-            print(f"DEBUG: Dify API Response: {json.dumps(data, indent=2)}")
+            logger.debug(f"Dify API Response: {json.dumps(data, indent=2)}")
 
             # Return raw Dify response for compatibility with tests and integrations
             return data

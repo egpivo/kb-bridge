@@ -253,6 +253,40 @@ class TestFileListerService:
                 assert "error" in result
                 assert "Exception: Unexpected error" in result["error"]
 
+    def test_file_lister_service_success_path(self, mock_credentials):
+        """Test happy path with pagination"""
+        with patch(
+            "kbbridge.services.file_lister_service.RetrievalCredentials"
+        ) as mock_creds_class, patch(
+            "kbbridge.services.file_lister_service.BackendAdapterFactory"
+        ) as mock_factory:
+            mock_creds = Mock()
+            mock_creds.validate.return_value = (True, None)
+            mock_creds.backend_type = "dify"
+            mock_creds_class.return_value = mock_creds
+
+            mock_adapter = Mock()
+            mock_adapter.list_files.return_value = [
+                "a.pdf",
+                "b.pdf",
+                "c.pdf",
+            ]
+            mock_factory.create.return_value = mock_adapter
+
+            result = file_lister_service(
+                resource_id="dataset-123",
+                retrieval_endpoint="https://dify.example",
+                retrieval_api_key="key",
+                limit=2,
+                offset=1,
+            )
+
+            assert result["files"] == ["b.pdf", "c.pdf"][:2]
+            assert result["total"] == 3
+            assert result["limit"] == 2
+            assert result["offset"] == 1
+            assert result["returned"] == 2
+
 
 class TestKeywordGeneratorService:
     """Test keyword_generator_service functionality"""

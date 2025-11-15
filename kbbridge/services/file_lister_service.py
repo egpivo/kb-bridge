@@ -6,11 +6,13 @@ from kbbridge.integrations import BackendAdapterFactory, RetrievalCredentials
 def file_lister_service(
     resource_id: str,
     timeout: int = 30,
+    limit: Optional[int] = None,
+    offset: int = 0,
     backend_type: Optional[str] = None,
     retrieval_endpoint: Optional[str] = None,
     retrieval_api_key: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """List files in a knowledge base resource."""
+    """List files in a knowledge base resource with pagination support."""
     try:
         if not resource_id:
             return {"error": "resource_id is required"}
@@ -33,7 +35,21 @@ def file_lister_service(
         )
 
         files = adapter.list_files(timeout=timeout)
-        return {"files": files}
+
+        # Apply pagination
+        total_files = len(files)
+        if offset > 0:
+            files = files[offset:]
+        if limit is not None:
+            files = files[:limit]
+
+        return {
+            "files": files,
+            "total": total_files,
+            "limit": limit,
+            "offset": offset,
+            "returned": len(files),
+        }
 
     except NotImplementedError as e:
         return {"error": str(e)}

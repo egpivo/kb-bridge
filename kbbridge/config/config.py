@@ -1,6 +1,8 @@
 import os
 from typing import Any, Dict, Optional
 
+from pydantic import BaseModel
+
 from kbbridge.config.env_loader import get_env_bool, get_env_int
 
 
@@ -29,6 +31,18 @@ class Credentials:
     def is_reranking_available(self) -> bool:
         """Check if reranking is available based on credentials."""
         return bool(self.rerank_url and self.rerank_model)
+
+
+class SessionConfig(BaseModel):
+    """Session configuration passed per user/session."""
+
+    retrieval_endpoint: Optional[str] = None
+    retrieval_api_key: Optional[str] = None
+    llm_api_url: Optional[str] = None
+    llm_model: Optional[str] = None
+    llm_api_token: Optional[str] = None
+    rerank_url: Optional[str] = None
+    rerank_model: Optional[str] = None
 
 
 class Config:
@@ -115,7 +129,9 @@ class Config:
                 "OVERALL_REQUEST_TIMEOUT", 300
             ),  # 5 minutes
             "mcp_client_timeout": get_env_int("MCP_CLIENT_TIMEOUT", 300),  # 5 minutes
-            "dify_api_timeout": get_env_int("DIFY_API_TIMEOUT", 60),  # 1 minute
+            "retrieval_api_timeout": get_env_int(
+                "RETRIEVAL_API_TIMEOUT", 60
+            ),  # 1 minute
             "llm_timeout": get_env_int("LLM_TIMEOUT_SECONDS", 120),  # 2 minutes
         }
 

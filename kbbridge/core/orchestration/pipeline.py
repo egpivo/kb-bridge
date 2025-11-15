@@ -105,24 +105,29 @@ class FileSearchStrategy:
                 else:
                     discover = self.discover_factory(resource_id)
                     metadata_filter = discover.retriever.build_metadata_filter()
+                    # Determine reranking configuration
+                    do_file_rerank = (
+                        self.credentials.is_reranking_available()
+                        if self.credentials
+                        else False
+                    )
+                    rerank_url = (
+                        self.credentials.rerank_url if self.credentials else None
+                    )
+                    rerank_model = (
+                        self.credentials.rerank_model if self.credentials else None
+                    )
+
                     files = discover(
                         query=query,
                         search_method=RetrieverSearchMethod.SEMANTIC_SEARCH.value,
                         top_k_recall=AssistantDefaults.TOP_K_PER_KEYWORD.value,
                         top_k_return=AssistantDefaults.MAX_FILES.value,
                         do_chunk_rerank=False,
-                        do_file_rerank=(
-                            self.credentials.is_reranking_available()
-                            if self.credentials
-                            else False
-                        ),
+                        do_file_rerank=do_file_rerank,
                         metadata_filter=metadata_filter,
-                        rerank_url=self.credentials.rerank_url
-                        if self.credentials
-                        else None,
-                        rerank_model=self.credentials.rerank_model
-                        if self.credentials
-                        else None,
+                        rerank_url=rerank_url,
+                        rerank_model=rerank_model,
                         relevance_score_threshold=AssistantDefaults.RELEVANCE_SCORE_THRESHOLD.value,
                     )
 
@@ -229,6 +234,32 @@ class FileSearchStrategy:
 class DirectApproachProcessor:
     """Processes queries using the direct approach"""
 
+    @staticmethod
+    def _validate_retriever(retriever, context_name: str) -> Optional[Dict[str, Any]]:
+        """Validate retriever is available and has required methods."""
+        if not retriever:
+            logger.error(f"Retriever is None for {context_name}")
+            return {
+                "success": False,
+                "error": "Retriever not initialized",
+                "details": "The retriever was not properly initialized",
+            }
+
+        if not hasattr(retriever, "build_metadata_filter"):
+            logger.error(
+                f"Retriever missing build_metadata_filter method for {context_name}"
+            )
+            logger.debug(f"Retriever type: {type(retriever)}")
+            logger.debug(
+                f"Retriever methods: {[m for m in dir(retriever) if not m.startswith('_')]}"
+            )
+            return {
+                "success": False,
+                "error": "Retriever missing required method",
+                "details": f"Retriever type {type(retriever)} does not have build_metadata_filter method",
+            }
+        return None
+
     def __init__(
         self,
         retriever: Retriever,
@@ -257,6 +288,14 @@ class DirectApproachProcessor:
         logger.debug(
             f"Query: '{query}', top_k: {top_k}, score_threshold: {score_threshold}"
         )
+
+        # Validate retriever
+        validation_error = self._validate_retriever(
+            self.retriever, f"resource {resource_id}"
+        )
+        if validation_error:
+            validation_error["debug_info"] = debug_info if self.verbose else []
+            return validation_error
 
         # Build metadata filter
         metadata_filter = self.retriever.build_metadata_filter(
@@ -378,27 +417,25 @@ class DirectApproachProcessor:
 
         answer = extraction_result.get("answer", "")
 
-        # Enhanced logging with metrics
-        logger.info(f"Answer extraction successful:")
-        logger.info(f"   EXTRACTION METRICS:")
+        # Log extraction success with summary metrics
         logger.info(
-            f"      - Input context: {len(context):,} chars from {len(segments)} segments"
+            f"Answer extraction successful: {len(answer):,} chars from {len(segments)} segments ({len(context):,} context chars)"
         )
-        logger.info(f"      - Output answer: {len(answer):,} chars")
 
-        # Count terms/items (rough estimate)
-        output_lines = answer.split("\n")
-        numbered_items = sum(
-            1
-            for line in output_lines
-            if line.strip()
-            and (
-                line.strip()[0:2].rstrip(".").isdigit()
-                or line.strip().startswith("•")
-                or line.strip().startswith("-")
+        # Count terms/items (rough estimate) - log at debug level
+        if self.verbose:
+            output_lines = answer.split("\n")
+            numbered_items = sum(
+                1
+                for line in output_lines
+                if line.strip()
+                and (
+                    line.strip()[0:2].rstrip(".").isdigit()
+                    or line.strip().startswith("•")
+                    or line.strip().startswith("-")
+                )
             )
-        )
-        logger.info(f"   Estimated items in extracted answer: ~{numbered_items}")
+            logger.debug(f"Estimated items in extracted answer: ~{numbered_items}")
 
         return {
             "success": True,
@@ -482,7 +519,7 @@ class AdvancedApproachProcessor:
             return self._format_no_files_found(debug_info, approach_profiling)
 
         # File searcher already enforces MAX_FILES limit with reranking
-        logger.info(f"📁 Processing {len(file_names)} files from file search")
+        logger.info(f"Processing {len(file_names)} files from file search")
 
         if self.verbose:
             debug_info.append(f"Processing {len(file_names)} files")
@@ -700,6 +737,7 @@ class AdvancedApproachProcessor:
             # List to collect answers from different queries for this file
             all_answers = []
             all_segments = []
+            extraction_failures = []  # Track failed extractions with details
 
             # Process each query (original + boosted ones)
             for query_text, query_type in queries_to_process:
@@ -712,8 +750,40 @@ class AdvancedApproachProcessor:
                     all_segments,
                 )
 
+                # Track successful answers
                 if query_result.get("success") and query_result.get("answer"):
-                    all_answers.append(query_result)
+                    answer_text = query_result.get("answer", "").strip()
+                    # Only add non-empty, non-N/A answers
+                    if (
+                        answer_text
+                        and answer_text.upper() != ResponseMessages.NO_ANSWER
+                    ):
+                        all_answers.append(query_result)
+                # Track extraction failures for better error reporting
+                elif query_result.get("success") and not query_result.get("answer"):
+                    # Extraction succeeded but returned empty answer
+                    extraction_failures.append(
+                        {
+                            "query": query_text,
+                            "error": "Answer extraction returned empty answer",
+                            "details": {
+                                "segments_count": query_result.get("segments_count", 0),
+                                "context_length": query_result.get("input_chars", 0),
+                            },
+                        }
+                    )
+                elif not query_result.get("success"):
+                    # Extraction failed
+                    extraction_failures.append(
+                        {
+                            "query": query_text,
+                            "error": query_result.get(
+                                "error", "Answer extraction failed"
+                            ),
+                            "details": query_result.get("details", {}),
+                            "segments_count": query_result.get("segments_count", 0),
+                        }
+                    )
 
             # Combine answers from all queries (prioritize higher content coverage and clarity)
             if all_answers:
@@ -810,7 +880,51 @@ class AdvancedApproachProcessor:
 
                 return response_data
             else:
-                return self._format_no_segments(file_name, file_profiling)
+                # No successful answers - check if segments were found but extraction failed
+                if all_segments:
+                    # Segments were found but answer extraction returned empty/N/A
+                    # Extract the actual error from the first extraction failure
+                    primary_error = (
+                        "Answer extraction returned empty/N/A for all queries"
+                    )
+                    primary_message = "Segments were retrieved but answer extractor returned empty or N/A answers. This may indicate the retrieved content doesn't contain relevant information for the query."
+
+                    if extraction_failures:
+                        first_failure = extraction_failures[0]
+                        primary_error = first_failure.get("error", primary_error)
+                        if "details" in first_failure:
+                            failure_details = first_failure.get("details", {})
+                            if isinstance(failure_details, dict):
+                                # Extract nested error information
+                                nested_error = failure_details.get(
+                                    "extraction_error"
+                                ) or failure_details.get("error")
+                                nested_message = failure_details.get(
+                                    "extraction_message"
+                                ) or failure_details.get("message")
+                                if nested_error:
+                                    primary_error = nested_error
+                                if nested_message:
+                                    primary_message = nested_message
+
+                    return {
+                        "file_name": file_name,
+                        "success": False,
+                        "error": primary_error,
+                        "message": primary_message,
+                        "details": {
+                            "segments_found": len(all_segments),
+                            "queries_processed": len(queries_to_process),
+                            "extraction_failures": extraction_failures[
+                                :3
+                            ],  # Show first 3 failures
+                        },
+                        "total_segments": len(all_segments),
+                        "profiling": file_profiling if self.verbose else {},
+                    }
+                else:
+                    # No segments found at all
+                    return self._format_no_segments(file_name, file_profiling)
 
         except Exception as e:
             return self._format_file_exception(file_name, str(e), file_profiling)
@@ -832,9 +946,23 @@ class AdvancedApproachProcessor:
                 query_profiling,
                 self.verbose,
             ):
+                # Validate retriever
+                validation_error = DirectApproachProcessor._validate_retriever(
+                    self.retriever, f"file '{file_name}'"
+                )
+                if validation_error:
+                    return validation_error
+
                 # Build metadata filter targeting this specific file
                 metadata_filter = self.retriever.build_metadata_filter(
                     document_name=file_name
+                )
+
+                # Check if reranking should be enabled based on credentials
+                does_rerank = (
+                    self.credentials.is_reranking_available()
+                    if self.credentials
+                    else False
                 )
 
                 # Retrieve relevant segments
@@ -845,7 +973,7 @@ class AdvancedApproachProcessor:
                         dataset_id=resource_id,  # Backward compatibility
                         query=query_for_rerank,
                         search_method=RetrieverSearchMethod.HYBRID_SEARCH.value,
-                        does_rerank=False,
+                        does_rerank=does_rerank,
                         top_k=min(
                             top_k, AssistantDefaults.MAX_TOP_K_PER_FILE_QUERY.value
                         )
@@ -864,7 +992,7 @@ class AdvancedApproachProcessor:
                         )
                         if self.adaptive_top_k_enabled
                         else top_k,
-                        does_rerank=False,
+                        does_rerank=does_rerank,
                         score_threshold_enabled=False,
                         metadata_filter=metadata_filter,
                         weights=RetrieverDefaults.WEIGHTS.value,
@@ -876,25 +1004,148 @@ class AdvancedApproachProcessor:
                     query_profiling["segments_count"] = len(segments)
 
                 if not segments:
-                    logger.info(
-                        f"   No segments found for file '{file_name}' with query type '{'boosted' if query_for_rerank != original_query else 'original'}'"
+                    # Log warning and collect diagnostic info
+                    query_type = (
+                        "boosted" if query_for_rerank != original_query else "original"
                     )
-                    return {"success": False, "error": "No segments found"}
+                    logger.warning(
+                        f"No segments found for file '{file_name}' with {query_type} query"
+                    )
+
+                    # Collect essential diagnostic info
+                    effective_top_k = (
+                        min(top_k, AssistantDefaults.MAX_TOP_K_PER_FILE_QUERY.value)
+                        if self.adaptive_top_k_enabled
+                        else top_k
+                    )
+                    diagnostic_info = {
+                        "query": query_for_rerank[:200],
+                        "metadata_filter": metadata_filter,
+                        "top_k": top_k,
+                        "effective_top_k": effective_top_k,
+                        "reranking_enabled": does_rerank,
+                    }
+
+                    # Add API response details if available
+                    if isinstance(retrieval_result, dict):
+                        records_count = len(retrieval_result.get("records", []))
+                        diagnostic_info["raw_records_count"] = records_count
+                        logger.debug(
+                            f"API returned {records_count} records for file '{file_name}'"
+                        )
+
+                        if records_count > 0:
+                            # Check if file name matches any returned documents
+                            sample_records = retrieval_result.get("records", [])[:3]
+                            doc_names = [
+                                rec.get("segment", {})
+                                .get("document", {})
+                                .get("name", "")
+                                or rec.get("segment", {})
+                                .get("document", {})
+                                .get("doc_metadata", {})
+                                .get("document_name", "")
+                                for rec in sample_records
+                            ]
+                            doc_names = [name for name in doc_names if name]
+                            if doc_names:
+                                file_match = file_name in doc_names or any(
+                                    file_name in name or name in file_name
+                                    for name in doc_names
+                                )
+                                diagnostic_info["sample_document_names"] = doc_names
+                                diagnostic_info["target_file_name"] = file_name
+                                diagnostic_info["file_name_match"] = file_match
+                                logger.debug(
+                                    f"File name match: {file_match} (target: '{file_name}', found: {doc_names})"
+                                )
+                        else:
+                            diagnostic_info[
+                                "diagnosis"
+                            ] = "API returned 0 records - query may not match any segments"
+
+                    return {
+                        "success": False,
+                        "error": "No segments found",
+                        "details": diagnostic_info,
+                    }
 
                 # Build context and extract answer
                 context = build_context_from_segments(segments, self.verbose)
+
+                # Log before extraction
+                logger.info(f"Extracting answer for file '{file_name}':")
+                logger.info(f"  Query: '{original_query}'")
+                logger.info(f"  Segments: {len(segments)}")
+                logger.info(f"  Context length: {len(context)} chars")
+                if segments:
+                    logger.info(
+                        f"  First segment preview: {segments[0].get('content', '')[:200]}..."
+                    )
+
                 extraction_result = self.answer_extractor.extract(
                     context, original_query
                 )
 
                 if not extraction_result.get("success"):
+                    error_msg = extraction_result.get("error", "Unknown error")
+                    error_message = extraction_result.get("message", "")
+                    error_details = extraction_result.get("details", {})
+
+                    logger.error(f"  Answer extraction failed for file '{file_name}':")
+                    logger.error(f"  Full extraction_result: {extraction_result}")
+                    logger.error(f"  Error field: {error_msg}")
+                    logger.error(f"  Message field: {error_message}")
+                    logger.error(f"  Details field: {error_details}")
+                    logger.error(f"  Query: '{original_query}'")
+                    logger.error(f"  Segments: {len(segments)}")
+                    logger.error(f"  Context length: {len(context)} chars")
+                    if segments:
+                        logger.error(
+                            f"  First segment content preview: {segments[0].get('content', '')[:300]}..."
+                        )
+                    logger.error(
+                        f"  Context preview (first 500 chars): {context[:500]}..."
+                    )
+
+                    # Preserve the original error from extraction_result
                     return {
                         "success": False,
-                        "error": "Answer extraction failed",
-                        "details": extraction_result,
+                        "error": error_msg
+                        if error_msg != "Unknown error"
+                        else "Answer extraction failed",
+                        "message": error_message
+                        if error_message
+                        else f"Answer extraction failed: {error_msg}",
+                        "details": {
+                            "extraction_error": error_msg,
+                            "extraction_message": error_message,
+                            "extraction_details": error_details,
+                            "segments_count": len(segments),
+                            "context_length": len(context),
+                            "query": original_query,
+                            "full_extraction_result": extraction_result,  # Include full result for debugging
+                        },
+                        "segments_count": len(segments),
+                        "input_chars": len(context),
                     }
 
+                # Log successful extraction
                 answer = extraction_result.get("answer", "")
+                if answer and answer.strip().upper() != ResponseMessages.NO_ANSWER:
+                    logger.info(
+                        f"Answer extracted successfully for file '{file_name}':"
+                    )
+                    logger.info(f"  Answer length: {len(answer)} chars")
+                    logger.info(f"  Answer preview: {answer[:200]}...")
+                else:
+                    logger.warning(
+                        f"Answer extraction returned empty/N/A for file '{file_name}':"
+                    )
+                    logger.warning(f"  Answer: '{answer}'")
+                    logger.warning(
+                        f"  This may indicate the context doesn't contain relevant information"
+                    )
                 if self.verbose:
                     query_profiling["answer_length"] = len(answer)
                     query_profiling["segments_count"] = len(segments)
@@ -947,6 +1198,13 @@ class AdvancedApproachProcessor:
 
         return "\n".join(combined_lines)
 
+    def _format_segments(
+        self, retrieval_result: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """Format retrieval results into segments"""
+        formatted_results = format_search_results([retrieval_result])
+        return formatted_results.get("result", [])
+
     def _format_no_segments(
         self, file_name: str, profiling: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -956,6 +1214,8 @@ class AdvancedApproachProcessor:
         return {
             "file_name": file_name,
             "success": False,
+            "error": "No segments found for this file",
+            "message": "No relevant segments were retrieved for this file. The file may not contain information relevant to the query.",
             "answer": "",
             "total_segments": 0,
             "segments": [],
@@ -1009,6 +1269,30 @@ class AdvancedApproachProcessor:
 class DatasetProcessor:
     """Coordinates processing across multiple datasets"""
 
+    @staticmethod
+    def _extract_error_from_answer(answer: Dict[str, Any]) -> str:
+        """Extract error message from answer dict, checking multiple fields."""
+        error_msg = answer.get("error")
+        if error_msg:
+            return error_msg
+
+        error_msg = answer.get("message")
+        if error_msg:
+            return error_msg
+
+        if "details" in answer:
+            details = answer.get("details", {})
+            if isinstance(details, dict):
+                error_msg = (
+                    details.get("extraction_error")
+                    or details.get("error")
+                    or details.get("message")
+                )
+                if error_msg:
+                    return error_msg
+
+        return "Answer extraction failed"
+
     def __init__(
         self,
         components: Dict[str, Any],
@@ -1029,15 +1313,28 @@ class DatasetProcessor:
             self.credentials,
             verbose=config.verbose,
         )
+        # Log retriever type for debugging
+        retriever = components.get("retriever")
+        if retriever:
+            logger.debug(f"Initial retriever type: {type(retriever)}")
+            logger.debug(
+                f"Retriever methods: build_metadata_filter={hasattr(retriever, 'build_metadata_filter')}, "
+                f"call={hasattr(retriever, 'call')}, retrieve={hasattr(retriever, 'retrieve')}"
+            )
+        else:
+            logger.debug(
+                "No retriever in components - will use retriever_factory per resource"
+            )
+
         self.direct_processor = DirectApproachProcessor(
-            components.get("retriever"),
+            retriever,
             components["answer_extractor"],
             verbose=config.verbose,
             custom_instructions=custom_instructions,
             credentials=credentials,
         )
         self.advanced_processor = AdvancedApproachProcessor(
-            components.get("retriever"),
+            retriever,
             components["answer_extractor"],
             verbose=config.verbose,
             custom_instructions=custom_instructions,
@@ -1101,9 +1398,27 @@ class DatasetProcessor:
             per_resource_components = dict(self.components)
             retriever_factory = self.components.get("retriever_factory")
             if retriever_factory:
-                per_resource_components["retriever"] = retriever_factory(
-                    resource_id_value
-                )
+                per_resource_retriever = retriever_factory(resource_id_value)
+                if per_resource_retriever:
+                    logger.info(
+                        f"Created per-resource retriever for {resource_id_value}: {type(per_resource_retriever)}"
+                    )
+                    logger.info(
+                        f"  Has build_metadata_filter: {hasattr(per_resource_retriever, 'build_metadata_filter')}"
+                    )
+                    logger.info(
+                        f"  Has call: {hasattr(per_resource_retriever, 'call')}"
+                    )
+                    logger.info(
+                        f"  Has retrieve: {hasattr(per_resource_retriever, 'retrieve')}"
+                    )
+                    per_resource_components["retriever"] = per_resource_retriever
+                else:
+                    logger.error(
+                        f"Retriever factory returned None for resource {resource_id_value}"
+                    )
+            else:
+                logger.error("No retriever_factory in components")
 
             # IMPORTANT: Use per-resource processors so retriever is bound to the resource
             direct_processor = DirectApproachProcessor(
@@ -1162,15 +1477,24 @@ class DatasetProcessor:
             # Convert file-level answers to candidate answers
             file_answers = advanced_result.get("file_answers", [])
             for answer in file_answers:
-                candidates.append(
-                    {
-                        "source": "advanced",
-                        "resource_id": resource_id_value,
-                        "file_name": answer.get("file_name", ""),
-                        "answer": answer.get("answer", ""),
-                        "success": answer.get("success", False),
-                    }
-                )
+                candidate = {
+                    "source": "advanced",
+                    "resource_id": resource_id_value,
+                    "file_name": answer.get("file_name", ""),
+                    "answer": answer.get("answer", ""),
+                    "success": answer.get("success", False),
+                }
+                # Include error information if extraction failed
+                if not answer.get("success", False):
+                    candidate["error"] = self._extract_error_from_answer(answer)
+
+                    # Always include details if available
+                    if "details" in answer:
+                        candidate["details"] = answer.get("details")
+                    # Also include message if available
+                    if "message" in answer:
+                        candidate["message"] = answer.get("message")
+                candidates.append(candidate)
 
             # Add direct answer as fallback candidate to avoid empty candidate sets
             direct_answer_text = direct_result.get("answer", "")

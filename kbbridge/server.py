@@ -1,16 +1,17 @@
 import argparse
 import asyncio
 import json
-import logging
 import os
+from pathlib import Path
 from typing import Optional
 
+from dotenv import load_dotenv
 from fastmcp import Context, FastMCP
-from pydantic import BaseModel
 
 from kbbridge.config.config import Config
 from kbbridge.config.constants import AssistantDefaults, RetrieverDefaults
 from kbbridge.config.env_loader import get_env_int, load_env_file, print_env_status
+from kbbridge.logger import setup_logging
 from kbbridge.middleware import MCPConfigHelper, require_auth
 from kbbridge.middleware._auth_core import get_current_credentials
 from kbbridge.prompts import mcp as prompts_mcp
@@ -20,79 +21,19 @@ from kbbridge.services.file_lister_service import file_lister_service
 from kbbridge.services.keyword_generator_service import keyword_generator_service
 from kbbridge.services.retriever_service import retriever_service
 
-
-# Configure logging based on environment
-def get_log_level():
-    """Get log level from environment variable."""
-    env_level = os.getenv("LOG_LEVEL", "INFO").upper()
-    level_map = {
-        "DEBUG": logging.DEBUG,
-        "INFO": logging.INFO,
-        "WARNING": logging.WARNING,
-        "ERROR": logging.ERROR,
-        "CRITICAL": logging.CRITICAL,
-    }
-    return level_map.get(env_level, logging.INFO)
-
-
-# Load environment variables from .env file
-load_env_file()
-
-# Configure logging
-log_level = get_log_level()
-
-# Setup handlers for both console and file output
-handlers = [logging.StreamHandler()]  # Console output
-
-# Add file handler if enabled (useful for STDIO transport where console is captured)
-if os.getenv("LOG_TO_FILE", "false").lower() == "true":
-    log_file = os.getenv("LOG_FILE", "kbbridge_server.log")
-    file_handler = logging.FileHandler(log_file, mode="a")
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    )
-    handlers.append(file_handler)
-
-logging.basicConfig(
-    level=log_level,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=handlers,
-)
-logger = logging.getLogger(__name__)
-logger.info(f"Logging configured with level: {logging.getLevelName(log_level)}")
-if os.getenv("LOG_TO_FILE") == "true":
-    logger.info(f"File logging enabled: {os.getenv('LOG_FILE', 'qa_hub_server.log')}")
-
-print_env_status()
-
+# Note: Environment variables and logging will be initialized in main()
+# This allows custom env files to be specified via --env-file argument
 # Initialize FastMCP
 mcp = FastMCP("kb-mcp-server")
 
 # Mount prompts
 mcp.mount(prompts_mcp)
 
-# Initialize credential manager and load default credentials
+# Initialize credential manager (logging will be set up in main())
 config_helper = MCPConfigHelper()
-config_helper.apply_to_environment()
 
-# Set environment variables to disable multiprocessing globally
-# Only override if not already set in .env file
-if "MAX_WORKERS" not in os.environ:
-    os.environ["MAX_WORKERS"] = "1"
-if "USE_CONTENT_BOOSTER" not in os.environ:
-    os.environ["USE_CONTENT_BOOSTER"] = "false"
-
-
-class SessionConfig(BaseModel):
-    """Session configuration passed per user/session."""
-
-    retrieval_endpoint: Optional[str] = None
-    retrieval_api_key: Optional[str] = None
-    llm_api_url: Optional[str] = None
-    llm_model: Optional[str] = None
-    llm_api_token: Optional[str] = None
-    rerank_url: Optional[str] = None
-    rerank_model: Optional[str] = None
+# Logger will be initialized in main() after loading env file
+logger = None
 
 
 # MCP Tools
@@ -105,6 +46,10 @@ async def assistant(
     custom_instructions: Optional[str] = None,
     document_name: str = "",
     enable_query_rewriting: bool = False,
+    enable_query_decomposition: bool = False,
+    enable_reflection: Optional[bool] = None,
+    reflection_threshold: Optional[float] = None,
+    verbose: Optional[bool] = None,
 ) -> str:
     """Search and extract answers from knowledge bases."""
     await ctx.info(f"Executing assistant for query: {query}")
@@ -122,7 +67,6 @@ async def assistant(
             return "Error: No credentials available"
 
         # Note: dify_endpoint is a backward-compat property → retrieval_endpoint
-        await ctx.info(f"Using retrieval endpoint: {credentials.retrieval_endpoint}")
         await ctx.info(f"Request timeout set to: {timeout_seconds} seconds")
 
         await ctx.info("Calling assistant_service...")
@@ -136,6 +80,10 @@ async def assistant(
                     custom_instructions=custom_instructions,
                     document_name=document_name,
                     enable_query_rewriting=enable_query_rewriting,
+                    enable_query_decomposition=enable_query_decomposition,
+                    enable_reflection=enable_reflection,
+                    reflection_threshold=reflection_threshold,
+                    verbose=verbose,  # Pass verbose parameter directly
                 ),
                 timeout=timeout_seconds,
             )
@@ -246,6 +194,8 @@ async def file_lister(
         result = file_lister_service(
             resource_id=resource_id,
             timeout=timeout,
+            limit=limit,
+            offset=offset,
             backend_type=backend_type,
             retrieval_endpoint=credentials.retrieval_endpoint,
             retrieval_api_key=credentials.retrieval_api_key,
@@ -276,16 +226,12 @@ async def keyword_generator(
             await ctx.error("No credentials available")
             return "Error: No credentials available"
 
-        result = keyword_generator_service.fn(
+        result = keyword_generator_service(
             query=query,
             max_sets=max_sets,
-            retrieval_endpoint=credentials.retrieval_endpoint,
-            retrieval_api_key=credentials.retrieval_api_key,
             llm_api_url=credentials.llm_api_url,
             llm_model=credentials.llm_model,
             llm_api_token=credentials.llm_api_token,
-            rerank_url=credentials.rerank_url,
-            rerank_model=credentials.rerank_model,
         )
 
         return json.dumps(result)
@@ -393,6 +339,8 @@ def create_server() -> FastMCP:
 
 async def main():
     """Main entry point for the MCP server."""
+    global logger
+
     parser = argparse.ArgumentParser(
         description="Knowledge Base MCP Server - Working Version"
     )
@@ -403,18 +351,58 @@ async def main():
     parser.add_argument(
         "--transport", default="streamable-http", help="Transport method"
     )
+    parser.add_argument(
+        "--env-file",
+        type=str,
+        default=None,
+        help="Path to .env file (default: .env in project root)",
+    )
 
     args = parser.parse_args()
 
-    logger.info("Starting Knowledge Base MCP Server (Working Version)")
-    logger.info(f"Host: {args.host}")
-    logger.info(f"Port: {args.port}")
-    logger.info(f"URL: http://{args.host}:{args.port}")
-    logger.info(f"MCP Endpoint: http://{args.host}:{args.port}/mcp")
-    logger.info("Authentication: Header-based credential support")
-    logger.info("Fixes: Single-threaded processing, no multiprocessing")
+    # Load environment variables first (before setting up logging)
+    # This ensures logging config comes from the correct env file
+    env_loaded = False
+    if args.env_file:
+        env_path = Path(args.env_file)
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+            env_loaded = True
+        else:
+            # Custom env file not found, fall back to default
+            env_loaded = load_env_file()
+    else:
+        # Load default .env file
+        env_loaded = load_env_file()
+    logger = setup_logging()
 
-    # Show credential configuration status
+    # Log which env file was loaded (now that logging is set up)
+    if args.env_file:
+        if env_loaded:
+            logger.info(f"Loaded environment variables from: {args.env_file}")
+        else:
+            logger.warning(
+                f"Custom env file not found at {args.env_file}, using default .env"
+            )
+    else:
+        if env_loaded:
+            logger.info("Loaded environment variables from default .env")
+        else:
+            logger.warning(
+                "No .env file found, using environment variables and defaults"
+            )
+
+    # Now initialize components that depend on environment variables
+    config_helper.apply_to_environment()
+
+    # Set environment variables to disable multiprocessing globally
+    # Only override if not already set in .env file
+    if "MAX_WORKERS" not in os.environ:
+        os.environ["MAX_WORKERS"] = "1"
+    if "USE_CONTENT_BOOSTER" not in os.environ:
+        os.environ["USE_CONTENT_BOOSTER"] = "false"
+
+    print_env_status()
     validation = config_helper.validate_credentials()
     env_creds_present = Config.get_default_credentials() is not None
     if validation["valid"]:

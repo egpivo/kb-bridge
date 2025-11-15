@@ -83,13 +83,9 @@ def print_env_status():
     timeout_vars = [
         "OVERALL_REQUEST_TIMEOUT",
         "MCP_CLIENT_TIMEOUT",
-        "DIFY_API_TIMEOUT",
+        "RETRIEVAL_API_TIMEOUT",
         "LLM_TIMEOUT_SECONDS",
     ]
     for var in timeout_vars:
         value = os.getenv(var, "not set")
         logger.debug(f"{var}: {value}")
-
-
-# Auto-load .env file when module is imported
-load_env_file()

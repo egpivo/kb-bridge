@@ -95,14 +95,18 @@ For production deployments, use container orchestration platforms like Kubernete
 
 ```python
 import asyncio
-from mcp import ClientSession
+from fastmcp import Client
+
 
 async def main():
-    async with ClientSession("http://localhost:5210/mcp") as session:
-        result = await session.call_tool("assistant", {
-            "resource_id": "resource-id",
-            "query": "What are the safety protocols?"
-        })
+    async with Client("http://localhost:5210/mcp") as client:
+        result = await client.call_tool(
+            "assistant",
+            {
+                "resource_id": "resource-id",
+                "query": "What are the safety protocols?",
+            },
+        )
         print(result.content[0].text)
 
 asyncio.run(main())
@@ -111,7 +115,7 @@ asyncio.run(main())
 ### With Custom Instructions
 
 ```python
-await session.call_tool("assistant", {
+await client.call_tool("assistant", {
     "resource_id": "hr_dataset",
     "query": "What is the maternity leave policy?",
     "custom_instructions": "Focus on HR compliance and legal requirements."
@@ -121,7 +125,7 @@ await session.call_tool("assistant", {
 ### With Query Rewriting
 
 ```python
-await session.call_tool("assistant", {
+await client.call_tool("assistant", {
     "resource_id": "resource-id",
     "query": "What are the safety protocols?",
     "enable_query_rewriting": True  # Enables LLM-based query expansion/relaxation
@@ -131,12 +135,26 @@ await session.call_tool("assistant", {
 ### With Document Filtering
 
 ```python
-await session.call_tool("assistant", {
+await client.call_tool("assistant", {
     "resource_id": "resource-id",
     "query": "What are the safety protocols?",
     "document_name": "safety_manual.pdf"  # Limit search to specific document
 })
 ```
+
+## Integration with Dify
+
+You can plug KB-Bridge into a Dify Agent Workflow instead of calling MCP tools directly:
+
+1. **Configure MCP Connection**
+   - MCP server URL: `http://localhost:5210/mcp`
+   - Add auth headers: `X-RETRIEVAL-ENDPOINT`, `X-RETRIEVAL-API-KEY`, `X-LLM-API-URL`, `X-LLM-MODEL`
+2. **Create an Agent Workflow**
+   - Add an “MCP Tool” node
+   - Select tool: `assistant`
+   - Map workflow variables to `resource_id`, `query`, and other tool parameters
+3. **Run Queries**
+   - User input → Agent → MCP `assistant` tool → Structured answer with citations
 
 ## Development
 

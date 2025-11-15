@@ -2,6 +2,7 @@
 Comprehensive tests for qa_hub.core.qa_hub.processors module
 """
 
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -201,6 +202,58 @@ class TestDirectApproachProcessor:
         assert result["success"] is True
         assert result["answer"] == "N/A"
 
+    def test_validate_retriever_missing_filter_method(self):
+        """_validate_retriever should surface missing metadata filter support."""
+        retriever = Mock(spec=["retrieve"])
+        validation = DirectApproachProcessor._validate_retriever(
+            retriever=retriever, context_name="test-resource"
+        )
+
+        assert validation["success"] is False
+        assert "missing required method" in validation["error"]
+
+    def test_retrieve_segments_uses_retrieve_method(self):
+        """_retrieve_segments prefers retrieve() when available."""
+        retriever = Mock()
+        retriever.retrieve.return_value = {"result": []}
+
+        processor = DirectApproachProcessor(
+            retriever,
+            Mock(),
+            credentials=SimpleNamespace(
+                is_reranking_available=lambda: True,
+            ),
+        )
+
+        result = processor._retrieve_segments(
+            "dataset-1", "query", {"conditions": []}, 0.4, 5
+        )
+
+        assert result == {"result": []}
+        retriever.retrieve.assert_called_once()
+        kwargs = retriever.retrieve.call_args.kwargs
+        assert kwargs["dataset_id"] == "dataset-1"
+        assert kwargs["metadata_filter"] == {"conditions": []}
+        assert kwargs["does_rerank"] is True
+
+    def test_retrieve_segments_uses_call_method(self):
+        """Falls back to call() when retrieve() is unavailable."""
+        retriever = Mock(spec=["build_metadata_filter", "call"])
+        retriever.call.return_value = {"result": []}
+
+        processor = DirectApproachProcessor(
+            retriever,
+            Mock(),
+            credentials=SimpleNamespace(is_reranking_available=lambda: False),
+        )
+
+        processor._retrieve_segments("res", "q", None, None, 3)
+
+        retriever.call.assert_called_once()
+        kwargs = retriever.call.call_args.kwargs
+        assert kwargs["metadata_filter"] is None
+        assert kwargs["does_rerank"] is False
+
 
 class TestAdvancedApproachProcessor:
     """Test AdvancedApproachProcessor class"""
@@ -322,6 +375,27 @@ class TestDatasetProcessor:
         assert processor.file_search_strategy is not None
         assert processor.direct_processor is not None
         assert processor.advanced_processor is not None
+
+    def test_extract_error_from_answer_variants(self):
+        """DatasetProcessor should normalize error payloads."""
+        assert (
+            DatasetProcessor._extract_error_from_answer({"error": "top-level error"})
+            == "top-level error"
+        )
+        assert (
+            DatasetProcessor._extract_error_from_answer({"message": "fallback"})
+            == "fallback"
+        )
+        assert (
+            DatasetProcessor._extract_error_from_answer(
+                {"details": {"message": "detail"}}
+            )
+            == "detail"
+        )
+        assert (
+            DatasetProcessor._extract_error_from_answer({})
+            == "Answer extraction failed"
+        )
 
     def test_process_datasets_success(self):
         """Test successful dataset processing"""

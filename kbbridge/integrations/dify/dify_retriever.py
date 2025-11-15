@@ -89,12 +89,10 @@ class DifyRetriever(Retriever):
         }
 
         logger.debug(f"[DIFY DEBUG] Calling Dify API: {method}, top_k={top_k}")
-        logger.warning(f"   URL: {url}")
-        logger.warning(
-            f"   Payload (metadata_filtering_conditions): {model.get('metadata_filtering_conditions', 'None')}"
+        logger.debug(f"URL: {url}")
+        logger.debug(
+            f"Payload (metadata_filtering_conditions): {model.get('metadata_filtering_conditions', 'None')}"
         )
-        logger.debug(f"Dify API URL: {url}")
-        logger.debug(f"Dify API Payload: {payload}")
 
         response = requests.post(
             url, headers=headers, json=payload, timeout=self.timeout
@@ -108,14 +106,14 @@ class DifyRetriever(Retriever):
             try:
                 error_detail = response.json()
                 logger.error(f"[DIFY DEBUG] Dify API error response: {error_detail}")
-            except:
+            except Exception:
                 error_detail = response.text
                 logger.error(f"[DIFY DEBUG] Dify API error text: {error_detail}")
             raise
 
         result = response.json()
         records_count = len(result.get("records", []))
-        logger.warning(
+        logger.debug(
             f"[DIFY DEBUG] Dify API response: {records_count} records returned"
         )
         if records_count == 0 and kw.get("metadata_filter"):
@@ -294,7 +292,7 @@ class DifyRetriever(Retriever):
                 data = resp.json().get("data", [])
                 files = [doc.get("name") for doc in data if doc.get("name")]
                 return files
-            except:
+            except Exception:
                 return []
 
     def enable_metadata(self, timeout: int = 30, force: bool = False) -> bool:
@@ -336,7 +334,7 @@ class DifyRetriever(Retriever):
             try:
                 error_detail = resp.json()
                 logger.error(f"Dify enable_metadata error response: {error_detail}")
-            except:
+            except Exception:
                 error_detail = resp.text
                 logger.error(f"Dify enable_metadata error text: {error_detail}")
             return False
@@ -372,7 +370,7 @@ class DifyRetriever(Retriever):
                 logger.debug(
                     f"Dify check_metadata_status error response: {error_detail}"
                 )
-            except:
+            except Exception:
                 error_detail = resp.text
                 logger.debug(f"Dify check_metadata_status error text: {error_detail}")
             return None

@@ -152,19 +152,23 @@ def stop_server(port=5210):
     Args:
         port: Server port (default: 5210)
     """
+
+    global server_process
+
     if server_process is not None and server_process.poll() is None:
         server_process.terminate()
         server_process.wait()
         print("Server stopped")
         server_process = None
-    else:
-        # Kill by port
-        subprocess.run(
-            ['pkill', '-f', f'kbbridge.server.*{port}'],
-            check=False
-        )
-        print("Stopped server")
-        server_process = None
+        return
+
+    # Kill by port
+    subprocess.run(
+        ['pkill', '-f', f'kbbridge.server.*{port}'],
+        check=False
+    )
+    print("Stopped server")
+    server_process = None
 
 
 def check_server_status():
@@ -174,6 +178,7 @@ def check_server_status():
     Returns:
         True if running, False otherwise
     """
+
     if server_process is not None:
         if server_process.poll() is None:
             print(f"✓ Server is running (PID: {server_process.pid})")

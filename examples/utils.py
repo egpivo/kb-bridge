@@ -15,7 +15,6 @@ stdout_thread: Optional[threading.Thread] = None
 
 def read_logs(pipe, log_type='stdout'):
     """Read logs from pipe and save them."""
-    global server_logs
     try:
         for line in iter(pipe.readline, ''):
             if line:
@@ -39,7 +38,7 @@ def start_server(host='0.0.0.0', port=5210, kill_existing=True):
     Returns:
         Server process object or None
     """
-    global server_process, stdout_thread, server_logs
+    global server_process, stdout_thread
     
     # Kill existing server if needed
     if kill_existing:
@@ -95,7 +94,6 @@ def show_logs(n_lines=50, follow=False):
         n_lines: How many lines to show (default: 50). Use 0 for all.
         follow: Keep showing new logs (default: False)
     """
-    global server_logs
     with log_lock:
         logs = list(server_logs)
     
@@ -142,7 +140,6 @@ def show_logs(n_lines=50, follow=False):
 
 def clear_logs():
     """Clear logs."""
-    global server_logs
     with log_lock:
         server_logs.clear()
     print("Logs cleared")
@@ -155,7 +152,6 @@ def stop_server(port=5210):
     Args:
         port: Server port (default: 5210)
     """
-    global server_process
     if server_process is not None and server_process.poll() is None:
         server_process.terminate()
         server_process.wait()
@@ -178,7 +174,6 @@ def check_server_status():
     Returns:
         True if running, False otherwise
     """
-    global server_process
     if server_process is not None:
         if server_process.poll() is None:
             print(f"✓ Server is running (PID: {server_process.pid})")

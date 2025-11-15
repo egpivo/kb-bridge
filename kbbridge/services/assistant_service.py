@@ -413,7 +413,7 @@ async def assistant_service(
                                 f"Answer extraction error details: {error_details[:200]}"
                             )
                         await ctx.info(
-                            f"💡 Tip: Check server logs (stdout/stderr) for detailed answer extractor logs including context previews"
+                            f"Tip: Check server logs (stdout/stderr) for detailed answer extractor logs including context previews"
                         )
                 if len(non_empty) < len(successful):
                     empty = [

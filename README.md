@@ -85,7 +85,7 @@ For production deployments, use container orchestration platforms like Kubernete
 KB-Bridge follows a multi-stage pipeline to ensure high-quality answers:
 
 ```mermaid
-flowchart TD
+flowchart LR
     Start([User Query]) --> Preprocess[Query Preprocessing<br/>Rewriting & Understanding]
 
     Preprocess --> FileDiscovery[File Discovery<br/>Find Relevant Files]

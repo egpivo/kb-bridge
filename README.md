@@ -86,46 +86,46 @@ KB-Bridge follows a multi-stage pipeline to ensure high-quality answers:
 
 ```mermaid
 flowchart TD
-    Start([User Query]) --> QueryRewrite{Query Rewriting<br/>Enabled?}
-    QueryRewrite|Yes| --> Rewrite[LLM Query Rewriting<br/>Expansion/Relaxation]
-    QueryRewrite|No| --> IntentionExtract
-    Rewrite --> IntentionExtract[Query Understanding<br/>Intention Extraction]
+    Start([User Query]) --> QueryRewrite{Query Rewriting Enabled?}
+    QueryRewrite -->|Yes| Rewrite[LLM Query Rewriting: Expansion/Relaxation]
+    QueryRewrite -->|No| IntentionExtract
+    Rewrite --> IntentionExtract[Query Understanding: Intention Extraction]
 
-    IntentionExtract --> QueryDecomp{Query<br/>Decomposition?}
-    QueryDecomp|Multi-part| --> MultiQuery[Multi-query Execution]
-    QueryDecomp|Single| --> FileDiscovery
+    IntentionExtract --> QueryDecomp{Query Decomposition?}
+    QueryDecomp -->|Multi-part| MultiQuery[Multi-query Execution]
+    QueryDecomp -->|Single| FileDiscovery
 
-    MultiQuery --> FileDiscovery[File Discovery<br/>Semantic Search + Reranking]
-    FileDiscovery --> FileEval{File Discovery<br/>Quality Evaluation<br/>Enabled?}
-    FileEval|Yes| --> EvalCheck{Quality<br/>Sufficient?}
-    EvalCheck|No| --> ExpandSearch[Expand Search<br/>Increase top_k]
-    EvalCheck|Yes| --> DirectApproach
+    MultiQuery --> FileDiscovery[File Discovery: Semantic Search + Reranking]
+    FileDiscovery --> FileEval{File Discovery Quality Evaluation Enabled?}
+    FileEval -->|Yes| EvalCheck{Quality Sufficient?}
+    EvalCheck -->|No| ExpandSearch[Expand Search: Increase top_k]
+    EvalCheck -->|Yes| DirectApproach
     ExpandSearch --> DirectApproach
-    FileEval|No| --> DirectApproach
+    FileEval -->|No| DirectApproach
 
-    DirectApproach[Direct Approach<br/>Naive Search<br/>Query → Retrieval → Answer]
+    DirectApproach[Direct Approach: Naive Search - Query to Retrieval to Answer]
 
-    DirectApproach --> AdvancedApproach[Advanced Approach<br/>File-level Processing]
+    DirectApproach --> AdvancedApproach[Advanced Approach: File-level Processing]
 
-    AdvancedApproach --> ContentBoost{Content<br/>Booster<br/>Enabled?}
-    ContentBoost|Yes| --> BoostQueries[Generate Boost Keywords<br/>Evolved Queries]
-    ContentBoost|No| --> FileProcessing
-    BoostQueries --> FileProcessing[Process Each File<br/>Retrieve + Extract Answer]
+    AdvancedApproach --> ContentBoost{Content Booster Enabled?}
+    ContentBoost -->|Yes| BoostQueries[Generate Boost Keywords: Evolved Queries]
+    ContentBoost -->|No| FileProcessing
+    BoostQueries --> FileProcessing[Process Each File: Retrieve + Extract Answer]
 
-    FileProcessing --> Candidates[Collect Candidate Answers<br/>from Direct + Advanced]
+    FileProcessing --> Candidates[Collect Candidate Answers from Direct + Advanced]
 
-    Candidates --> Rerank{Reranking<br/>Available?}
-    Rerank|Yes| --> AnswerRerank[Answer Reranking<br/>Rank by Relevance]
-    Rerank|No| --> AnswerFormat
-    AnswerRerank --> AnswerFormat[Answer Formatting<br/>Combine & Deduplicate]
+    Candidates --> Rerank{Reranking Available?}
+    Rerank -->|Yes| AnswerRerank[Answer Reranking: Rank by Relevance]
+    Rerank -->|No| AnswerFormat
+    AnswerRerank --> AnswerFormat[Answer Formatting: Combine and Deduplicate]
 
-    AnswerFormat --> Reflection{Reflection<br/>Enabled?}
-    Reflection|Yes| --> Reflect[Quality Reflection<br/>Evaluate Answer Quality]
-    Reflect --> QualityCheck{Quality<br/>Passed?}
-    QualityCheck|No| --> Refine[Refine Answer<br/>Improve Quality]
+    AnswerFormat --> Reflection{Reflection Enabled?}
+    Reflection -->|Yes| Reflect[Quality Reflection: Evaluate Answer Quality]
+    Reflect --> QualityCheck{Quality Passed?}
+    QualityCheck -->|No| Refine[Refine Answer: Improve Quality]
     Refine --> Reflect
-    QualityCheck|Yes| --> FinalAnswer
-    Reflection|No| --> FinalAnswer([Final Answer<br/>with Citations])
+    QualityCheck -->|Yes| FinalAnswer
+    Reflection -->|No| FinalAnswer([Final Answer with Citations])
 
     style Start fill:#e1f5ff
     style FinalAnswer fill:#c8e6c9

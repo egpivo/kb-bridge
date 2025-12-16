@@ -80,6 +80,77 @@ For production deployments, use container orchestration platforms like Kubernete
 - **Quality Reflection**: Automatic answer quality evaluation and refinement
 - **Custom Instructions**: Domain-specific query guidance
 
+## Workflow
+
+KB-Bridge follows a multi-stage pipeline to ensure high-quality answers:
+
+```mermaid
+flowchart TD
+    Start([User Query]) --> QueryRewrite{Query Rewriting<br/>Enabled?}
+    QueryRewrite|Yes| --> Rewrite[LLM Query Rewriting<br/>Expansion/Relaxation]
+    QueryRewrite|No| --> IntentionExtract
+    Rewrite --> IntentionExtract[Query Understanding<br/>Intention Extraction]
+
+    IntentionExtract --> QueryDecomp{Query<br/>Decomposition?}
+    QueryDecomp|Multi-part| --> MultiQuery[Multi-query Execution]
+    QueryDecomp|Single| --> FileDiscovery
+
+    MultiQuery --> FileDiscovery[File Discovery<br/>Semantic Search + Reranking]
+    FileDiscovery --> FileEval{File Discovery<br/>Quality Evaluation<br/>Enabled?}
+    FileEval|Yes| --> EvalCheck{Quality<br/>Sufficient?}
+    EvalCheck|No| --> ExpandSearch[Expand Search<br/>Increase top_k]
+    EvalCheck|Yes| --> DirectApproach
+    ExpandSearch --> DirectApproach
+    FileEval|No| --> DirectApproach
+
+    DirectApproach[Direct Approach<br/>Naive Search<br/>Query → Retrieval → Answer]
+
+    DirectApproach --> AdvancedApproach[Advanced Approach<br/>File-level Processing]
+
+    AdvancedApproach --> ContentBoost{Content<br/>Booster<br/>Enabled?}
+    ContentBoost|Yes| --> BoostQueries[Generate Boost Keywords<br/>Evolved Queries]
+    ContentBoost|No| --> FileProcessing
+    BoostQueries --> FileProcessing[Process Each File<br/>Retrieve + Extract Answer]
+
+    FileProcessing --> Candidates[Collect Candidate Answers<br/>from Direct + Advanced]
+
+    Candidates --> Rerank{Reranking<br/>Available?}
+    Rerank|Yes| --> AnswerRerank[Answer Reranking<br/>Rank by Relevance]
+    Rerank|No| --> AnswerFormat
+    AnswerRerank --> AnswerFormat[Answer Formatting<br/>Combine & Deduplicate]
+
+    AnswerFormat --> Reflection{Reflection<br/>Enabled?}
+    Reflection|Yes| --> Reflect[Quality Reflection<br/>Evaluate Answer Quality]
+    Reflect --> QualityCheck{Quality<br/>Passed?}
+    QualityCheck|No| --> Refine[Refine Answer<br/>Improve Quality]
+    Refine --> Reflect
+    QualityCheck|Yes| --> FinalAnswer
+    Reflection|No| --> FinalAnswer([Final Answer<br/>with Citations])
+
+    style Start fill:#e1f5ff
+    style FinalAnswer fill:#c8e6c9
+    style FileDiscovery fill:#fff9c4
+    style DirectApproach fill:#fff9c4
+    style AdvancedApproach fill:#fff9c4
+    style Reflect fill:#ffccbc
+    style AnswerFormat fill:#e1bee7
+```
+
+### Stage Details
+
+1. **Query Rewriting** (Optional): LLM-based query expansion/relaxation to improve recall
+2. **Query Understanding**: Extract user intent and decompose complex queries into sub-queries if needed
+3. **File Discovery**: Semantic search to identify relevant files (recall-focused, top_k_recall=100, top_k_return=20)
+4. **File Discovery Quality Evaluation** (Optional): Assess file discovery quality using LLM before proceeding. If quality is low, automatically expand search parameters
+5. **Direct Approach**: Simple query → retrieval → answer extraction (fallback approach)
+6. **Advanced Approach**: File-level processing with content boosting for precision. Processes each discovered file with evolved queries
+7. **Answer Synthesis**: Rerank candidate answers by relevance (if reranking service available), then combine and deduplicate using LLM
+8. **Quality Reflection** (Optional): Evaluate answer quality and refine if needed (up to max_iterations)
+
+### Implementation Status
+
+The orchestrator (`DatasetProcessor`) currently implements stages 1-3, 5-8. File Discovery Quality Evaluation (stage 4) is implemented but not yet integrated into the pipeline. See `.doc/FILE_DISCOVERY_EVALUATION_CONFIG.md` for details.
+
 ## Available Tools
 
 - **`assistant`**: Intelligent search and answer extraction from knowledge bases

@@ -86,66 +86,54 @@ KB-Bridge follows a multi-stage pipeline to ensure high-quality answers:
 
 ```mermaid
 flowchart TD
-    Start([User Query]) --> QueryRewrite{Query Rewriting Enabled?}
-    QueryRewrite -->|Yes| Rewrite[LLM Query Rewriting: Expansion/Relaxation]
-    QueryRewrite -->|No| IntentionExtract
-    Rewrite --> IntentionExtract[Query Understanding: Intention Extraction]
+    Start([User Query]) --> Preprocess[Query Preprocessing<br/>Rewriting & Understanding]
 
-    IntentionExtract --> QueryDecomp{Query Decomposition?}
-    QueryDecomp -->|Multi-part| MultiQuery[Multi-query Execution]
-    QueryDecomp -->|Single| FileDiscovery
+    Preprocess --> FileDiscovery[File Discovery<br/>Find Relevant Files]
 
-    MultiQuery --> FileDiscovery[File Discovery: Semantic Search + Reranking]
-    FileDiscovery --> FileEval{File Discovery Quality Evaluation Enabled?}
-    FileEval -->|Yes| EvalCheck{Quality Sufficient?}
-    EvalCheck -->|No| ExpandSearch[Expand Search: Increase top_k]
-    EvalCheck -->|Yes| DirectApproach
-    ExpandSearch --> DirectApproach
-    FileEval -->|No| DirectApproach
+    FileDiscovery --> Search[Search Stages]
 
-    DirectApproach[Direct Approach: Naive Search - Query to Retrieval to Answer]
+    Search --> Direct[Direct Approach<br/>Simple Retrieval]
+    Search --> Advanced[Advanced Approach<br/>File-level Processing]
 
-    DirectApproach --> AdvancedApproach[Advanced Approach: File-level Processing]
+    Direct --> Candidates
+    Advanced --> Candidates[Collect Candidates]
 
-    AdvancedApproach --> ContentBoost{Content Booster Enabled?}
-    ContentBoost -->|Yes| BoostQueries[Generate Boost Keywords: Evolved Queries]
-    ContentBoost -->|No| FileProcessing
-    BoostQueries --> FileProcessing[Process Each File: Retrieve + Extract Answer]
+    Candidates --> Synthesis[Answer Synthesis<br/>Rerank & Format]
 
-    FileProcessing --> Candidates[Collect Candidate Answers from Direct + Advanced]
-
-    Candidates --> Rerank{Reranking Available?}
-    Rerank -->|Yes| AnswerRerank[Answer Reranking: Rank by Relevance]
-    Rerank -->|No| AnswerFormat
-    AnswerRerank --> AnswerFormat[Answer Formatting: Combine and Deduplicate]
-
-    AnswerFormat --> Reflection{Reflection Enabled?}
-    Reflection -->|Yes| Reflect[Quality Reflection: Evaluate Answer Quality]
-    Reflect --> QualityCheck{Quality Passed?}
-    QualityCheck -->|No| Refine[Refine Answer: Improve Quality]
-    Refine --> Reflect
-    QualityCheck -->|Yes| FinalAnswer
-    Reflection -->|No| FinalAnswer([Final Answer with Citations])
+    Synthesis --> Reflection{Reflection<br/>Enabled?}
+    Reflection -->|Yes| Reflect[Quality Check<br/>& Refinement]
+    Reflection -->|No| Final
+    Reflect --> Final([Final Answer])
 
     style Start fill:#e1f5ff
-    style FinalAnswer fill:#c8e6c9
+    style Final fill:#c8e6c9
     style FileDiscovery fill:#fff9c4
-    style DirectApproach fill:#fff9c4
-    style AdvancedApproach fill:#fff9c4
+    style Direct fill:#fff9c4
+    style Advanced fill:#fff9c4
     style Reflect fill:#ffccbc
-    style AnswerFormat fill:#e1bee7
+    style Synthesis fill:#e1bee7
 ```
 
 ### Stage Details
 
-1. **Query Rewriting** (Optional): LLM-based query expansion/relaxation to improve recall
-2. **Query Understanding**: Extract user intent and decompose complex queries into sub-queries if needed
-3. **File Discovery**: Semantic search to identify relevant files (recall-focused, top_k_recall=100, top_k_return=20)
-4. **File Discovery Quality Evaluation** (Optional): Assess file discovery quality using LLM before proceeding. If quality is low, automatically expand search parameters
-5. **Direct Approach**: Simple query → retrieval → answer extraction (fallback approach)
-6. **Advanced Approach**: File-level processing with content boosting for precision. Processes each discovered file with evolved queries
-7. **Answer Synthesis**: Rerank candidate answers by relevance (if reranking service available), then combine and deduplicate using LLM
-8. **Quality Reflection** (Optional): Evaluate answer quality and refine if needed (up to max_iterations)
+**Query Preprocessing** (Optional)
+- Query Rewriting: LLM-based expansion/relaxation to improve recall
+- Query Understanding: Extract intent and decompose complex queries
+
+**File Discovery**
+- Semantic search to identify relevant files (recall-focused)
+- Optional quality evaluation with automatic search expansion if quality is low
+
+**Search Stages** (Parallel)
+- **Direct Approach**: Simple query → retrieval → answer extraction (fallback)
+- **Advanced Approach**: File-level processing with content boosting for precision
+
+**Answer Synthesis**
+- Rerank candidates by relevance (if reranking service available)
+- Combine and deduplicate using LLM
+
+**Quality Reflection** (Optional)
+- Evaluate answer quality and refine if needed (up to max_iterations)
 
 ### Implementation Status
 

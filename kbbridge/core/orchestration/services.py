@@ -188,10 +188,31 @@ class ParameterValidator:
             )
         )
 
+        # File discovery evaluation parameters
+        enable_file_discovery_evaluation = tool_parameters.get(
+            "enable_file_discovery_evaluation",
+            AssistantDefaults.ENABLE_FILE_DISCOVERY_EVALUATION.value,
+        )
+        file_discovery_evaluation_threshold = tool_parameters.get(
+            "file_discovery_evaluation_threshold",
+            AssistantDefaults.FILE_DISCOVERY_EVALUATION_THRESHOLD.value,
+        )
+        # Validate threshold is between 0 and 1
+        if not (0.0 <= file_discovery_evaluation_threshold <= 1.0):
+            logger.warning(
+                f"Invalid file_discovery_evaluation_threshold: {file_discovery_evaluation_threshold}, "
+                f"using default: {AssistantDefaults.FILE_DISCOVERY_EVALUATION_THRESHOLD.value}"
+            )
+            file_discovery_evaluation_threshold = (
+                AssistantDefaults.FILE_DISCOVERY_EVALUATION_THRESHOLD.value
+            )
+
         # Debug logging
         if verbose:
             logger.debug(
-                f"use_content_booster: {use_content_booster}, max_boost_keywords: {max_boost_keywords}"
+                f"use_content_booster: {use_content_booster}, max_boost_keywords: {max_boost_keywords}, "
+                f"enable_file_discovery_evaluation: {enable_file_discovery_evaluation}, "
+                f"file_discovery_evaluation_threshold: {file_discovery_evaluation_threshold}"
             )
 
         return ProcessingConfig(
@@ -203,6 +224,8 @@ class ParameterValidator:
             max_workers=max_workers,
             use_content_booster=use_content_booster,
             max_boost_keywords=max_boost_keywords,
+            enable_file_discovery_evaluation=enable_file_discovery_evaluation,
+            file_discovery_evaluation_threshold=file_discovery_evaluation_threshold,
         )
 
     @staticmethod

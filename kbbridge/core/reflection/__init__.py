@@ -1,6 +1,10 @@
 from .config import get_lm, setup
 from .constants import ReflectionConstants, ReflectorDefaults
-from .evaluator import Evaluator
+from .evaluator import (
+    Evaluator,
+    FileDiscoveryQualityEvaluator,
+    FileDiscoveryRecallEvaluator,
+)
 from .feedback import FeedbackGenerator
 from .integration import ReflectionIntegration, parse_reflection_params
 from .models import QualityScores, RefinementPlan, ReflectionResult
@@ -19,4 +23,6 @@ __all__ = [
     "parse_reflection_params",
     "setup",
     "get_lm",
+    "FileDiscoveryRecallEvaluator",
+    "FileDiscoveryQualityEvaluator",
 ]

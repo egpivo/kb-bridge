@@ -48,6 +48,8 @@ async def assistant_service(
     enable_query_decomposition: bool = False,
     enable_reflection: Optional[bool] = None,
     reflection_threshold: Optional[float] = None,
+    enable_file_discovery_evaluation: Optional[bool] = None,
+    file_discovery_evaluation_threshold: Optional[float] = None,
     verbose: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Search and extract answers from knowledge bases."""
@@ -93,6 +95,15 @@ async def assistant_service(
             "use_content_booster": DEFAULT_CONFIG["use_content_booster"],
             "max_boost_keywords": DEFAULT_CONFIG["max_boost_keywords"],
         }
+        # Add file discovery evaluation parameters if provided
+        if enable_file_discovery_evaluation is not None:
+            tool_parameters[
+                "enable_file_discovery_evaluation"
+            ] = enable_file_discovery_evaluation
+        if file_discovery_evaluation_threshold is not None:
+            tool_parameters[
+                "file_discovery_evaluation_threshold"
+            ] = file_discovery_evaluation_threshold
         # Validate parameters
         config = ParameterValidator.validate_config(tool_parameters)
 

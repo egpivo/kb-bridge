@@ -71,6 +71,10 @@ class AssistantDefaults(Enum):
     ADVANCED_APPROACH_SEARCH_METHOD = "hybrid_search"
     DOES_RERANK = True
 
+    # File discovery evaluation
+    ENABLE_FILE_DISCOVERY_EVALUATION = False  # Optional, disabled by default
+    FILE_DISCOVERY_EVALUATION_THRESHOLD = 0.7  # Quality threshold (0-1)
+
 
 class RetrieverSearchMethod(Enum):
     """Generic search methods (backend-agnostic)."""

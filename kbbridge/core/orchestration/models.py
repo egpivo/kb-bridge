@@ -152,6 +152,12 @@ class ProcessingConfig:
     max_boost_keywords: int = AssistantDefaults.MAX_BOOST_KEYWORDS.value
     adaptive_top_k_enabled: bool = AssistantDefaults.ADAPTIVE_TOP_K_ENABLED.value
     total_segment_budget: int = AssistantDefaults.TOTAL_SEGMENT_BUDGET.value
+    enable_file_discovery_evaluation: bool = (
+        AssistantDefaults.ENABLE_FILE_DISCOVERY_EVALUATION.value
+    )
+    file_discovery_evaluation_threshold: float = (
+        AssistantDefaults.FILE_DISCOVERY_EVALUATION_THRESHOLD.value
+    )
 
 
 @dataclass

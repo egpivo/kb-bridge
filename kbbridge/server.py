@@ -49,6 +49,8 @@ async def assistant(
     enable_query_decomposition: bool = False,
     enable_reflection: Optional[bool] = None,
     reflection_threshold: Optional[float] = None,
+    enable_file_discovery_evaluation: Optional[bool] = None,
+    file_discovery_evaluation_threshold: Optional[float] = None,
     verbose: Optional[bool] = None,
 ) -> str:
     """Search and extract answers from knowledge bases."""
@@ -83,6 +85,8 @@ async def assistant(
                     enable_query_decomposition=enable_query_decomposition,
                     enable_reflection=enable_reflection,
                     reflection_threshold=reflection_threshold,
+                    enable_file_discovery_evaluation=enable_file_discovery_evaluation,
+                    file_discovery_evaluation_threshold=file_discovery_evaluation_threshold,
                     verbose=verbose,  # Pass verbose parameter directly
                 ),
                 timeout=timeout_seconds,

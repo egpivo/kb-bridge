@@ -7,7 +7,7 @@ file searching, content boosting, and answer extraction.
 """
 
 # Version information
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 __version_info__ = (0, 1, 0)
 __author__ = "Wen-Ting Wang"
 __email__ = "egpivo@gmail.com"

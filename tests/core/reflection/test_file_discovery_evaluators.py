@@ -450,3 +450,66 @@ class TestFileDiscoveryQualityEvaluator:
         result = evaluator._parse_json("item1, item2")
         assert isinstance(result, list)
         assert len(result) >= 0
+
+    @pytest.mark.asyncio
+    async def test_evaluate_exception_handling(self, mock_lm):
+        """Test evaluation exception handling."""
+        with patch("kbbridge.core.reflection.config.setup", return_value=mock_lm):
+            evaluator = FileDiscoveryQualityEvaluator(
+                llm_model="gpt-4",
+                llm_api_url="https://test.com",
+                api_key="test-key",
+            )
+            evaluator.evaluator = MagicMock(side_effect=Exception("Evaluation failed"))
+            evaluator._lm = mock_lm
+
+            file1 = MagicMock(spec=FileHit)
+            file1.file_name = "file1.txt"
+            file1.score = 0.9
+
+            chunk1 = MagicMock(spec=ChunkHit)
+            chunk1.document_name = "file1.txt"
+            chunk1.score = 0.9
+            chunk1.content = "Test content"
+
+            result = await evaluator.evaluate(
+                query="test query",
+                discovered_files=[file1],
+                chunks=[chunk1],
+                all_files_count=10,
+            )
+
+            assert result is None
+
+    def test_parse_json_with_brackets(self):
+        """Test parsing JSON with brackets but invalid format."""
+        evaluator = FileDiscoveryQualityEvaluator(
+            llm_model="gpt-4",
+            llm_api_url="https://test.com",
+            api_key="test-key",
+        )
+
+        result = evaluator._parse_json('["item1", "item2"')
+        assert isinstance(result, list)
+
+    def test_parse_json_empty_string(self):
+        """Test parsing empty string."""
+        evaluator = FileDiscoveryQualityEvaluator(
+            llm_model="gpt-4",
+            llm_api_url="https://test.com",
+            api_key="test-key",
+        )
+
+        result = evaluator._parse_json("")
+        assert result == []
+
+    def test_parse_json_non_list(self):
+        """Test parsing JSON that is not a list."""
+        evaluator = FileDiscoveryQualityEvaluator(
+            llm_model="gpt-4",
+            llm_api_url="https://test.com",
+            api_key="test-key",
+        )
+
+        result = evaluator._parse_json('{"key": "value"}')
+        assert result == []

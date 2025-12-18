@@ -109,3 +109,6 @@ uv.lock
 
 # Project-specific ignores
 debug_*.py
+
+# Local documentation and discussions (not for GitHub)
+.doc/

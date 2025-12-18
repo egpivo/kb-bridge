@@ -80,6 +80,65 @@ For production deployments, use container orchestration platforms like Kubernete
 - **Quality Reflection**: Automatic answer quality evaluation and refinement
 - **Custom Instructions**: Domain-specific query guidance
 
+## Workflow
+
+KB-Bridge follows a multi-stage pipeline to ensure high-quality answers:
+
+```mermaid
+flowchart LR
+    Start([User Query]) --> Preprocess[Query Preprocessing<br/>Rewriting & Understanding]
+
+    Preprocess --> FileDiscovery[File Discovery<br/>Find Relevant Files]
+
+    FileDiscovery --> Search[Search Stages]
+
+    Search --> Direct[Direct Approach<br/>Simple Retrieval]
+    Search --> Advanced[Advanced Approach<br/>File-level Processing]
+
+    Direct --> Candidates
+    Advanced --> Candidates[Collect Candidates]
+
+    Candidates --> Synthesis[Answer Synthesis<br/>Rerank & Format]
+
+    Synthesis --> Reflection{Reflection<br/>Enabled?}
+    Reflection -->|Yes| Reflect[Quality Check<br/>& Refinement]
+    Reflection -->|No| Final
+    Reflect --> Final([Final Answer])
+
+    style Start fill:#e1f5ff
+    style Final fill:#c8e6c9
+    style FileDiscovery fill:#fff9c4
+    style Direct fill:#fff9c4
+    style Advanced fill:#fff9c4
+    style Reflect fill:#ffccbc
+    style Synthesis fill:#e1bee7
+```
+
+### Stage Details
+
+**Query Preprocessing** (Optional)
+- Query Rewriting: LLM-based expansion/relaxation to improve recall
+- Query Understanding: Extract intent and decompose complex queries
+
+**File Discovery**
+- Semantic search to identify relevant files (recall-focused)
+- Optional quality evaluation with automatic search expansion if quality is low
+
+**Search Stages** (Parallel)
+- **Direct Approach**: Simple query → retrieval → answer extraction (fallback)
+- **Advanced Approach**: File-level processing with content boosting for precision
+
+**Answer Synthesis**
+- Rerank candidates by relevance (if reranking service available)
+- Combine and deduplicate using LLM
+
+**Quality Reflection** (Optional)
+- Evaluate answer quality and refine if needed (up to max_iterations)
+
+### Implementation Status
+
+The orchestrator (`DatasetProcessor`) currently implements stages 1-3, 5-8. File Discovery Quality Evaluation (stage 4) is implemented but not yet integrated into the pipeline. See `.doc/FILE_DISCOVERY_EVALUATION_CONFIG.md` for details.
+
 ## Available Tools
 
 - **`assistant`**: Intelligent search and answer extraction from knowledge bases

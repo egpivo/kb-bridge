@@ -1267,7 +1267,17 @@ class AdvancedApproachProcessor:
 
 
 class DatasetProcessor:
-    """Coordinates processing across multiple datasets"""
+    """Coordinates processing across multiple datasets
+
+    TODO: Integrate FileDiscoveryQualityEvaluator
+    ---------------------------------------------
+    1. Preserve FileHit objects and chunks in FileSearchStrategy.parallel_search()
+    2. Initialize evaluator in __init__() if config.enable_file_discovery_evaluation is True
+    3. After file search (line ~1452), call evaluator.evaluate() with:
+       - query, discovered_files (FileHit[]), chunks (ChunkHit[]), all_files_count
+    4. If should_expand_search() returns True, re-run file search with expanded top_k params
+    5. Add evaluation metrics to file_search_result for monitoring
+    """
 
     @staticmethod
     def _extract_error_from_answer(answer: Dict[str, Any]) -> str:

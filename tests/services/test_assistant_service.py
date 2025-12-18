@@ -1679,6 +1679,146 @@ class TestAssistantServiceIntentionExtraction:
         mock_ctx.warning.assert_called()
 
 
+class TestAssistantServiceFileDiscoveryEvaluation:
+    """Test file discovery evaluation parameters."""
+
+    @pytest.mark.asyncio
+    async def test_assistant_service_with_file_discovery_evaluation_enabled(self):
+        """Test assistant_service with file discovery evaluation enabled."""
+        mock_ctx = Mock()
+        mock_ctx.info = AsyncMock()
+        mock_ctx.warning = AsyncMock()
+        mock_ctx.error = AsyncMock()
+        mock_ctx.progress = AsyncMock()
+
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
+            mock_creds = Mock()
+            mock_creds.validate.return_value = (True, None)
+            mock_creds.endpoint = "https://test.com"
+            mock_creds.api_key = "test-key"
+            mock_creds.backend_type = "dify"
+            mock_creds.get_masked_summary.return_value = {
+                "backend_type": "dify",
+                "endpoint": "***",
+                "api_key": "***",
+            }
+            mock_creds_class.from_env.return_value = mock_creds
+
+            with patch.dict(
+                os.environ,
+                {
+                    "LLM_API_URL": "https://llm.test.com",
+                    "LLM_MODEL": "gpt-4",
+                    "LLM_API_TOKEN": "test-token",
+                },
+                clear=True,
+            ):
+                with patch(
+                    "kbbridge.services.assistant_service.ParameterValidator.validate_config"
+                ) as mock_validate:
+                    from kbbridge.core.orchestration.models import ProcessingConfig
+
+                    mock_config = ProcessingConfig(
+                        resource_id="test-dataset",
+                        query="test query",
+                        enable_file_discovery_evaluation=True,
+                        file_discovery_evaluation_threshold=0.75,
+                    )
+                    mock_validate.return_value = mock_config
+
+                    with patch(
+                        "kbbridge.services.assistant_service._execute_multi_query"
+                    ) as mock_execute:
+                        mock_execute.return_value = {"answer": "test answer"}
+
+                        result = await assistant_service(
+                            resource_id="test-dataset",
+                            query="test query",
+                            ctx=mock_ctx,
+                            enable_file_discovery_evaluation=True,
+                            file_discovery_evaluation_threshold=0.75,
+                        )
+
+                        # Verify validate_config was called with correct parameters
+                        call_args = mock_validate.call_args
+                        assert call_args is not None
+                        tool_params = call_args[0][0]
+                        assert (
+                            tool_params.get("enable_file_discovery_evaluation") is True
+                        )
+                        assert (
+                            tool_params.get("file_discovery_evaluation_threshold")
+                            == 0.75
+                        )
+
+    @pytest.mark.asyncio
+    async def test_assistant_service_with_file_discovery_evaluation_disabled(self):
+        """Test assistant_service with file discovery evaluation explicitly disabled."""
+        mock_ctx = Mock()
+        mock_ctx.info = AsyncMock()
+        mock_ctx.warning = AsyncMock()
+        mock_ctx.error = AsyncMock()
+        mock_ctx.progress = AsyncMock()
+
+        with patch(
+            "kbbridge.services.assistant_service.RetrievalCredentials"
+        ) as mock_creds_class:
+            mock_creds = Mock()
+            mock_creds.validate.return_value = (True, None)
+            mock_creds.endpoint = "https://test.com"
+            mock_creds.api_key = "test-key"
+            mock_creds.backend_type = "dify"
+            mock_creds.get_masked_summary.return_value = {
+                "backend_type": "dify",
+                "endpoint": "***",
+                "api_key": "***",
+            }
+            mock_creds_class.from_env.return_value = mock_creds
+
+            with patch.dict(
+                os.environ,
+                {
+                    "LLM_API_URL": "https://llm.test.com",
+                    "LLM_MODEL": "gpt-4",
+                    "LLM_API_TOKEN": "test-token",
+                },
+                clear=True,
+            ):
+                with patch(
+                    "kbbridge.services.assistant_service.ParameterValidator.validate_config"
+                ) as mock_validate:
+                    from kbbridge.core.orchestration.models import ProcessingConfig
+
+                    mock_config = ProcessingConfig(
+                        resource_id="test-dataset",
+                        query="test query",
+                        enable_file_discovery_evaluation=False,
+                    )
+                    mock_validate.return_value = mock_config
+
+                    with patch(
+                        "kbbridge.services.assistant_service._execute_multi_query"
+                    ) as mock_execute:
+                        mock_execute.return_value = {"answer": "test answer"}
+
+                        result = await assistant_service(
+                            resource_id="test-dataset",
+                            query="test query",
+                            ctx=mock_ctx,
+                            enable_file_discovery_evaluation=False,
+                        )
+
+                        # Verify validate_config was called with correct parameters
+                        call_args = mock_validate.call_args
+                        assert call_args is not None
+                        tool_params = call_args[0][0]
+                        assert (
+                            tool_params.get("enable_file_discovery_evaluation") is False
+                        )
+
+
 if __name__ == "__main__":
     # Allow running tests directly with: python test_assistant_service.py
     exit_code = pytest.main([__file__, "-v"])
